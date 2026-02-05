@@ -1,0 +1,38 @@
+{
+  "permissions": {
+    "allow": [
+      "Skill(sync)",
+      "Skill(download)",
+      "Bash(curl:*)",
+      "Bash(jq:*)",
+      "Bash(cat:*)",
+      "mcp__qlerify__list_workflows",
+      "mcp__qlerify__get_workflow",
+      "mcp__qlerify__get_workflow_overview",
+      "mcp__qlerify__list_entities",
+      "mcp__qlerify__create_entity",
+      "mcp__qlerify__update_entity",
+      "mcp__qlerify__delete_entity",
+      "mcp__qlerify__list_commands",
+      "mcp__qlerify__create_command",
+      "mcp__qlerify__update_command",
+      "mcp__qlerify__delete_command",
+      "mcp__qlerify__list_read_models",
+      "mcp__qlerify__create_read_model",
+      "mcp__qlerify__update_read_model",
+      "mcp__qlerify__delete_read_model",
+      "mcp__qlerify__list_card_types",
+      "mcp__qlerify__list_domain_events",
+      "mcp__qlerify__list_domain_events_overview",
+      "mcp__qlerify__list_lanes",
+      "mcp__qlerify__list_groups",
+      "mcp__qlerify__list_cards",
+      "Bash(git diff:*)",
+      "Bash(git status:*)",
+      "Read(*)",
+      "Glob(*)",
+      "Grep(*)"
+    ],
+    "deny": []
+  }
+}
