@@ -1,0 +1,17 @@
+{
+  "name": "qlerify-skills",
+  "owner": {
+    "name": "Qlerify"
+  },
+  "metadata": {
+    "description": "Official Qlerify skills for Claude Code"
+  },
+  "plugins": [
+    {
+      "name": "qlerify",
+      "source": "./",
+      "description": "Keep your domain model in sync with your codebase using Qlerify",
+      "version": "0.1.0"
+    }
+  ]
+}
