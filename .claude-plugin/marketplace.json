@@ -1,17 +1,23 @@
 {
-  "name": "qlerify-skills",
+  "name": "qlerify-plugins",
+  "version": "1.0.0",
+  "description": "Official Qlerify plugins for AI coding assistants — domain model sync, data export, and more",
   "owner": {
-    "name": "Qlerify"
-  },
-  "metadata": {
-    "description": "Official Qlerify skills for Claude Code"
+    "name": "Qlerify",
+    "email": "support@qlerify.com"
   },
   "plugins": [
     {
-      "name": "qlerify",
-      "source": "./",
-      "description": "Keep your domain model in sync with your codebase using Qlerify",
-      "version": "0.1.0"
+      "name": "mcp-companion",
+      "description": "Teaches AI agents how to effectively use Qlerify's MCP server — domain model sync, fast data export, and more",
+      "version": "0.1.0",
+      "author": {
+        "name": "Qlerify",
+        "email": "support@qlerify.com"
+      },
+      "source": "./plugins/mcp-companion",
+      "category": "development",
+      "homepage": "https://qlerify.com"
     }
   ]
 }

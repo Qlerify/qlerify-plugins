@@ -1,7 +1,7 @@
-# Qlerify Skills
+# Qlerify Plugins
 
-Skills for integrating with [Qlerify](https://qlerify.com) - keep your domain model in sync with your codebase. Works
-with Claude Code, Gemini CLI, and Cursor.
+Official Qlerify plugins for AI coding assistants — domain model sync, data export, and more. Works with Claude Code,
+Gemini CLI, and Cursor.
 
 ## Prerequisites
 
@@ -31,22 +31,19 @@ Configure MCP server in `~/.claude/settings.local.json`:
 Install the plugin:
 
 ```bash
-# Add the Qlerify marketplace
-/plugin marketplace add qlerify/claude-skills
-
-# Install the plugin
-/plugin install qlerify@qlerify-skills
+/plugin marketplace add qlerify/qlerify-plugins
+/plugin install mcp-companion@qlerify-plugins
 ```
 
-After installation, skills are available as `/qlerify:sync` and `/qlerify:download`.
+After installation, skills are available as `/mcp-companion:sync` and `/mcp-companion:download`.
 
 ### Gemini CLI
 
 Install each skill using the `--path` flag:
 
 ```bash
-gemini skills install https://github.com/qlerify/claude-skills.git --path skills/sync
-gemini skills install https://github.com/qlerify/claude-skills.git --path skills/download
+gemini skills install https://github.com/qlerify/qlerify-plugins.git --path plugins/mcp-companion/skills/sync
+gemini skills install https://github.com/qlerify/qlerify-plugins.git --path plugins/mcp-companion/skills/download
 ```
 
 Configure the Qlerify MCP server in `~/.gemini/settings.json` per
@@ -56,15 +53,19 @@ Configure the Qlerify MCP server in `~/.gemini/settings.json` per
 
 1. Open Cursor Settings (`Cmd+Shift+J`)
 2. Go to **Rules** > **Add Rule** > **Remote Rule (Github)**
-3. Enter: `https://github.com/qlerify/claude-skills.git`
+3. Enter: `https://github.com/qlerify/qlerify-plugins`
 
 Configure the Qlerify MCP server in Cursor's MCP settings.
 
 Get your API token from the Qlerify UI.
 
-## Skills
+## Plugins
 
-### `sync`
+### `mcp-companion`
+
+Teaches AI agents how to effectively use Qlerify's MCP server. Contains the following skills:
+
+#### `sync`
 
 Syncs your codebase's domain model with Qlerify. Detects entities, commands, and read models in your code and ensures
 they match your Qlerify workflow.
@@ -82,7 +83,7 @@ they match your Qlerify workflow.
 2. Compares with Qlerify workflow
 3. Creates/updates/deletes to keep them in sync
 
-### `download`
+#### `download`
 
 Fast download any Qlerify data directly to files. Uses `curl + jq` to bypass AI processing, making it ~100x faster than
 standard MCP tools for large data.
@@ -104,12 +105,11 @@ standard MCP tools for large data.
 
 ```bash
 # Invoke skills directly
-/qlerify:sync
-/qlerify:download
+/mcp-companion:sync
+/mcp-companion:download
 
 # Or just ask naturally - skills trigger automatically
 > sync my domain model with Qlerify
 > download the Cart Microservice workflow to workflow.json
 > save the swagger spec for my workflow to api.yaml
 ```
-
