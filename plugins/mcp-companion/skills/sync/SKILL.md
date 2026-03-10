@@ -18,7 +18,7 @@ match Qlerify.
 
 1. Call `list_workflows` to get all accessible workflows.
 2. Match by project name or ask the user which workflow to sync with.
-3. Call `get_workflow_overview` to understand current state (lanes, bounded contexts, element counts).
+3. Call `get_workflow` to understand current state (events, entities, commands, read models, bounded contexts).
 
 ## Step 2: Scan codebase for domain objects
 
@@ -41,7 +41,7 @@ Also check git diff for recently changed schema files to detect field-level chan
 
 ## Step 3: Compare and sync
 
-1. Call `list_entities`, `list_commands`, and `list_read_models` from Qlerify.
+1. Call `get_workflow` to get all entities, commands, and read models from Qlerify.
 2. Compare code vs Qlerify.
 3. For differences:
     - **New in code**: Create in Qlerify with proper fields and example data.
@@ -64,7 +64,7 @@ Summarize:
 | `string`, `varchar`, `text`, `char`           | `string`                              |
 | `number`, `int`, `float`, `decimal`, `bigint` | `number`                              |
 | `boolean`, `bool`                             | `boolean`                             |
-| Foreign key, relation, `@relation`            | Set `relatedEntityId` + `cardinality` |
+| Foreign key, relation, `@relation`            | Set `relatedEntity` + `cardinality`   |
 | Nested object, JSON, `jsonb`                  | `object`                              |
 
 ## Guidelines
@@ -72,16 +72,16 @@ Summarize:
 When creating/updating entities:
 - Include 3 realistic example data values per field
 - Set `isRequired: true` for non-nullable fields
-- Use `relatedEntityId` and `cardinality` to express entity relationships from the owning entity's perspective
+- Use `relatedEntity` ($ref path) and `cardinality` to express entity relationships from the owning entity's perspective
 
 When creating commands:
 - Name with verbs: Create, Update, Delete, Submit, Cancel
 - Fields should correspond to fields on the aggregate root entity they modify
 - Mark auto-generated fields with `hideInForm: true`
-- Use nested `fields` with `relatedEntityId` to reference related entities
+- Use nested `fields` with `relatedEntity` ($ref path) to reference related entities
 
 When creating read models:
 - Name with Get/List/Search prefixes
-- Link to entity via `entityId`
+- Link to entity via `entity` ($ref path)
 - Fields represent both inputs and outputs: set `isFilter: true` for query parameters, omit for returned data fields
-- Use nested `fields` with `relatedEntityId` for return fields that reference other entities
+- Use nested `fields` with `relatedEntity` ($ref path) for return fields that reference other entities

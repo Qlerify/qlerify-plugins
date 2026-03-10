@@ -1,7 +1,7 @@
 # Example: E-Commerce Order Workflow
 
 A complete workflow creation sequence for a simple e-commerce order process.
-All IDs below are placeholders — actual calls return real UUIDs.
+All IDs and `$ref` paths below are illustrative — actual calls return real UUIDs and paths.
 
 ---
 
@@ -11,33 +11,23 @@ All IDs below are placeholders — actual calls return real UUIDs.
 
 ```
 create_workflow(projectId: "proj-1", name: "E-Commerce Order Process")
-→ { workflowId: "wf-1" }
+-> { workflowId: "wf-1" }
 ```
 
 ### Step 2 — Create lanes
 
 ```
 create_lane(workflowId: "wf-1", projectId: "proj-1", name: "Customer")
-→ { laneId: "lane-customer" }
-
 create_lane(workflowId: "wf-1", projectId: "proj-1", name: "Order Service")
-→ { laneId: "lane-order" }
-
 create_lane(workflowId: "wf-1", projectId: "proj-1", name: "Payment Gateway")
-→ { laneId: "lane-payment" }
 ```
 
 ### Step 3 — Create groups
 
 ```
 create_group(workflowId: "wf-1", projectId: "proj-1", name: "Browse & Cart")
-→ { groupId: "grp-browse" }
-
 create_group(workflowId: "wf-1", projectId: "proj-1", name: "Checkout")
-→ { groupId: "grp-checkout" }
-
 create_group(workflowId: "wf-1", projectId: "proj-1", name: "Fulfillment")
-→ { groupId: "grp-fulfill" }
 ```
 
 ---
@@ -46,73 +36,71 @@ create_group(workflowId: "wf-1", projectId: "proj-1", name: "Fulfillment")
 
 ### Step 4 — Create domain events
 
-Build the chain left-to-right. Each event references the previous one as parent.
+Build the chain left-to-right. Each event references the previous one via `follows`.
+Set `group` only on the first event that starts a new group.
 
 ```
 create_domain_event(
   workflowId: "wf-1", projectId: "proj-1",
   description: "Item Added to Cart",
   type: "bpmn:Task",
-  laneId: "lane-customer",
-  groupId: "grp-browse",
-  parentEventId: "start",
+  lane: "Customer",
+  follows: "start",
+  group: "Browse & Cart",
   color: "blue"
 )
-→ { eventId: "evt-1" }
+-> { $ref: "#/domainEvents/ItemAddedToCart" }
 
 create_domain_event(
   workflowId: "wf-1", projectId: "proj-1",
   description: "Order Placed",
   type: "bpmn:Task",
-  laneId: "lane-customer",
-  groupId: "grp-checkout",
-  parentEventId: "evt-1",
+  lane: "Customer",
+  follows: "#/domainEvents/ItemAddedToCart",
+  group: "Checkout",
   color: "peach"
 )
-→ { eventId: "evt-2" }
+-> { $ref: "#/domainEvents/OrderPlaced" }
 
 create_domain_event(
   workflowId: "wf-1", projectId: "proj-1",
   description: "Payment Successful?",
   type: "bpmn:ExclusiveGateway",
-  laneId: "lane-payment",
-  groupId: "grp-checkout",
-  parentEventId: "evt-2"
+  lane: "Payment Gateway",
+  follows: "#/domainEvents/OrderPlaced"
 )
-→ { eventId: "evt-3" }
+-> { $ref: "#/domainEvents/PaymentSuccessful" }
 
 create_domain_event(
   workflowId: "wf-1", projectId: "proj-1",
   description: "Payment Confirmed",
   type: "bpmn:Task",
-  laneId: "lane-payment",
-  groupId: "grp-checkout",
-  parentEventId: "evt-3",
+  lane: "Payment Gateway",
+  follows: "#/domainEvents/PaymentSuccessful",
   color: "green"
 )
-→ { eventId: "evt-4" }
+-> { $ref: "#/domainEvents/PaymentConfirmed" }
 
 create_domain_event(
   workflowId: "wf-1", projectId: "proj-1",
   description: "Payment Failed",
   type: "bpmn:Task",
-  laneId: "lane-payment",
-  groupId: "grp-checkout",
-  parentEventId: "evt-3",
+  lane: "Payment Gateway",
+  follows: "#/domainEvents/PaymentSuccessful",
   color: "pink"
 )
-→ { eventId: "evt-5" }
+-> { $ref: "#/domainEvents/PaymentFailed" }
 
 create_domain_event(
   workflowId: "wf-1", projectId: "proj-1",
   description: "Order Shipped",
   type: "bpmn:Task",
-  laneId: "lane-order",
-  groupId: "grp-fulfill",
-  parentEventId: "evt-4",
+  lane: "Order Service",
+  follows: "#/domainEvents/PaymentConfirmed",
+  group: "Fulfillment",
   color: "peach"
 )
-→ { eventId: "evt-6" }
+-> { $ref: "#/domainEvents/OrderShipped" }
 ```
 
 ---
@@ -121,24 +109,28 @@ create_domain_event(
 
 ### Step 5 — Create entities
 
+Create entities first so commands and read models can reference them.
+
 ```
 create_entity(
-  workflowId: "wf-1", projectId: "proj-1",
+  workflowId: "wf-1",
   name: "Order",
+  boundedContext: "Order Management",
   fields: [
     { name: "id", dataType: "string", exampleData: ["ord-001", "ord-002", "ord-003"], isRequired: true },
     { name: "customerId", dataType: "string", exampleData: ["cust-10", "cust-22", "cust-07"], isRequired: true },
     { name: "status", dataType: "string", exampleData: ["pending", "confirmed", "shipped"], isRequired: true },
     { name: "totalAmount", dataType: "number", exampleData: ["59.99", "124.50", "9.99"], isRequired: true },
-    { name: "orderItems", dataType: "object", exampleData: ["ci-001, ci-002", "ci-003", "ci-004, ci-005"], relatedEntityId: "ent-order-item", cardinality: "one-to-many" },
+    { name: "orderItems", dataType: "object", relatedEntity: "#/schemas/entities/OrderItem", cardinality: "one-to-many" },
     { name: "createdAt", dataType: "string", exampleData: ["2026-01-15T10:00:00Z", "2026-01-16T14:30:00Z", "2026-01-17T09:15:00Z"], isRequired: true }
   ]
 )
-→ { entityId: "ent-order" }
+-> { $ref: "#/schemas/entities/Order" }
 
 create_entity(
-  workflowId: "wf-1", projectId: "proj-1",
+  workflowId: "wf-1",
   name: "OrderItem",
+  boundedContext: "Order Management",
   fields: [
     { name: "id", dataType: "string", exampleData: ["ci-001", "ci-002", "ci-003"], isRequired: true },
     { name: "productName", dataType: "string", exampleData: ["Wireless Mouse", "USB-C Cable", "Laptop Stand"], isRequired: true },
@@ -146,69 +138,80 @@ create_entity(
     { name: "unitPrice", dataType: "number", exampleData: ["29.99", "8.50", "45.00"], isRequired: true }
   ]
 )
-→ { entityId: "ent-order-item" }
+-> { $ref: "#/schemas/entities/OrderItem" }
 ```
 
-### Step 6 — Create commands
+### Step 6 — Create commands on events
+
+Each command is attached to an event via `domainEvent`. This auto-creates the Command card.
 
 ```
 create_command(
-  workflowId: "wf-1", projectId: "proj-1",
-  name: "AddItemToCart",
+  workflowId: "wf-1",
+  domainEvent: "#/domainEvents/ItemAddedToCart",
+  name: "Add Item To Cart",
   fields: [
     { name: "orderId", isRequired: true, hideInForm: true },
-    { name: "orderItems", relatedEntityId: "ent-order-item", cardinality: "one-to-one",
+    { name: "orderItems", relatedEntity: "#/schemas/entities/OrderItem", cardinality: "one-to-one",
       fields: [{ name: "productName" }, { name: "quantity" }, { name: "unitPrice" }] }
   ]
 )
-→ { commandId: "cmd-add" }
+-> { $ref: "#/schemas/commands/AddItemToCart" }
 
 create_command(
-  workflowId: "wf-1", projectId: "proj-1",
-  name: "PlaceOrder",
+  workflowId: "wf-1",
+  domainEvent: "#/domainEvents/OrderPlaced",
+  name: "Place Order",
   fields: [
     { name: "customerId", isRequired: true },
-    { name: "orderItems", relatedEntityId: "ent-order-item", cardinality: "one-to-many",
+    { name: "orderItems", relatedEntity: "#/schemas/entities/OrderItem", cardinality: "one-to-many",
       fields: [{ name: "productName" }, { name: "quantity" }, { name: "unitPrice" }] }
   ]
 )
-→ { commandId: "cmd-place" }
+-> { $ref: "#/schemas/commands/PlaceOrder" }
 
 create_command(
-  workflowId: "wf-1", projectId: "proj-1",
-  name: "ShipOrder",
+  workflowId: "wf-1",
+  domainEvent: "#/domainEvents/OrderShipped",
+  name: "Ship Order",
   fields: [
     { name: "orderId", isRequired: true },
     { name: "trackingNumber", isRequired: true },
     { name: "carrier", isRequired: true }
   ]
 )
-→ { commandId: "cmd-ship" }
+-> { $ref: "#/schemas/commands/ShipOrder" }
 ```
 
-### Step 7 — Create read models
+### Step 7 — Create read models on events
+
+Each read model is attached to an event via `domainEvent`. This auto-creates the Read Model card.
 
 ```
 create_read_model(
-  workflowId: "wf-1", projectId: "proj-1",
-  name: "GetOrderDetails",
-  entityId: "ent-order",
+  workflowId: "wf-1",
+  domainEvent: "#/domainEvents/OrderPlaced",
+  name: "Get Order Details",
+  cardinality: "one-to-one",
+  entity: "#/schemas/entities/Order",
   fields: [
     { name: "orderId", isFilter: true },
     { name: "customerId" },
     { name: "status" },
     { name: "totalAmount" },
-    { name: "orderItems", relatedEntityId: "ent-order-item",
+    { name: "orderItems", relatedEntity: "#/schemas/entities/OrderItem",
       fields: [{ name: "productName" }, { name: "quantity" }, { name: "unitPrice" }] },
     { name: "createdAt" }
   ]
 )
-→ { readModelId: "rm-details" }
+-> { $ref: "#/schemas/queries/GetOrderDetails" }
 
 create_read_model(
-  workflowId: "wf-1", projectId: "proj-1",
-  name: "ListCustomerOrders",
-  entityId: "ent-order",
+  workflowId: "wf-1",
+  domainEvent: "#/domainEvents/OrderShipped",
+  name: "List Customer Orders",
+  cardinality: "one-to-many",
+  entity: "#/schemas/entities/Order",
   fields: [
     { name: "customerId", isFilter: true },
     { name: "status", isFilter: true },
@@ -216,62 +219,31 @@ create_read_model(
     { name: "createdAt" }
   ]
 )
-→ { readModelId: "rm-list" }
+-> { $ref: "#/schemas/queries/ListCustomerOrders" }
 ```
 
 ---
 
-## Phase 4: Linking
+## Phase 4: Organization
 
-### Step 8 — Get card types
+### Step 8 — Link aggregate roots and create bounded context
 
-```
-list_card_types(workflowId: "wf-1", projectId: "proj-1")
-→ {
-    cardTypes: [
-      { id: "ct-cmd", name: "Command" },
-      { id: "ct-agg", name: "AggregateRoot" },
-      { id: "ct-rm", name: "ReadModel" },
-      { id: "ct-gwt", name: "GivenWhenThen" },
-      { id: "ct-us", name: "UserStory" }
-    ]
-  }
-```
-
-### Step 9 — Create cards on events
-
-Link domain model elements to their corresponding events:
+Link entities as aggregate roots to events, and ensure bounded context exists.
 
 ```
-# "Item Added to Cart" ← AddItemToCart command + CartItem aggregate
-create_card(workflowId: "wf-1", projectId: "proj-1", eventId: "evt-1", cardTypeId: "ct-cmd", schemaId: "cmd-add")
-create_card(workflowId: "wf-1", projectId: "proj-1", eventId: "evt-1", cardTypeId: "ct-agg", schemaId: "ent-order-item")
+# Link aggregate roots to events
+update_domain_event(workflowId: "wf-1", projectId: "proj-1",
+  domainEvent: "#/domainEvents/ItemAddedToCart", aggregateRoot: "#/schemas/entities/OrderItem")
 
-# "Order Placed" ← PlaceOrder command + Order aggregate
-create_card(workflowId: "wf-1", projectId: "proj-1", eventId: "evt-2", cardTypeId: "ct-cmd", schemaId: "cmd-place")
-create_card(workflowId: "wf-1", projectId: "proj-1", eventId: "evt-2", cardTypeId: "ct-agg", schemaId: "ent-order")
+update_domain_event(workflowId: "wf-1", projectId: "proj-1",
+  domainEvent: "#/domainEvents/OrderPlaced", aggregateRoot: "#/schemas/entities/Order")
 
-# "Order Placed" ← GetOrderDetails read model (single order)
-create_card(workflowId: "wf-1", projectId: "proj-1", eventId: "evt-2", cardTypeId: "ct-rm", schemaId: "rm-details", cardinality: "one-to-one")
+update_domain_event(workflowId: "wf-1", projectId: "proj-1",
+  domainEvent: "#/domainEvents/OrderShipped", aggregateRoot: "#/schemas/entities/Order")
 
-# "Order Shipped" ← ShipOrder command + Order aggregate
-create_card(workflowId: "wf-1", projectId: "proj-1", eventId: "evt-6", cardTypeId: "ct-cmd", schemaId: "cmd-ship")
-create_card(workflowId: "wf-1", projectId: "proj-1", eventId: "evt-6", cardTypeId: "ct-agg", schemaId: "ent-order")
-```
-
----
-
-## Phase 5: Organization
-
-### Step 10 — Create bounded context
-
-```
+# Bounded context was already created via boundedContext parameter on create_entity.
+# If not, create it explicitly:
 create_bounded_context(workflowId: "wf-1", projectId: "proj-1", name: "Order Management")
-→ { boundedContextId: "bc-orders" }
-
-# Assign entities to the context
-update_entity(workflowId: "wf-1", projectId: "proj-1", entityId: "ent-order", boundedContextId: "bc-orders")
-update_entity(workflowId: "wf-1", projectId: "proj-1", entityId: "ent-order-item", boundedContextId: "bc-orders")
 ```
 
 ---
@@ -284,7 +256,7 @@ The workflow now has:
 - 3 groups (Browse & Cart, Checkout, Fulfillment)
 - 6 domain events with a decision gateway for payment
 - 2 entities (Order, OrderItem) with typed fields and relationships
-- 3 commands (AddItemToCart, PlaceOrder, ShipOrder)
-- 2 read models (GetOrderDetails, ListCustomerOrders)
-- 7 cards linking domain model to events
+- 3 commands (Add Item To Cart, Place Order, Ship Order) attached to events
+- 2 read models (Get Order Details, List Customer Orders) attached to events
+- 3 aggregate root links on events
 - 1 bounded context (Order Management)

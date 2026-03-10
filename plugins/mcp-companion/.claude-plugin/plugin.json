@@ -1,7 +1,7 @@
 {
   "name": "mcp-companion",
   "description": "Teaches AI agents how to effectively use Qlerify's MCP server — domain model sync, fast data export, and more",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "author": {
     "name": "Qlerify",
     "email": "support@qlerify.com"

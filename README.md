@@ -12,7 +12,7 @@ Gemini CLI, and Cursor.
 
 ### Claude Code
 
-Configure MCP server in `~/.claude/settings.local.json`:
+Configure MCP server in `~/.claude.json`:
 
 ```json
 {
@@ -35,13 +35,14 @@ Install the plugin:
 /plugin install mcp-companion@qlerify-plugins
 ```
 
-After installation, skills are available as `/mcp-companion:sync` and `/mcp-companion:download`.
+After installation, skills are available as `/mcp-companion:workflow-creation`, `/mcp-companion:sync`, and `/mcp-companion:download`.
 
 ### Gemini CLI
 
 Install each skill using the `--path` flag:
 
 ```bash
+gemini skills install https://github.com/qlerify/qlerify-plugins.git --path plugins/mcp-companion/skills/workflow-creation
 gemini skills install https://github.com/qlerify/qlerify-plugins.git --path plugins/mcp-companion/skills/sync
 gemini skills install https://github.com/qlerify/qlerify-plugins.git --path plugins/mcp-companion/skills/download
 ```
@@ -52,7 +53,7 @@ Configure the Qlerify MCP server in `~/.gemini/settings.json` per
 ### Cursor
 
 1. Open Cursor Settings (`Cmd+Shift+J`)
-2. Go to **Rules** > **Add Rule** > **Remote Rule (Github)**
+2. Go to **Rules** > **Add Rule** > **Remote Rule (GitHub)**
 3. Enter: `https://github.com/qlerify/qlerify-plugins`
 
 Configure the Qlerify MCP server in Cursor's MCP settings.
@@ -80,8 +81,8 @@ commands, read models, cards, and bounded contexts. Includes a full tool referen
 
 **What it does:**
 
-1. Follows a 10-step creation sequence (lanes → groups → events → entities → commands → read models → cards → bounded
-   contexts)
+1. Follows an 8-step creation sequence (lanes → groups → events → entities → commands on events → read models on events →
+   bounded contexts)
 2. Provides best practices for naming, field modeling, and entity relationships
 3. Supports nested fields on commands and read models for related entity references
 

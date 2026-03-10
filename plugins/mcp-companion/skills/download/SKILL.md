@@ -16,9 +16,7 @@ AI context which takes minutes for large data. Shell pipes take seconds.
 ## Step 1: Find MCP credentials
 
 ```bash
-# Check MCP config locations
-cat ~/.claude/settings.local.json 2>/dev/null | jq -r '.mcpServers.qlerify // empty'
-cat .mcp.json 2>/dev/null | jq -r '.mcpServers.qlerify // empty'
+cat ~/.claude.json 2>/dev/null | jq -r '.mcpServers.qlerify // empty'
 ```
 
 Extract the `url` and `headers.x-api-key`.
@@ -46,42 +44,41 @@ curl -s "$MCP_URL" \
 ```bash
 curl -s "$MCP_URL" -H "x-api-key: $API_KEY" -H "Content-Type: application/json" \
   -d '{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"get_workflow","arguments":{"workflowId":"...","projectId":"..."}}}' \
-  | jq -r '.result.content[0].text | fromjson | .workflow' > workflow.json
+  | jq -r '.result.content[0].text | fromjson | .specification' > workflow.json
 ```
 
 ### OpenAPI spec → YAML file
 ```bash
 curl -s "$MCP_URL" -H "x-api-key: $API_KEY" -H "Content-Type: application/json" \
-  -d '{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"generate_openapi_spec","arguments":{"workflowId":"...","projectId":"...","boundedContextId":"..."}}}' \
+  -d '{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"generate_openapi_spec","arguments":{"workflowId":"...","projectId":"...","boundedContext":"..."}}}' \
   | jq -r '.result.content[0].text' > swagger.yaml
 ```
 
-### Entities list → JSON file
+### Entities from workflow → JSON file
 ```bash
 curl -s "$MCP_URL" -H "x-api-key: $API_KEY" -H "Content-Type: application/json" \
-  -d '{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"list_entities","arguments":{"workflowId":"...","projectId":"..."}}}' \
-  | jq -r '.result.content[0].text | fromjson | .schemas' > entities.json
+  -d '{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"get_workflow","arguments":{"workflowId":"...","projectId":"..."}}}' \
+  | jq -r '.result.content[0].text | fromjson | .specification.schemas.entities' > entities.json
 ```
 
-### Domain events → JSON file
+### Domain events from workflow → JSON file
 ```bash
 curl -s "$MCP_URL" -H "x-api-key: $API_KEY" -H "Content-Type: application/json" \
-  -d '{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"list_domain_events","arguments":{"workflowId":"...","projectId":"..."}}}' \
-  | jq -r '.result.content[0].text | fromjson | .domainEvents' > events.json
+  -d '{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"get_workflow","arguments":{"workflowId":"...","projectId":"..."}}}' \
+  | jq -r '.result.content[0].text | fromjson | .specification.domainEvents' > events.json
 ```
 
 ## When to use what
 
-| Data size          | Method    | Example                                                                        |
-|--------------------|-----------|--------------------------------------------------------------------------------|
-| Small (< 50 lines) | MCP tool  | `list_workflows`, `get_workflow_overview`                                      |
-| Large (> 50 lines) | curl + jq | `get_workflow`, `generate_openapi_spec`, `list_entities`, `list_domain_events` |
-| Any "save to file" | curl + jq | Always, regardless of size                                                     |
+| Data size          | Method    | Example                                 |
+|--------------------|-----------|-----------------------------------------|
+| Small (< 50 lines) | MCP tool  | `list_workflows`                        |
+| Large (> 50 lines) | curl + jq | `get_workflow`, `generate_openapi_spec` |
+| Any "save to file" | curl + jq | Always, regardless of size              |
 
 ## Finding IDs first
 
 Use MCP tools for small lookups:
 - `list_workflows` → get workflow ID and project ID
-- `get_workflow_overview` → get bounded context IDs
 
 Then use curl for the actual data fetch.
