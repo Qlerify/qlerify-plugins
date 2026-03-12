@@ -16,10 +16,12 @@ create_workflow(projectId: "proj-1", name: "E-Commerce Order Process")
 
 ### Step 2 — Create lanes
 
+Lanes are real-world actor roles or Automation — NOT internal services.
+
 ```
 create_lane(workflowId: "wf-1", projectId: "proj-1", name: "Customer")
-create_lane(workflowId: "wf-1", projectId: "proj-1", name: "Order Service")
-create_lane(workflowId: "wf-1", projectId: "proj-1", name: "Payment Gateway")
+create_lane(workflowId: "wf-1", projectId: "proj-1", name: "Warehouse Staff")
+create_lane(workflowId: "wf-1", projectId: "proj-1", name: "Automation")
 ```
 
 ### Step 3 — Create groups
@@ -64,38 +66,45 @@ create_domain_event(
 
 create_domain_event(
   workflowId: "wf-1", projectId: "proj-1",
-  description: "Payment Successful?",
+  description: "Payment Outcome",
   type: "bpmn:ExclusiveGateway",
-  lane: "Payment Gateway",
+  lane: "Automation",
   follows: "#/domainEvents/OrderPlaced"
 )
--> { $ref: "#/domainEvents/PaymentSuccessful" }
+-> { $ref: "#/domainEvents/PaymentOutcome" }
 
 create_domain_event(
   workflowId: "wf-1", projectId: "proj-1",
   description: "Payment Confirmed",
   type: "bpmn:Task",
-  lane: "Payment Gateway",
-  follows: "#/domainEvents/PaymentSuccessful",
+  lane: "Automation",
+  follows: "#/domainEvents/PaymentOutcome",
   color: "green"
 )
 -> { $ref: "#/domainEvents/PaymentConfirmed" }
+
+# Set condition label on gateway branch
+update_domain_event(workflowId: "wf-1", projectId: "proj-1",
+  domainEvent: "#/domainEvents/PaymentConfirmed", conditionLabel: "Success")
 
 create_domain_event(
   workflowId: "wf-1", projectId: "proj-1",
   description: "Payment Failed",
   type: "bpmn:Task",
-  lane: "Payment Gateway",
-  follows: "#/domainEvents/PaymentSuccessful",
+  lane: "Automation",
+  follows: "#/domainEvents/PaymentOutcome",
   color: "pink"
 )
 -> { $ref: "#/domainEvents/PaymentFailed" }
+
+update_domain_event(workflowId: "wf-1", projectId: "proj-1",
+  domainEvent: "#/domainEvents/PaymentFailed", conditionLabel: "Failed")
 
 create_domain_event(
   workflowId: "wf-1", projectId: "proj-1",
   description: "Order Shipped",
   type: "bpmn:Task",
-  lane: "Order Service",
+  lane: "Warehouse Staff",
   follows: "#/domainEvents/PaymentConfirmed",
   group: "Fulfillment",
   color: "peach"
@@ -107,7 +116,16 @@ create_domain_event(
 
 ## Phase 3: Domain Model
 
-### Step 5 — Create entities
+### Step 5a — Create bounded context
+
+Create the bounded context BEFORE entities so they can be assigned during creation.
+One BC is fine for a small workflow like this.
+
+```
+create_bounded_context(workflowId: "wf-1", projectId: "proj-1", name: "Order Management")
+```
+
+### Step 5b — Create entities and link aggregate roots
 
 Create entities first so commands and read models can reference them.
 
@@ -141,9 +159,30 @@ create_entity(
 -> { $ref: "#/schemas/entities/OrderItem" }
 ```
 
+Now link aggregate roots to all events:
+
+```
+update_domain_event(workflowId: "wf-1", projectId: "proj-1",
+  domainEvent: "#/domainEvents/ItemAddedToCart", aggregateRoot: "#/schemas/entities/Order")
+
+update_domain_event(workflowId: "wf-1", projectId: "proj-1",
+  domainEvent: "#/domainEvents/OrderPlaced", aggregateRoot: "#/schemas/entities/Order")
+
+update_domain_event(workflowId: "wf-1", projectId: "proj-1",
+  domainEvent: "#/domainEvents/PaymentConfirmed", aggregateRoot: "#/schemas/entities/Order")
+
+update_domain_event(workflowId: "wf-1", projectId: "proj-1",
+  domainEvent: "#/domainEvents/PaymentFailed", aggregateRoot: "#/schemas/entities/Order")
+
+update_domain_event(workflowId: "wf-1", projectId: "proj-1",
+  domainEvent: "#/domainEvents/OrderShipped", aggregateRoot: "#/schemas/entities/Order")
+```
+
 ### Step 6 — Create commands on events
 
 Each command is attached to an event via `domainEvent`. This auto-creates the Command card.
+Note: commands use **flat ID fields** for references, NOT `relatedEntity` — except for embedded
+collections like `orderItems` where multiple fields from a related entity are needed.
 
 ```
 create_command(
@@ -172,6 +211,29 @@ create_command(
 
 create_command(
   workflowId: "wf-1",
+  domainEvent: "#/domainEvents/PaymentConfirmed",
+  name: "Confirm Payment",
+  fields: [
+    { name: "orderId", isRequired: true },
+    { name: "transactionId", isRequired: true },
+    { name: "amount", isRequired: true }
+  ]
+)
+-> { $ref: "#/schemas/commands/ConfirmPayment" }
+
+create_command(
+  workflowId: "wf-1",
+  domainEvent: "#/domainEvents/PaymentFailed",
+  name: "Record Payment Failure",
+  fields: [
+    { name: "orderId", isRequired: true },
+    { name: "failureReason", isRequired: true }
+  ]
+)
+-> { $ref: "#/schemas/commands/RecordPaymentFailure" }
+
+create_command(
+  workflowId: "wf-1",
   domainEvent: "#/domainEvents/OrderShipped",
   name: "Ship Order",
   fields: [
@@ -183,9 +245,13 @@ create_command(
 -> { $ref: "#/schemas/commands/ShipOrder" }
 ```
 
+Note: `customerId` and `orderId` are flat string fields — NOT `relatedEntity` references. The
+caller sends a simple ID string, and the service looks up the related data internally.
+
 ### Step 7 — Create read models on events
 
 Each read model is attached to an event via `domainEvent`. This auto-creates the Read Model card.
+Read models use `relatedEntity` for composed response data — nested objects make sense in API responses.
 
 ```
 create_read_model(
@@ -224,27 +290,22 @@ create_read_model(
 
 ---
 
-## Phase 4: Organization
+## Phase 4: Validation
 
-### Step 8 — Link aggregate roots and create bounded context
+### Step 8 — Validate the domain model
 
-Link entities as aggregate roots to events, and ensure bounded context exists.
+Run validation to catch field mismatches between commands/read models and their entities.
 
 ```
-# Link aggregate roots to events
-update_domain_event(workflowId: "wf-1", projectId: "proj-1",
-  domainEvent: "#/domainEvents/ItemAddedToCart", aggregateRoot: "#/schemas/entities/OrderItem")
-
-update_domain_event(workflowId: "wf-1", projectId: "proj-1",
-  domainEvent: "#/domainEvents/OrderPlaced", aggregateRoot: "#/schemas/entities/Order")
-
-update_domain_event(workflowId: "wf-1", projectId: "proj-1",
-  domainEvent: "#/domainEvents/OrderShipped", aggregateRoot: "#/schemas/entities/Order")
-
-# Bounded context was already created via boundedContext parameter on create_entity.
-# If not, create it explicitly:
-create_bounded_context(workflowId: "wf-1", projectId: "proj-1", name: "Order Management")
+validate_domain_model(workflowId: "wf-1", projectId: "proj-1")
+-> { issues: [] }
 ```
+
+If issues are returned, fix them:
+
+- **Command field not on entity** → Remove from command or add field to entity
+- **Missing relationship** → Add `relatedEntity` field to entity
+- **MINOR filter field issues** on read models are usually fine (cross-entity query params)
 
 ---
 
@@ -252,11 +313,12 @@ create_bounded_context(workflowId: "wf-1", projectId: "proj-1", name: "Order Man
 
 The workflow now has:
 
-- 3 lanes (Customer, Order Service, Payment Gateway)
+- 3 lanes (Customer, Warehouse Staff, Automation)
 - 3 groups (Browse & Cart, Checkout, Fulfillment)
-- 6 domain events with a decision gateway for payment
+- 7 domain events with a decision gateway for payment, including condition labels
 - 2 entities (Order, OrderItem) with typed fields and relationships
-- 3 commands (Add Item To Cart, Place Order, Ship Order) attached to events
+- 5 commands attached to events (every event has a command)
 - 2 read models (Get Order Details, List Customer Orders) attached to events
-- 3 aggregate root links on events
+- 5 aggregate root links (every event linked to an entity)
 - 1 bounded context (Order Management)
+- Validated domain model with no issues

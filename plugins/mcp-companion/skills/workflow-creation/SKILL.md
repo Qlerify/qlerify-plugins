@@ -19,14 +19,13 @@ or calling tools out of order leads to broken references and incomplete diagrams
 
 A Qlerify workflow is a BPMN-style diagram combined with domain-driven design (DDD) elements:
 
-- **Lanes** — Horizontal swim lanes representing actors or systems (e.g., "Customer", "Payment Service")
+- **Lanes** — Horizontal swim lanes representing real-world actor roles or automation (e.g., "Customer", "Hotel Staff", "Automation")
 - **Groups** — Vertical columns representing phases or stages (e.g., "Order Placement", "Fulfillment")
-- **Domain Events** — The core building blocks placed at lane/group intersections. Each event represents something that
-  happens in the business process (e.g., "Order Created", "Payment Received")
+- **Domain Events** — The core building blocks placed at lane/group intersections. Each event represents something that happens in the business process (e.g., "Order Created", "Payment Received")
 - **Entities** — Persistent domain objects (Aggregate Roots) with typed fields and relationships
-- **Commands** — State-changing operations attached to events, with input fields
-- **Read Models** — Data queries/views attached to events, with filter and output fields
-- **Bounded Contexts** — Logical boundaries grouping related entities
+- **Commands** — State-changing operations attached to events, representing API request payloads
+- **Read Models** — Data queries/views attached to events, representing API response payloads
+- **Bounded Contexts** — Logical boundaries grouping related entities, mapping to deployment/service boundaries
 
 ### How elements reference each other
 
@@ -39,6 +38,21 @@ where each element has a `$ref` path:
 - Read models: `#/schemas/readModels/GetOrderDetails`
 
 Use these paths when creating commands, read models, or referencing entities in fields.
+
+### Event naming and `$ref` path generation
+
+Event names are converted to PascalCase `$ref` keys:
+
+- Spaces are removed, each word capitalized: `"Order Placed"` → `OrderPlaced`
+- Hyphens are removed, next letter capitalized: `"Check-in Completed"` → `CheckInCompleted`
+- **Special characters (`?`, `!`, `&`, `#`, `/`) break `$ref` path resolution** — avoid them entirely
+
+Use only alphanumeric characters and spaces in event names. If you use hyphens, call `get_workflow`
+afterward to verify the actual `$ref` key before referencing it in subsequent calls.
+
+**Note:** Gateway events (`bpmn:ExclusiveGateway`) may not appear in the `get_workflow` domainEvents section.
+If you need to reference a gateway, call `get_workflow` to discover its actual `$ref` path, or use a clean
+name without special characters and infer the PascalCase key.
 
 ## Creation Sequence
 
@@ -53,11 +67,25 @@ its current state. For a new workflow, call `create_workflow` with a descriptive
 
 **Step 2 — Create lanes**
 
-Every event must belong to a lane. Call `create_lane` for each actor or system involved in the process.
-Aim for 2-5 lanes. Common patterns:
-- User-facing: "Customer", "Admin", "Manager"
-- System: "Order Service", "Payment Gateway", "Notification System"
-- External: "Third-party API", "Bank"
+Every event must belong to a lane. Lanes represent **real-world actor roles** (people) or
+**Automation** (system-triggered actions). Do NOT create lanes for internal services or technical
+components.
+
+Call `create_lane` for each actor. Aim for 2-4 lanes.
+
+**Lane design rules:**
+
+- Lanes are **people/roles** (Customer, Admin, Hotel Staff, Warehouse Worker) or **Automation** (any action triggered by the system without human intervention)
+- Do NOT create lanes for internal services (Payment Service, Notification Service, Order Service, etc.)
+- System-triggered actions (sending emails, processing payments, generating invoices, checking availability) belong in the **Automation** lane
+- Ask: "Is this a person who performs an action, or a system that runs automatically?" If the latter → Automation
+
+**Common patterns:**
+
+- E-commerce: Customer, Warehouse Staff, Automation
+- Hotel Booking: Guest, Hotel Staff, Automation
+- HR Onboarding: Candidate, HR Manager, Automation
+- Order Management: Customer, Admin, Automation
 
 **Step 3 — Create groups**
 
@@ -76,28 +104,57 @@ Build the event flow by chaining calls to `create_domain_event`. Each event need
 - `type` — Either `bpmn:Task` (regular event) or `bpmn:ExclusiveGateway` (decision diamond)
 
 Optional parameters:
-- `group` — Sets a group boundary starting at this event. Only set on the **first** event of a new group.
-  Do not set group on subsequent events in the same group.
-- `aggregateRoot` — A `$ref` path to an entity (e.g., `#/schemas/entities/Order`). Links the entity as
-  aggregate root on this event.
+- `group` — Sets a group boundary starting at this event. Only set on the **first** event of a new group. Do not set group on subsequent events in the same group.
+- `aggregateRoot` — A `$ref` path to an entity (e.g., `#/schemas/entities/Order`). Links the entity as aggregate root on this event. **Set this for every event** — see note below.
 - `acceptanceCriteria` — Array of Given-When-Then acceptance criteria strings.
 - `color` — Visual color: peach, yellow, green, teal, blue, lavender, pink, gray
 
 Build the flow left-to-right, top-to-bottom, creating events in the order they occur in the
 business process.
 
+**Aggregate root requirement:** Every domain event SHOULD have an aggregate root — it identifies which
+entity this event primarily affects. If the entity doesn't exist yet when creating the event, set the
+aggregate root later in Step 5b using `update_domain_event` after entities are created. Do not leave
+events without aggregate roots.
+
 ### Phase 3: Domain Model
 
-**Step 5 — Create entities**
+**Step 5a — Create bounded contexts**
+
+Create bounded contexts BEFORE entities, so entities can be assigned during creation. Call
+`create_bounded_context` for each logical boundary.
+
+**Bounded context design rules:**
+
+- A bounded context maps to a **microservice or standalone service deployment boundary** — don't create more than you would actually deploy as separate services
+- For small/medium workflows (< 10 entities, single team), **one bounded context wrapping everything is fine**
+- Only split into multiple BCs when there are genuinely independent domains with clear interaction boundaries
+- Ask: "Would a team realistically build and deploy this as a separate service?" If not → same BC
+- Over-splitting creates unnecessary inter-service complexity (distributed transactions, API contracts, eventual consistency)
+- Common pattern: start with 1 BC, split later when the domain grows and clear boundaries emerge
+
+**Examples:**
+
+- Hotel Booking (6 entities): 1 BC — "Hotel Booking"
+- Large E-commerce Platform (20+ entities): 3-4 BCs — "Order Management", "Inventory", "Customer Management", "Payments"
+
+**Step 5b — Create entities and link aggregate roots**
 
 Call `create_entity` for each core domain object. Entities must be created before commands and
 read models so they can be referenced.
 
 - Include fields with `name`, `dataType`, `exampleData` (3 realistic values), `isRequired`
-- Use `relatedEntity` (`$ref` path like `#/schemas/entities/OrderItem`) and `cardinality` to express
-  entity relationships from the owning entity's perspective
-- Optionally assign to a bounded context by name using the `boundedContext` parameter
+- Use `relatedEntity` (`$ref` path like `#/schemas/entities/OrderItem`) and `cardinality` to express entity relationships from the owning entity's perspective
+- Assign to a bounded context by name using the `boundedContext` parameter (the BC must already exist from Step 5a)
 - Field types: `string`, `number`, `boolean`, `object`
+
+After creating entities, update any events that don't have aggregate roots yet:
+
+```
+update_domain_event(domainEvent: "#/domainEvents/OrderPlaced", aggregateRoot: "#/schemas/entities/Order")
+```
+
+**Every event must have an aggregate root before proceeding.**
 
 **Step 6 — Create commands on events**
 
@@ -108,8 +165,18 @@ This auto-creates the Command card on that event.
 - Name with action verbs and spaces (e.g., "Create Order", "Cancel Subscription")
 - Command fields should correspond to fields on the aggregate root entity they modify
 - Mark auto-generated fields (IDs, timestamps) with `hideInForm: true`
-- Use `relatedEntity` ($ref path) and `cardinality` on fields to reference related entities,
-  with nested `fields` containing field names from that entity
+
+**Every event should have a command.** After creating commands, call `get_workflow` and verify there
+are no events without a command card. Events without commands represent gaps in the business process.
+
+**Command field rules (API request payloads):**
+
+Commands represent what a caller sends to perform an action. Fields should be flat and simple:
+
+- **Use plain fields for ID references:** `bookingId` (string), `hotelId` (string), `customerId` (string). Do NOT use `relatedEntity` for simple ID lookups — it creates nonsensical nested structures like `{ hotelId: { id: "123" } }` instead of the correct `{ hotelId: "123" }`
+- **Only use `relatedEntity` on commands for embedded collections** where you need to send multiple fields from a related entity (e.g., `orderItems` with `productName`, `quantity`, `unitPrice`)
+- **Search/filter parameters do NOT belong on commands** — they belong on Read Models with `isFilter: true`
+- **NEVER combine an "Id" suffix field name with `relatedEntity`** — if the field ends in "Id", it's a flat string reference, not a nested object
 
 **Step 7 — Create read models on events**
 
@@ -119,49 +186,84 @@ to an event via the required `domainEvent` parameter. This auto-creates the Read
 - Name with Get/List/Search prefixes and spaces (e.g., "Get Order Details", "List Customer Orders")
 - Link to the source entity via `entity` ($ref path like `#/schemas/entities/Order`)
 - Requires `cardinality`: `"one-to-one"` for single-record queries, `"one-to-many"` for list queries
-- Fields represent the full query contract: both inputs and outputs
-- Set `isFilter: true` for query parameters (what you search by), omit for returned data fields
-- Use `relatedEntity` on return fields that reference other entities, with nested `fields` for their field names
 
-### Phase 4: Organization
+**Read model field rules (API response payloads):**
 
-**Step 8 — Create bounded contexts**
+Read models represent what the API returns. Fields can be richer than command fields:
 
-Group related entities into bounded contexts for logical separation. Call `create_bounded_context`
-and then update entities to assign them to contexts (if not already assigned in Step 5).
-Required before generating OpenAPI specs.
+- Set `isFilter: true` for query parameters (what you search/filter by). Filter fields can be cross-entity parameters (e.g., `checkInDate`, `priceMin` on a hotel search) — this is expected and valid
+- Omit `isFilter` for returned data fields
+- **Use `relatedEntity` for composed response data** — nested objects make sense in responses (e.g., `guest` field with relatedEntity Guest containing `firstName`, `lastName`, `email`)
+- Name nested object fields as the entity name (`guest`, `hotel`, `room`), NOT with "Id" suffix
+
+### Phase 4: Validation
+
+**Step 8 — Validate the domain model**
+
+Run `validate_domain_model` to check for structural issues. This catches field mismatches between
+commands/read models and their aggregate root entities.
+
+- Fix all **MAJOR** issues before considering the workflow complete
+- **MINOR** `FIELD_NOT_IN_ENTITY` issues on read model filter fields are often expected — cross-entity query parameters (e.g., `checkInDate` on a Hotel read model) are valid filter fields that don't need to exist on the entity
+
+Common validation issues and fixes:
+
+- Command field not on entity → Remove from command or add to entity
+- Missing entity relationship → Add `relatedEntity` field to entity
+- Denormalized fields on commands (e.g., `guestEmail`) → Replace with flat ID ref (`guestId`) and let the service look up related data internally
 
 ## Constraints and Rules
 
 - **One Aggregate Root card per event** — An event can only have one entity linked as aggregate root
 - **One Command card per event** — An event can only have one command
+- **Every event should have an aggregate root and a command** — No naked events
 - **Read Model cards require cardinality** — Always specify "one-to-one" or "one-to-many"
 - **Lanes and groups cannot be deleted if they contain events** — Move or delete events first
 - **Domain events require a lane** — Every event must be assigned to a lane
 - **Chain events via follows** — Use "start" for root events, otherwise reference the parent via `$ref` path
+- **Bounded contexts must exist before referencing them** — Create BCs before assigning entities to them
+
+## `relatedEntity` Usage Summary
+
+| Context                       | Use `relatedEntity`?                          | Example                                     |
+|-------------------------------|-----------------------------------------------|---------------------------------------------|
+| Command: simple ID lookup     | **NO** — use flat string field                | `bookingId: "bk-001"`                       |
+| Command: embedded collection  | **YES** — multiple fields needed              | `orderItems: [{ productName, qty, price }]` |
+| Read Model: composed response | **YES** — nested joined data                  | `guest: { firstName, lastName, email }`     |
+| Read Model: filter parameter  | **NO** — use flat field with `isFilter: true` | `checkInDate` (isFilter)                    |
+| Entity: relationship          | **YES** — defines data model links            | `order → OrderItem (one-to-many)`           |
+
+**Naming rule:** If using `relatedEntity`, name the field as the entity (`guest`, `hotel`, `orderItems`).
+If it's a flat ID reference, name it with "Id" suffix (`guestId`, `hotelId`). Never combine "Id" suffix
+with `relatedEntity`.
 
 ## Common Workflow Patterns
 
 ### CRUD Service
-Lanes: User, Service | Groups: Create, Read, Update, Delete
-Flow: User action event → Service processing event per operation
+
+Lanes: User, Automation | Groups: Create, Read, Update, Delete
+Flow: User action event → Automation processing event per operation
 
 ### Approval Pipeline
-Lanes: Requester, Approver, System | Groups: Submit, Review, Execute
+
+Lanes: Requester, Approver, Automation | Groups: Submit, Review, Execute
 Flow: Request submitted → Review pending → Approved/Rejected gateway → Executed
 
 ### Event-Driven Saga
-Lanes: Service A, Service B, Orchestrator | Groups per saga step
-Flow: Each service emits events, orchestrator coordinates via decision gateways
+
+Lanes: Customer, Admin, Automation | Groups per saga step
+Flow: Customer/Admin actions trigger events, Automation handles cross-service coordination via decision gateways
 
 ## Tips for Well-Structured Workflows
 
 - **Start with events, not entities.** Map the business process flow first, then identify what data each step needs.
 - **Use decision gateways sparingly.** Only for genuine branching logic, not optional steps.
 - **Color-code by domain.** Use consistent colors for events in the same bounded context.
-- **3-5 lanes is ideal.** More than 5 makes the diagram hard to read.
+- **2-4 lanes is ideal.** Typically, 1-2 human roles + Automation. More than 4 makes the diagram hard to read.
 - **Name events as past-tense occurrences.** "Order Created", not "Create Order" — commands go on cards.
+- **Avoid special characters in event names.** Use only alphanumeric characters and spaces. No `?`, `!`, `&`, `#`.
 - **Include realistic example data.** 3 values per field helps stakeholders understand the model.
+- **After completing the workflow, use the `/download` skill** to save the specification to a file. This is much faster than fetching via MCP tools for large workflows.
 
 ## Additional Resources
 
@@ -173,5 +275,4 @@ For detailed natural-language descriptions of every MCP tool, parameters, and us
 ### Example Files
 
 For a complete worked example showing all 8 steps with realistic tool calls and data:
-- **`examples/ecommerce-workflow.md`** — End-to-end e-commerce order workflow creation with 3 lanes, 6 events, 2
-  entities, 3 commands, 2 read models, and a decision gateway
+- **`examples/ecommerce-workflow.md`** — End-to-end e-commerce order workflow creation with 3 lanes, 7 events, 2 entities, 4 commands, 2 read models, a decision gateway, and validation

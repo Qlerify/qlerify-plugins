@@ -16,7 +16,7 @@ project IDs. Supports pagination for accounts with many workflows. Use this as t
 point to find the right workflow before doing anything else.
 
 ### create_workflow
-Create a brand new empty workflow inside a project. Provide a descriptive name — this appears
+Create a brand-new empty workflow inside a project. Provide a descriptive name — this appears
 in the UI and helps users find the workflow later. Returns the new workflow ID.
 
 - `projectId` — The project to create the workflow in
@@ -43,14 +43,16 @@ one bounded context with entities. Useful for bootstrapping API implementations 
 
 ## Lane Tools
 
-Lanes are the horizontal swim lanes in the BPMN diagram. Each lane represents an actor (person,
-role) or system (service, API) involved in the process. Use `get_workflow` to see existing lanes.
+Lanes are the horizontal swim lanes in the BPMN diagram. Each lane represents a **real-world actor
+role** (person) or **Automation** (system-triggered actions). Do NOT create lanes for internal
+services or technical components. Use `get_workflow` to see existing lanes.
 
 ### create_lane
-Add a new swim lane to the workflow. Name it after the actor or system it represents.
+
+Add a new swim lane to the workflow. Name it after the actor role or "Automation" for system actions.
 
 - `workflowId`, `projectId` — Identifies the workflow
-- `name` — The lane name (e.g., "Customer", "Order Service")
+- `name` — The lane name (e.g., "Customer", "Hotel Staff", "Automation"). NOT service names like "Payment Service"
 
 ### update_lane
 Rename an existing lane. Does not affect events already in the lane.
@@ -105,17 +107,16 @@ Add a new event to the workflow. This is the most important creation tool — ev
 make up the process flow.
 
 - `workflowId`, `projectId` — Identifies the workflow
-- `description` — The event name (use past-tense: "Order Created", not "Create Order")
+- `description` — The event name (use past-tense: "Order Created", not "Create Order"). **Avoid special characters** (`?`, `!`, `&`, `#`) — they break `$ref` path resolution. Hyphens are removed and the next letter capitalized in `$ref` keys (e.g., "Check-in" → `CheckIn`).
 - `type` — Either `bpmn:Task` (regular event) or `bpmn:ExclusiveGateway` (decision diamond)
 - `lane` — Name of the lane/actor this event belongs to (required)
-- `follows` — A `$ref` path to the preceding event (e.g., `#/domainEvents/OrderPlaced`), or `"start"`
-  for flow entry points. The new event is inserted after the parent in the flow sequence.
-- `group` — Optional. Sets a group boundary starting at this event. Only set on the **first** event
-  of a new group. Do not set group on subsequent events in the same group.
-- `aggregateRoot` — Optional. `$ref` path to an entity (e.g., `#/schemas/entities/Order`). Links
-  the entity as aggregate root on this event.
+- `follows` — A `$ref` path to the preceding event (e.g., `#/domainEvents/OrderPlaced`), or `"start"` for flow entry points. The new event is inserted after the parent in the flow sequence.
+- `group` — Optional. Sets a group boundary starting at this event. Only set on the **first** event of a new group. Do not set group on subsequent events in the same group.
+- `aggregateRoot` — `$ref` path to an entity (e.g., `#/schemas/entities/Order`). Links the entity as aggregate root on this event. **Every event should have one** — if the entity doesn't exist yet, set it later via `update_domain_event` after creating entities.
 - `acceptanceCriteria` — Optional. Array of Given-When-Then acceptance criteria strings.
 - `color` — Optional. Visual color: peach, yellow, green, teal, blue, lavender, pink, gray
+
+**Note:** Gateway events (`bpmn:ExclusiveGateway`) may not appear in the `get_workflow` domainEvents section. Call `get_workflow` to discover their actual `$ref` paths if needed.
 
 ### update_domain_event
 Modify an existing event — change its name, lane, color, aggregate root, or acceptance criteria.
@@ -151,12 +152,12 @@ example data to make the model concrete.
 - `name` — Entity name (e.g., "Order", "Customer")
 - `boundedContext` — Optional. Name of the bounded context to assign this entity to
 - `fields` — Array of field definitions:
-  - `name` — Field name in camelCase
-  - `dataType` — One of: `string`, `number`, `boolean`, `object`
-  - `exampleData` — Array of 3 realistic example values
-  - `isRequired` — Whether the field is mandatory (true/false)
-  - `relatedEntity` — `$ref` path to another entity (e.g., `#/schemas/entities/OrderItem`)
-  - `cardinality` — `"one-to-one"` or `"one-to-many"` for fields with `relatedEntity`
+    - `name` — Field name in camelCase
+    - `dataType` — One of: `string`, `number`, `boolean`, `object`
+    - `exampleData` — Array of 3 realistic example values
+    - `isRequired` — Whether the field is mandatory (true/false)
+    - `relatedEntity` — `$ref` path to another entity (e.g., `#/schemas/entities/OrderItem`)
+    - `cardinality` — `"one-to-one"` or `"one-to-many"` for fields with `relatedEntity`
 
 ### update_entity
 Modify an entity — rename it, add/update/remove fields, or change its bounded context assignment.
@@ -184,18 +185,26 @@ and automatically create a Command card on that event. Use `get_workflow` to see
 
 ### create_command
 Define a new command with input fields, attached to a specific domain event. Auto-creates
-a Command card on the event.
+a Command card on the event. Commands represent **API request payloads** — what a caller sends
+to perform an action.
 
 - `workflowId` — Identifies the workflow
 - `domainEvent` — `$ref` path to the event (e.g., `#/domainEvents/OrderPlaced`). Required.
 - `name` — Command name with verb prefix and spaces (e.g., "Create Order", "Cancel Subscription")
 - `fields` — Array of field definitions:
-  - `name` — Field name in camelCase
-  - `isRequired` — Whether the field is required/mandatory
-  - `hideInForm` — Set true for auto-generated fields like IDs and timestamps
-  - `relatedEntity` — `$ref` path to a related entity (e.g., `#/schemas/entities/OrderItem`)
-  - `cardinality` — `"one-to-one"` or `"one-to-many"` for fields with `relatedEntity`
-  - `fields` — Nested field names from the related entity (for reference fields)
+    - `name` — Field name in camelCase
+    - `isRequired` — Whether the field is required/mandatory
+    - `hideInForm` — Set true for auto-generated fields like IDs and timestamps
+    - `relatedEntity` — `$ref` path to a related entity. **Only use for embedded collections** where multiple fields from the related entity are needed (e.g., `orderItems`). Do NOT use for simple ID references — use a plain string field instead (e.g., `customerId`, `bookingId`).
+    - `cardinality` — `"one-to-one"` or `"one-to-many"` for fields with `relatedEntity`
+    - `fields` — Nested field names from the related entity (for reference fields)
+
+**Field design rules for commands:**
+
+- Use flat string fields for ID references: `hotelId`, `bookingId`, `customerId`
+- Never combine "Id" suffix with `relatedEntity` — that creates `{ hotelId: { id: "123" } }` instead of `{ hotelId: "123" }`
+- Search/filter parameters belong on read models, not commands
+- Command fields should match fields on the aggregate root entity
 
 ### update_command
 Modify a command — rename or change fields. Field operations are applied in order: remove -> update -> add.
@@ -221,8 +230,9 @@ events and automatically create a Read Model card on that event. Use `get_workfl
 existing read models.
 
 ### create_read_model
+
 Define a new read model/query, attached to a specific domain event. Auto-creates a Read Model
-card on the event.
+card on the event. Read models represent **API response payloads** — what the API returns to callers.
 
 - `workflowId` — Identifies the workflow
 - `domainEvent` — `$ref` path to the event (e.g., `#/domainEvents/OrderPlaced`). Required.
@@ -230,11 +240,11 @@ card on the event.
 - `cardinality` — Required. `"one-to-one"` for single-record queries, `"one-to-many"` for list queries.
 - `entity` — `$ref` path to the source entity (e.g., `#/schemas/entities/Order`). Recommended.
 - `fields` — Array of field definitions representing the full query contract (both inputs and outputs):
-  - `name` — Field name in camelCase
-  - `isFilter` — Set true for query parameters/filters, omit for returned data fields
-  - `relatedEntity` — `$ref` path to a related entity
-  - `cardinality` — `"one-to-one"` or `"one-to-many"` for fields with `relatedEntity`
-  - `fields` — Nested field names from the related entity (for reference fields)
+    - `name` — Field name in camelCase
+    - `isFilter` — Set true for query parameters/filters, omit for returned data fields. Filter fields can be cross-entity parameters (e.g., `checkInDate`, `priceMin`) — this is valid.
+    - `relatedEntity` — `$ref` path to a related entity. Use for **composed response data** — nested objects in API responses (e.g., `guest` with `firstName`, `lastName`, `email` from Guest entity). Name these fields as the entity name (`guest`, `hotel`), not with "Id" suffix.
+    - `cardinality` — `"one-to-one"` or `"one-to-many"` for fields with `relatedEntity`
+    - `fields` — Nested field names from the related entity (for reference fields)
 
 ### update_read_model
 Modify a read model — rename, change source entity, or modify fields. Field operations are
@@ -305,10 +315,15 @@ bounded context auto-assigns any unassigned entities to it.
 
 ### create_bounded_context
 Create a new bounded context. Any existing entities without a bounded context are automatically
-assigned to the new one.
+assigned to the new one. **Create bounded contexts before entities** so you can assign entities
+during creation.
 
 - `workflowId`, `projectId` — Identifies the workflow
-- `name` — Context name (e.g., "Order Management", "Customer Identity")
+- `name` — Context name (e.g., "Order Management", "Hotel Booking")
+
+**Design guidance:** A bounded context maps to a deployment/service boundary. For small/medium
+workflows (< 10 entities), one BC is usually sufficient. Only split into multiple BCs when domains
+are genuinely independent with clear interaction boundaries.
 
 ### update_bounded_context
 Rename a bounded context.
@@ -322,3 +337,17 @@ Remove a bounded context. Entities in it become unassigned.
 
 - `workflowId`, `projectId` — Identifies the workflow
 - `boundedContext` — Name of the context to delete
+
+---
+
+## Validation Tools
+
+### validate_domain_model
+Check the workflow's domain model for structural issues. Returns a list of problems such as command/read model fields
+that don't match their aggregate root entity, missing relationships, and naming mismatches.
+
+- `workflowId`, `projectId` — Identifies the workflow
+
+Run this after creating all entities, commands, and read models to catch field mismatches. **MAJOR** issues should be
+fixed. **MINOR** `FIELD_NOT_IN_ENTITY` issues on read model filter fields are often expected — cross-entity query
+parameters (e.g., `checkInDate` on a Hotel search) don't need to exist on the entity.
