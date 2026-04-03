@@ -25,6 +25,7 @@ A Qlerify workflow is a BPMN-style diagram combined with domain-driven design (D
 - **Entities** — Persistent domain objects (Aggregate Roots) with typed fields and relationships
 - **Commands** — State-changing operations attached to events, representing API request payloads
 - **Read Models** — Data queries/views attached to events, representing API response payloads
+- **Domain Event Schemas** — Data payloads carried when events occur, capturing the essential facts about what happened
 - **Bounded Contexts** — Logical boundaries grouping related entities, mapping to deployment/service boundaries
 
 ### How elements reference each other
@@ -35,7 +36,8 @@ where each element has a `$ref` path:
 - Domain events: `#/domainEvents/OrderPlaced`
 - Entities: `#/schemas/entities/Order`
 - Commands: `#/schemas/commands/CreateOrder`
-- Read models: `#/schemas/readModels/GetOrderDetails`
+- Read models: `#/schemas/queries/GetOrderDetails`
+- Domain event schemas: `#/schemas/domainEvents/OrderPlaced`
 
 Use these paths when creating commands, read models, or referencing entities in fields.
 
@@ -196,9 +198,30 @@ Read models represent what the API returns. Fields can be richer than command fi
 - **Use `relatedEntity` for composed response data** — nested objects make sense in responses (e.g., `guest` field with relatedEntity Guest containing `firstName`, `lastName`, `email`)
 - Name nested object fields as the entity name (`guest`, `hotel`, `room`), NOT with "Id" suffix
 
+**Step 8 — Create domain event schemas on events**
+
+Call `create_domain_event_schema` for each event to define the data payload published when
+the event occurs. Each schema is automatically attached to an event via the required `domainEvent`
+parameter. This auto-creates the Domain Event card.
+
+- Name matching the event (e.g., "Order Created", "Payment Processed")
+- Link to the aggregate root entity via `entity` ($ref path like `#/schemas/entities/Order`)
+- Include fields that capture the essential facts about the state change
+
+**Domain event schema field rules (event payload):**
+
+Domain event schemas represent what is published when the event fires. Fields should capture what
+happened, not the full entity state:
+
+- Include identifier fields (e.g., `orderId`, `customerId`) so event consumers can correlate
+- Include timestamp fields when timing is business-relevant (e.g., `placedAt`, `completedAt`)
+- Use nested fields with `relatedEntity` for embedded event data (e.g., order items in the event)
+- Keep it focused — usually 3 to 8 fields are sufficient
+- Field names should be consistent with command and entity field names
+
 ### Phase 4: Validation
 
-**Step 8 — Validate the domain model**
+**Step 9 — Validate the domain model**
 
 Run `validate_domain_model` to check for structural issues. This catches field mismatches between
 commands/read models and their aggregate root entities.
@@ -216,7 +239,8 @@ Common validation issues and fixes:
 
 - **One Aggregate Root card per event** — An event can only have one entity linked as aggregate root
 - **One Command card per event** — An event can only have one command
-- **Every event should have an aggregate root and a command** — No naked events
+- **One Domain Event card per event** — An event can only have one domain event schema
+- **Every event should have an aggregate root, a command, and a domain event schema** — No naked events
 - **Read Model cards require cardinality** — Always specify "one-to-one" or "one-to-many"
 - **Lanes and groups cannot be deleted if they contain events** — Move or delete events first
 - **Domain events require a lane** — Every event must be assigned to a lane
@@ -231,6 +255,8 @@ Common validation issues and fixes:
 | Command: embedded collection  | **YES** — multiple fields needed              | `orderItems: [{ productName, qty, price }]` |
 | Read Model: composed response | **YES** — nested joined data                  | `guest: { firstName, lastName, email }`     |
 | Read Model: filter parameter  | **NO** — use flat field with `isFilter: true` | `checkInDate` (isFilter)                    |
+| Domain Event: embedded data   | **YES** — nested event payload data           | `orderItems: [{ productId, qty, price }]`   |
+| Domain Event: ID reference    | **NO** — use flat field                       | `orderId`, `customerId`                     |
 | Entity: relationship          | **YES** — defines data model links            | `order → OrderItem (one-to-many)`           |
 
 **Naming rule:** If using `relatedEntity`, name the field as the entity (`guest`, `hotel`, `orderItems`).
@@ -274,5 +300,5 @@ For detailed natural-language descriptions of every MCP tool, parameters, and us
 
 ### Example Files
 
-For a complete worked example showing all 8 steps with realistic tool calls and data:
-- **`examples/ecommerce-workflow.md`** — End-to-end e-commerce order workflow creation with 3 lanes, 7 events, 2 entities, 4 commands, 2 read models, a decision gateway, and validation
+For a complete worked example showing all 9 steps with realistic tool calls and data:
+- **`examples/ecommerce-workflow.md`** — End-to-end e-commerce order workflow creation with 3 lanes, 7 events, 2 entities, 4 commands, 2 read models, domain event schemas, a decision gateway, and validation

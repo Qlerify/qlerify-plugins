@@ -288,11 +288,88 @@ create_read_model(
 -> { $ref: "#/schemas/queries/ListCustomerOrders" }
 ```
 
+### Step 8 — Create domain event schemas on events
+
+Each domain event schema defines the payload published when the event fires. It captures the
+essential facts about what happened — not the full entity state.
+
+```
+create_domain_event_schema(
+  workflowId: "wf-1",
+  domainEvent: "#/domainEvents/ItemAddedToCart",
+  name: "Item Added to Cart",
+  entity: "#/schemas/entities/Order",
+  fields: [
+    { name: "orderId" },
+    { name: "productName" },
+    { name: "quantity" },
+    { name: "unitPrice" },
+    { name: "addedAt" }
+  ]
+)
+-> { $ref: "#/schemas/domainEvents/ItemAddedToCart" }
+
+create_domain_event_schema(
+  workflowId: "wf-1",
+  domainEvent: "#/domainEvents/OrderPlaced",
+  name: "Order Placed",
+  entity: "#/schemas/entities/Order",
+  fields: [
+    { name: "orderId" },
+    { name: "customerId" },
+    { name: "totalAmount" },
+    { name: "placedAt" }
+  ]
+)
+-> { $ref: "#/schemas/domainEvents/OrderPlaced" }
+
+create_domain_event_schema(
+  workflowId: "wf-1",
+  domainEvent: "#/domainEvents/PaymentConfirmed",
+  name: "Payment Confirmed",
+  entity: "#/schemas/entities/Order",
+  fields: [
+    { name: "orderId" },
+    { name: "transactionId" },
+    { name: "amount" },
+    { name: "confirmedAt" }
+  ]
+)
+-> { $ref: "#/schemas/domainEvents/PaymentConfirmed" }
+
+create_domain_event_schema(
+  workflowId: "wf-1",
+  domainEvent: "#/domainEvents/PaymentFailed",
+  name: "Payment Failed",
+  entity: "#/schemas/entities/Order",
+  fields: [
+    { name: "orderId" },
+    { name: "failureReason" },
+    { name: "failedAt" }
+  ]
+)
+-> { $ref: "#/schemas/domainEvents/PaymentFailed" }
+
+create_domain_event_schema(
+  workflowId: "wf-1",
+  domainEvent: "#/domainEvents/OrderShipped",
+  name: "Order Shipped",
+  entity: "#/schemas/entities/Order",
+  fields: [
+    { name: "orderId" },
+    { name: "trackingNumber" },
+    { name: "carrier" },
+    { name: "shippedAt" }
+  ]
+)
+-> { $ref: "#/schemas/domainEvents/OrderShipped" }
+```
+
 ---
 
 ## Phase 4: Validation
 
-### Step 8 — Validate the domain model
+### Step 9 — Validate the domain model
 
 Run validation to catch field mismatches between commands/read models and their entities.
 
@@ -319,6 +396,7 @@ The workflow now has:
 - 2 entities (Order, OrderItem) with typed fields and relationships
 - 5 commands attached to events (every event has a command)
 - 2 read models (Get Order Details, List Customer Orders) attached to events
+- 5 domain event schemas attached to events (every event has an event payload)
 - 5 aggregate root links (every event linked to an entity)
 - 1 bounded context (Order Management)
 - Validated domain model with no issues
