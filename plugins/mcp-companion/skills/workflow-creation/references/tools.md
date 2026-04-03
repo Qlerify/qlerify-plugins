@@ -24,10 +24,13 @@ in the UI and helps users find the workflow later. Returns the new workflow ID.
 
 ### get_workflow
 Retrieve a clean, DDD-friendly specification of the workflow. Returns domain events with semantic
-fields (command, aggregateRoot, readModels, acceptanceCriteria), and schemas organized by type
-(entities, commands, queries, valueObjects). Each element includes a `$ref` path for use with
-other tools. This is the **primary tool for viewing existing data** — there are no separate
-list tools for lanes, groups, events, entities, commands, or read models.
+fields (command, domainEventSchema, aggregateRoot, readModels, acceptanceCriteria), and schemas
+organized by type (entities, commands, queries, domainEvents, valueObjects). Each element includes
+a `$ref` path for use with other tools. This is the **primary tool for viewing existing data** —
+there are no separate list tools for lanes, groups, events, entities, commands, or read models.
+
+The returned specification includes a `$schema` URL pointing to a JSON Schema that describes the
+full structure. Fetch this URL to understand field types, allowed values, and relationships.
 
 - `workflowId`, `projectId` — Identifies the workflow
 - `boundedContext` — Optional. Bounded context name to export. If omitted, uses the first bounded context.

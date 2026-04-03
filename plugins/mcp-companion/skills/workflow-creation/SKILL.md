@@ -39,7 +39,9 @@ where each element has a `$ref` path:
 - Read models: `#/schemas/queries/GetOrderDetails`
 - Domain event schemas: `#/schemas/domainEvents/OrderPlaced`
 
-Use these paths when creating commands, read models, or referencing entities in fields.
+Use these paths when creating commands, read models, domain event schemas, or referencing entities in fields.
+
+**Tip:** The workflow specification returned by `get_workflow` includes a `$schema` URL (e.g., `https://app.qlerify.com/schemas/domain-model/v1`). Fetch this JSON Schema to understand the full structure of the spec — field types, allowed values, and relationships between elements.
 
 ### Event naming and `$ref` path generation
 
