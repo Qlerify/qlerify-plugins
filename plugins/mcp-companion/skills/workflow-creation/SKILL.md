@@ -93,7 +93,7 @@ Call `create_lane` for each actor. Aim for 2-4 lanes.
 
 ### Phase 2: Event Flow
 
-**Step 3 — Create domain events**
+**Step 3 — Create domain events** *(see `references/event-generation.md` for naming and chronology rules)*
 
 Build the event flow by chaining calls to `create_domain_event`. Each event needs:
 - `lane` — The lane name (e.g., "Customer")
@@ -154,7 +154,7 @@ update_domain_event(domainEvent: "#/domainEvents/OrderPlaced", aggregateRoot: "#
 
 **Every event must have an aggregate root before proceeding.** This identifies which entity each event primarily affects.
 
-**Step 7 — Create commands on events**
+**Step 7 — Create commands on events** *(see `references/command-generation.md` for detailed field rules)*
 
 Call `create_command` for each state-changing operation. Each command is automatically attached
 to an event via the required `domainEvent` parameter (a `$ref` path like `#/domainEvents/OrderPlaced`).
@@ -177,7 +177,7 @@ Commands represent what a caller sends to perform an action. Fields should be fl
 - **Search/filter parameters do NOT belong on commands** — they belong on Read Models with `isFilter: true`
 - **NEVER combine an "Id" suffix field name with `relatedEntity`** — if the field ends in "Id", it's a flat string reference, not a nested object
 
-**Step 8 — Create read models on events**
+**Step 8 — Create read models on events** *(see `references/read-model-generation.md` for detailed field rules)*
 
 Call `create_read_model` for each data retrieval view. Each read model is automatically attached
 to an event via the required `domainEvent` parameter. This auto-creates the Read Model card.
@@ -196,7 +196,7 @@ Read models represent what the API returns. Fields can be richer than command fi
 - **Use `relatedEntity` for composed response data** — nested objects make sense in responses (e.g., `guest` field with relatedEntity Guest containing `firstName`, `lastName`, `email`)
 - Name nested object fields as the entity name (`guest`, `hotel`, `room`), NOT with "Id" suffix
 
-**Step 9 — Create domain event schemas on events**
+**Step 9 — Create domain event schemas on events** *(see `references/domain-event-generation.md` for detailed field rules)*
 
 Call `create_domain_event_schema` for each event to define the data payload published when
 the event occurs. Each schema is automatically attached to an event via the required `domainEvent`
@@ -218,7 +218,7 @@ happened, not the full entity state:
 - Keep it focused — usually 3 to 8 fields are sufficient
 - Field names should be consistent with command and entity field names
 
-**Step 10 — Update entities with full fields**
+**Step 10 — Update entities with full fields** *(see `references/entity-generation.md` for detailed derivation rules)*
 
 Now that all commands, read models, and domain event schemas exist, update each entity with its
 real fields. At this point you have full visibility into every schema that references each entity,
@@ -354,8 +354,14 @@ Flow: Customer/Admin actions trigger events, Automation handles cross-service co
 
 ### Reference Files
 
-For detailed natural-language descriptions of every MCP tool, parameters, and usage tips:
-- **`references/tools.md`** — Complete tool reference with natural-language descriptions, parameters, and usage tips
+Consult these for detailed rules when creating specific element types:
+- **`references/system-prompt.md`** — DDD/event modeling expert context, naming conventions, character limits, quality checks
+- **`references/event-generation.md`** — Event naming rules, role conventions, chronology, gateway patterns
+- **`references/command-generation.md`** — The 4 command field categories, naming rules, 3-level nesting guidelines
+- **`references/read-model-generation.md`** — Read model field design, filter vs display fields, cardinality rules
+- **`references/domain-event-generation.md`** — Domain event payload rules, identifier/timestamp conventions
+- **`references/entity-generation.md`** — Entity field derivation from commands, merge strategy, entity vs value object rules
+- **`references/tools.md`** — Complete MCP tool reference with parameters and usage tips
 
 ### Example Files
 
