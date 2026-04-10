@@ -1,12 +1,12 @@
 ---
 name: workflow-creation
 description: >
-  This skill should be used when the user asks to "create a workflow",
-  "build a domain model", "set up a new Qlerify workflow", "add events and lanes",
-  "create BPMN diagram", "model a business process", "set up domain events",
-  "add commands and read models to workflow", or any request involving building
-  a Qlerify workflow from scratch or adding structural elements to an existing one.
-  Provides the full creation sequence, tool ordering, and domain modeling guidance.
+   This skill should be used when the user asks to "create a workflow",
+   "build a domain model", "set up a new Qlerify workflow", "add events and lanes",
+   "create BPMN diagram", "model a business process", "set up domain events",
+   "add commands and read models to workflow", or any request involving building
+   a Qlerify workflow from scratch or adding structural elements to an existing one.
+   Provides the full creation sequence, tool ordering, and domain modeling guidance.
 allowed-tools: Read, Glob, Grep
 ---
 
@@ -20,13 +20,13 @@ or calling tools out of order leads to broken references and incomplete diagrams
 A Qlerify workflow is a BPMN-style diagram combined with domain-driven design (DDD) elements:
 
 - **Lanes** — Horizontal swim lanes representing real-world actor roles or automation (e.g., "Customer", "Hotel Staff", "Automation")
-- **Groups** — Vertical columns representing phases or stages (e.g., "Order Placement", "Fulfillment")
-- **Domain Events** — The core building blocks placed at lane/group intersections. Each event represents something that happens in the business process (e.g., "Order Created", "Payment Received")
+- **Domain Events** — The core building blocks placed in lanes. Each event represents something that happens in the business process (e.g., "Order Created", "Payment Received")
 - **Entities** — Persistent domain objects (Aggregate Roots) with typed fields and relationships
 - **Commands** — State-changing operations attached to events, representing API request payloads
 - **Read Models** — Data queries/views attached to events, representing API response payloads
 - **Domain Event Schemas** — Data payloads carried when events occur, capturing the essential facts about what happened
 - **Bounded Contexts** — Logical boundaries grouping related entities, mapping to deployment/service boundaries
+- **Groups** — Optional vertical columns representing phases or stages (e.g., "Order Placement", "Fulfillment")
 
 ### How elements reference each other
 
@@ -91,16 +91,9 @@ Call `create_lane` for each actor. Aim for 2-4 lanes.
 - HR Onboarding: Candidate, HR Manager, Automation
 - Order Management: Customer, Admin, Automation
 
-**Step 3 — Create groups**
-
-Groups organize events into phases. Call `create_group` for each phase in chronological order.
-Groups are positioned automatically — just create them in the order they should appear. Common patterns:
-- E-commerce: "Browse", "Cart", "Checkout", "Fulfillment", "Post-delivery"
-- Onboarding: "Registration", "Verification", "Setup", "Activation"
-
 ### Phase 2: Event Flow
 
-**Step 4 — Create domain events**
+**Step 3 — Create domain events**
 
 Build the event flow by chaining calls to `create_domain_event`. Each event needs:
 - `lane` — The lane name (e.g., "Customer")
@@ -108,22 +101,15 @@ Build the event flow by chaining calls to `create_domain_event`. Each event need
 - `type` — Either `bpmn:Task` (regular event) or `bpmn:ExclusiveGateway` (decision diamond)
 
 Optional parameters:
-- `group` — Sets a group boundary starting at this event. Only set on the **first** event of a new group. Do not set group on subsequent events in the same group.
-- `aggregateRoot` — A `$ref` path to an entity (e.g., `#/schemas/entities/Order`). Links the entity as aggregate root on this event. **Set this for every event** — see note below.
-- `acceptanceCriteria` — Array of Given-When-Then acceptance criteria strings.
-- `color` — Visual color: peach, yellow, green, teal, blue, lavender, pink, gray
+- `acceptanceCriteria` — Array of Given-When-Then acceptance criteria strings
 
 Build the flow left-to-right, top-to-bottom, creating events in the order they occur in the
-business process.
-
-**Aggregate root requirement:** Every domain event SHOULD have an aggregate root — it identifies which
-entity this event primarily affects. If the entity doesn't exist yet when creating the event, set the
-aggregate root later in Step 5b using `update_domain_event` after entities are created. Do not leave
-events without aggregate roots.
+business process. Do NOT set `aggregateRoot` yet — entities don't exist at this point.
+Do NOT set `group` yet — groups are optional and created at the end.
 
 ### Phase 3: Domain Model
 
-**Step 5a — Create bounded contexts**
+**Step 4 — Create bounded contexts**
 
 Create bounded contexts BEFORE entities, so entities can be assigned during creation. Call
 `create_bounded_context` for each logical boundary.
@@ -142,33 +128,41 @@ Create bounded contexts BEFORE entities, so entities can be assigned during crea
 - Hotel Booking (6 entities): 1 BC — "Hotel Booking"
 - Large E-commerce Platform (20+ entities): 3-4 BCs — "Order Management", "Inventory", "Customer Management", "Payments"
 
-**Step 5b — Create entities and link aggregate roots**
+**Step 5 — Create empty entities**
 
-Call `create_entity` for each core domain object. Entities must be created before commands and
-read models so they can be referenced.
+Create entities with just their name and bounded context — **no fields yet**. This establishes
+`$ref` paths so commands, read models, and domain event schemas can reference them.
 
-- Include fields with `name`, `dataType`, `exampleData` (3 realistic values), `isRequired`
-- Use `relatedEntity` (`$ref` path like `#/schemas/entities/OrderItem`) and `cardinality` to express entity relationships from the owning entity's perspective
-- Assign to a bounded context by name using the `boundedContext` parameter (the BC must already exist from Step 5a)
-- Field types: `string`, `number`, `boolean`, `object`
+```
+create_entity(workflowId: "wf-1", name: "Order", boundedContext: "Order Management")
+-> { $ref: "#/schemas/entities/Order" }
 
-After creating entities, update any events that don't have aggregate roots yet:
+create_entity(workflowId: "wf-1", name: "Order Item", boundedContext: "Order Management")
+-> { $ref: "#/schemas/entities/OrderItem" }
+```
+
+Identify ALL entities and value objects the domain needs — aggregate roots, child entities,
+and value objects. Create them all now so their `$ref` paths are available for subsequent steps.
+
+**Step 6 — Link aggregate roots to events**
+
+Now that entities exist, link each event to its aggregate root entity:
 
 ```
 update_domain_event(domainEvent: "#/domainEvents/OrderPlaced", aggregateRoot: "#/schemas/entities/Order")
 ```
 
-**Every event must have an aggregate root before proceeding.**
+**Every event must have an aggregate root before proceeding.** This identifies which entity each event primarily affects.
 
-**Step 6 — Create commands on events**
+**Step 7 — Create commands on events**
 
 Call `create_command` for each state-changing operation. Each command is automatically attached
 to an event via the required `domainEvent` parameter (a `$ref` path like `#/domainEvents/OrderPlaced`).
 This auto-creates the Command card on that event.
 
 - Name with action verbs and spaces (e.g., "Create Order", "Cancel Subscription")
-- Command fields should correspond to fields on the aggregate root entity they modify
 - Mark auto-generated fields (IDs, timestamps) with `hideInForm: true`
+- Use `relatedEntity` on nested fields pointing to the empty entities created in Step 5
 
 **Every event should have a command.** After creating commands, call `get_workflow` and verify there
 are no events without a command card. Events without commands represent gaps in the business process.
@@ -179,10 +173,11 @@ Commands represent what a caller sends to perform an action. Fields should be fl
 
 - **Use plain fields for ID references:** `bookingId` (string), `hotelId` (string), `customerId` (string). Do NOT use `relatedEntity` for simple ID lookups — it creates nonsensical nested structures like `{ hotelId: { id: "123" } }` instead of the correct `{ hotelId: "123" }`
 - **Only use `relatedEntity` on commands for embedded collections** where you need to send multiple fields from a related entity (e.g., `orderItems` with `productName`, `quantity`, `unitPrice`)
+- **Commands support up to 3 levels of nesting** — a field can have nested `fields` with `relatedEntity`, and those nested fields can also have their own `fields` with `relatedEntity` for deeper structures
 - **Search/filter parameters do NOT belong on commands** — they belong on Read Models with `isFilter: true`
 - **NEVER combine an "Id" suffix field name with `relatedEntity`** — if the field ends in "Id", it's a flat string reference, not a nested object
 
-**Step 7 — Create read models on events**
+**Step 8 — Create read models on events**
 
 Call `create_read_model` for each data retrieval view. Each read model is automatically attached
 to an event via the required `domainEvent` parameter. This auto-creates the Read Model card.
@@ -190,6 +185,7 @@ to an event via the required `domainEvent` parameter. This auto-creates the Read
 - Name with Get/List/Search prefixes and spaces (e.g., "Get Order Details", "List Customer Orders")
 - Link to the source entity via `entity` ($ref path like `#/schemas/entities/Order`)
 - Requires `cardinality`: `"one-to-one"` for single-record queries, `"one-to-many"` for list queries
+- Use `relatedEntity` on nested fields pointing to the empty entities created in Step 5
 
 **Read model field rules (API response payloads):**
 
@@ -200,7 +196,7 @@ Read models represent what the API returns. Fields can be richer than command fi
 - **Use `relatedEntity` for composed response data** — nested objects make sense in responses (e.g., `guest` field with relatedEntity Guest containing `firstName`, `lastName`, `email`)
 - Name nested object fields as the entity name (`guest`, `hotel`, `room`), NOT with "Id" suffix
 
-**Step 8 — Create domain event schemas on events**
+**Step 9 — Create domain event schemas on events**
 
 Call `create_domain_event_schema` for each event to define the data payload published when
 the event occurs. Each schema is automatically attached to an event via the required `domainEvent`
@@ -209,6 +205,7 @@ parameter. This auto-creates the Domain Event card.
 - Name matching the event (e.g., "Order Created", "Payment Processed")
 - Link to the aggregate root entity via `entity` ($ref path like `#/schemas/entities/Order`)
 - Include fields that capture the essential facts about the state change
+- Use `relatedEntity` on nested fields pointing to the empty entities created in Step 5
 
 **Domain event schema field rules (event payload):**
 
@@ -221,21 +218,82 @@ happened, not the full entity state:
 - Keep it focused — usually 3 to 8 fields are sufficient
 - Field names should be consistent with command and entity field names
 
-### Phase 4: Validation
+**Step 10 — Update entities with full fields**
 
-**Step 9 — Validate the domain model**
+Now that all commands, read models, and domain event schemas exist, update each entity with its
+real fields. At this point you have full visibility into every schema that references each entity,
+so you can derive the correct set of fields.
+
+```
+update_entity(
+  workflowId: "wf-1",
+  entity: "#/schemas/entities/Order",
+  fields: [
+    { name: "id", dataType: "string", exampleData: ["ord-001", "ord-002", "ord-003"], isRequired: true },
+    { name: "customerId", dataType: "string", exampleData: ["cust-10", "cust-22", "cust-07"], isRequired: true },
+    { name: "status", dataType: "string", exampleData: ["pending", "confirmed", "shipped"], isRequired: true },
+    { name: "orderItems", dataType: "object", relatedEntity: "#/schemas/entities/OrderItem", cardinality: "one-to-many" },
+    { name: "createdAt", dataType: "string", exampleData: ["2026-01-15T10:00:00Z", "2026-01-16T14:30:00Z", "2026-01-17T09:15:00Z"], isRequired: true }
+  ]
+)
+```
+
+**Entity field design rules:**
+
+- Include ALL unique fields from all commands that target this entity — merge fields across commands
+- Include `relatedEntity` + `cardinality` for relationships to other entities
+- Include `exampleData` (3 realistic values per field)
+- Include `dataType`: `string`, `number`, `boolean`, `object`
+- Mark fields essential for creation with `isRequired: true`
+- Fields populated only during specific lifecycle transitions (cancel, archive, complete) should NOT be required
+
+### Phase 4: Validation Loop
+
+**Step 11 — Validate and fix the domain model**
 
 Run `validate_domain_model` to check for structural issues. This catches field mismatches between
 commands/read models and their aggregate root entities.
 
-- Fix all **MAJOR** issues before considering the workflow complete
-- **MINOR** `FIELD_NOT_IN_ENTITY` issues on read model filter fields are often expected — cross-entity query parameters (e.g., `checkInDate` on a Hotel read model) are valid filter fields that don't need to exist on the entity
+**This is an iterative loop, not a one-shot check:**
 
-Common validation issues and fixes:
+1. Run `validate_domain_model`
+2. If there are **MAJOR** issues, fix them:
+   - **Command field not on entity** → Add the missing field to the entity via `update_entity`, or remove the field from the command via `update_command`
+   - **Missing entity relationship** → Add `relatedEntity` field to entity via `update_entity`
+   - **Denormalized fields on commands** (e.g., `guestEmail`) → Replace with flat ID ref (`guestId`) and let the service look up related data internally
+3. Re-run `validate_domain_model`
+4. **Repeat until no MAJOR issues remain**
 
-- Command field not on entity → Remove from command or add to entity
-- Missing entity relationship → Add `relatedEntity` field to entity
-- Denormalized fields on commands (e.g., `guestEmail`) → Replace with flat ID ref (`guestId`) and let the service look up related data internally
+**MINOR issues:**
+- `FIELD_NOT_IN_ENTITY` on read model filter fields are often expected — cross-entity query parameters (e.g., `checkInDate` on a Hotel read model) are valid filter fields that don't need to exist on the entity
+- Review MINOR issues but don't blindly fix all of them
+
+**Important:** Do not consider the workflow complete until the validation loop produces zero MAJOR issues.
+
+### Phase 5: Polish (optional)
+
+These steps are cosmetic and can be skipped if not needed.
+
+**Step 12 — Create groups (optional)**
+
+Groups organize events into visual phases on the diagram. Call `create_group` for each phase,
+then assign events to groups using `update_domain_event` with the `group` parameter.
+
+Only set `group` on the **first event** that starts a new group — subsequent events in the same
+group inherit it automatically based on their position.
+
+Common patterns:
+- E-commerce: "Browse & Cart", "Checkout", "Fulfillment"
+- Onboarding: "Registration", "Verification", "Setup", "Activation"
+
+**Step 13 — Set colors (optional)**
+
+Events default to peach color. Only set colors if the user specifically requests color-coding.
+Available colors: peach, yellow, green, teal, blue, lavender, pink, gray.
+
+```
+update_domain_event(domainEvent: "#/domainEvents/OrderPlaced", color: "blue")
+```
 
 ## Constraints and Rules
 
@@ -244,7 +302,7 @@ Common validation issues and fixes:
 - **One Domain Event card per event** — An event can only have one domain event schema
 - **Every event should have an aggregate root, a command, and a domain event schema** — No naked events
 - **Read Model cards require cardinality** — Always specify "one-to-one" or "one-to-many"
-- **Lanes and groups cannot be deleted if they contain events** — Move or delete events first
+- **Lanes cannot be deleted if they contain events** — Move or delete events first
 - **Domain events require a lane** — Every event must be assigned to a lane
 - **Chain events via follows** — Use "start" for root events, otherwise reference the parent via `$ref` path
 - **Bounded contexts must exist before referencing them** — Create BCs before assigning entities to them
@@ -286,7 +344,6 @@ Flow: Customer/Admin actions trigger events, Automation handles cross-service co
 
 - **Start with events, not entities.** Map the business process flow first, then identify what data each step needs.
 - **Use decision gateways sparingly.** Only for genuine branching logic, not optional steps.
-- **Color-code by domain.** Use consistent colors for events in the same bounded context.
 - **2-4 lanes is ideal.** Typically, 1-2 human roles + Automation. More than 4 makes the diagram hard to read.
 - **Name events as past-tense occurrences.** "Order Created", not "Create Order" — commands go on cards.
 - **Avoid special characters in event names.** Use only alphanumeric characters and spaces. No `?`, `!`, `&`, `#`.
@@ -302,5 +359,5 @@ For detailed natural-language descriptions of every MCP tool, parameters, and us
 
 ### Example Files
 
-For a complete worked example showing all 9 steps with realistic tool calls and data:
-- **`examples/ecommerce-workflow.md`** — End-to-end e-commerce order workflow creation with 3 lanes, 7 events, 2 entities, 4 commands, 2 read models, domain event schemas, a decision gateway, and validation
+For a complete worked example showing all steps with realistic tool calls and data:
+- **`examples/ecommerce-workflow.md`** — End-to-end e-commerce order workflow creation: empty entities first, then commands/read models/domain events referencing them, entity fields derived last, validation loop, and optional groups
