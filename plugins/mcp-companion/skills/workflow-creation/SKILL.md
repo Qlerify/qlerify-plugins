@@ -185,6 +185,14 @@ to an event via the required `domainEvent` parameter. This auto-creates the Read
 - Requires `cardinality`: `"one-to-one"` for single-record queries, `"one-to-many"` for list queries
 - Use `relatedEntity` on nested fields pointing to the empty entities created in Step 5
 
+**Reuse read models across events when it makes sense.**
+
+Multiple events in the same workflow often need the same query — for example, several events along an Order's lifecycle all need "Get Order
+Details". Instead of creating a separate near-duplicate read model per event, just call`create_read_model` again with the **same name** on
+the new event. The backend recognizes the existing query, attaches the new event's card to the same shared schema, and merges any new fields
+you passed into that schema. Judge reuse case-by-case: if a new event genuinely needs the same data shape and the same queried entity as an
+existing one, reuse it (same name); if the shape or entity differs, pick a different name and create a distinct read model.
+
 **Read model field rules (API response payloads):**
 
 Read models represent what the API returns. Fields can be richer than command fields:
