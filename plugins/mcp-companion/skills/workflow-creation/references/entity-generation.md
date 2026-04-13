@@ -59,15 +59,19 @@ The aggregate root entity must reference nested structures with the **EXACT SAME
 ### Same bounded context (relatedEntity)
 Name the field as the entity in camelCase (singular or plural):
 ```json
-{ "name": "orderItems", "dataType": "object", "relatedEntity": "#/schemas/entities/OrderItem", "cardinality": "one-to-many" }
-{ "name": "shippingAddress", "dataType": "object", "relatedEntity": "#/schemas/entities/Address", "cardinality": "one-to-one" }
+[
+  { "name": "orderItems", "dataType": "object", "relatedEntity": "#/schemas/entities/OrderItem", "cardinality": "one-to-many" },
+  { "name": "shippingAddress", "dataType": "object", "relatedEntity": "#/schemas/entities/Address", "cardinality": "one-to-one" }
+]
 ```
 
 ### Cross-context reference (flat ID)
 Name the field as `{entityName}Id` with `dataType: "string"`:
 ```json
-{ "name": "customerId", "dataType": "string" }
-{ "name": "productId", "dataType": "string" }
+[
+  { "name": "customerId", "dataType": "string" },
+  { "name": "productId", "dataType": "string" }
+]
 ```
 
 ## Required Fields
@@ -78,7 +82,25 @@ Fields populated only during specific lifecycle transitions (expire, cancel, arc
 
 ## Example Data
 
-Include 3 realistic example values per field. Each value must be max 30 characters.
+**Every field MUST include `exampleData`** with 3 realistic example values. Each value must be max 30 characters. This applies to ALL fields, including fields with `relatedEntity`.
+
+For fields with `dataType: "object"` and `relatedEntity` (nested entity/value object references), use the placeholder `["Object", "Object", "Object"]`. This is the Qlerify convention — it signals that the field is a reference to another entity whose actual data is defined on that entity itself.
+
+```json
+{ "name": "orderItems", "dataType": "object", "relatedEntity": "#/schemas/entities/OrderItem", "cardinality": "one-to-many", "exampleData": ["Object", "Object", "Object"] }
+```
+
+## Field Description
+
+Every field SHOULD include a `description` that briefly explains the field's purpose in business terms. This helps stakeholders understand the model and helps downstream code generation produce better results.
+
+- Keep descriptions concise (one sentence)
+- Use business language, not technical jargon
+- Explain the "what" and "why", not the "how"
+
+```json
+{ "name": "customerId", "dataType": "string", "description": "Unique identifier of the customer placing the order", "exampleData": ["cust-10", "cust-22", "cust-07"], "isRequired": true }
+```
 
 ## Entity Example
 
@@ -87,13 +109,13 @@ Include 3 realistic example values per field. Each value must be max 30 characte
   "name": "Order",
   "boundedContext": "Order Management",
   "fields": [
-    { "name": "id", "dataType": "string", "exampleData": ["ord-001", "ord-002", "ord-003"], "isRequired": true },
-    { "name": "customerId", "dataType": "string", "exampleData": ["cust-10", "cust-22", "cust-07"], "isRequired": true },
-    { "name": "status", "dataType": "string", "exampleData": ["pending", "confirmed", "shipped"], "isRequired": true },
-    { "name": "totalAmount", "dataType": "number", "exampleData": ["59.99", "124.50", "9.99"], "isRequired": true },
-    { "name": "orderItems", "dataType": "object", "relatedEntity": "#/schemas/entities/OrderItem", "cardinality": "one-to-many" },
-    { "name": "trackingNumber", "dataType": "string", "exampleData": ["TRK-001", "TRK-002", "TRK-003"] },
-    { "name": "createdAt", "dataType": "string", "exampleData": ["2026-01-15T10:00:00Z", "2026-01-16T14:30:00Z", "2026-01-17T09:15:00Z"], "isRequired": true }
+    { "name": "id", "dataType": "string", "description": "Unique identifier of the order", "exampleData": ["ord-001", "ord-002", "ord-003"], "isRequired": true },
+    { "name": "customerId", "dataType": "string", "description": "Customer who placed the order", "exampleData": ["cust-10", "cust-22", "cust-07"], "isRequired": true },
+    { "name": "status", "dataType": "string", "description": "Current fulfillment status of the order", "exampleData": ["pending", "confirmed", "shipped"], "isRequired": true },
+    { "name": "totalAmount", "dataType": "number", "description": "Total amount to be paid including all items, taxes, and shipping", "exampleData": ["59.99", "124.50", "9.99"], "isRequired": true },
+    { "name": "orderItems", "dataType": "object", "description": "Line items included in the order", "relatedEntity": "#/schemas/entities/OrderItem", "cardinality": "one-to-many", "exampleData": ["Object", "Object", "Object"] },
+    { "name": "trackingNumber", "dataType": "string", "description": "Shipping carrier tracking number assigned after the order is shipped", "exampleData": ["TRK-001", "TRK-002", "TRK-003"] },
+    { "name": "createdAt", "dataType": "string", "description": "Timestamp when the order was placed", "exampleData": ["2026-01-15T10:00:00Z", "2026-01-16T14:30:00Z", "2026-01-17T09:15:00Z"], "isRequired": true }
   ]
 }
 ```
@@ -105,10 +127,10 @@ Include 3 realistic example values per field. Each value must be max 30 characte
   "name": "Address",
   "boundedContext": "Order Management",
   "fields": [
-    { "name": "street", "dataType": "string", "exampleData": ["123 Maple Ave", "456 Oak St", "789 Pine Rd"], "isRequired": true },
-    { "name": "city", "dataType": "string", "exampleData": ["New York", "Chicago", "Austin"], "isRequired": true },
-    { "name": "postalCode", "dataType": "string", "exampleData": ["10001", "60601", "73301"], "isRequired": true },
-    { "name": "country", "dataType": "string", "exampleData": ["USA", "USA", "USA"], "isRequired": true }
+    { "name": "street", "dataType": "string", "description": "Street name and number", "exampleData": ["123 Maple Ave", "456 Oak St", "789 Pine Rd"], "isRequired": true },
+    { "name": "city", "dataType": "string", "description": "City name", "exampleData": ["New York", "Chicago", "Austin"], "isRequired": true },
+    { "name": "postalCode", "dataType": "string", "description": "Postal or ZIP code", "exampleData": ["10001", "60601", "73301"], "isRequired": true },
+    { "name": "country", "dataType": "string", "description": "ISO country code", "exampleData": ["USA", "USA", "USA"], "isRequired": true }
   ]
 }
 ```

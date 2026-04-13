@@ -26,7 +26,6 @@ A Qlerify workflow is a BPMN-style diagram combined with domain-driven design (D
 - **Read Models** — Data queries/views attached to events, representing API response payloads
 - **Domain Event Schemas** — Data payloads carried when events occur, capturing the essential facts about what happened
 - **Bounded Contexts** — Logical boundaries grouping related entities, mapping to deployment/service boundaries
-- **Groups** — Optional vertical columns representing phases or stages (e.g., "Order Placement", "Fulfillment")
 
 ### How elements reference each other
 
@@ -105,7 +104,6 @@ Optional parameters:
 
 Build the flow left-to-right, top-to-bottom, creating events in the order they occur in the
 business process. Do NOT set `aggregateRoot` yet — entities don't exist at this point.
-Do NOT set `group` yet — groups are optional and created at the end.
 
 ### Phase 3: Domain Model
 
@@ -229,11 +227,11 @@ update_entity(
   workflowId: "wf-1",
   entity: "#/schemas/entities/Order",
   fields: [
-    { name: "id", dataType: "string", exampleData: ["ord-001", "ord-002", "ord-003"], isRequired: true },
-    { name: "customerId", dataType: "string", exampleData: ["cust-10", "cust-22", "cust-07"], isRequired: true },
-    { name: "status", dataType: "string", exampleData: ["pending", "confirmed", "shipped"], isRequired: true },
-    { name: "orderItems", dataType: "object", relatedEntity: "#/schemas/entities/OrderItem", cardinality: "one-to-many" },
-    { name: "createdAt", dataType: "string", exampleData: ["2026-01-15T10:00:00Z", "2026-01-16T14:30:00Z", "2026-01-17T09:15:00Z"], isRequired: true }
+    { name: "id", dataType: "string", description: "Unique identifier of the order", exampleData: ["ord-001", "ord-002", "ord-003"], isRequired: true },
+    { name: "customerId", dataType: "string", description: "Customer who placed the order", exampleData: ["cust-10", "cust-22", "cust-07"], isRequired: true },
+    { name: "status", dataType: "string", description: "Current fulfillment status", exampleData: ["pending", "confirmed", "shipped"], isRequired: true },
+    { name: "orderItems", dataType: "object", description: "Line items in the order", relatedEntity: "#/schemas/entities/OrderItem", cardinality: "one-to-many", exampleData: ["Object", "Object", "Object"] },
+    { name: "createdAt", dataType: "string", description: "Timestamp when the order was placed", exampleData: ["2026-01-15T10:00:00Z", "2026-01-16T14:30:00Z", "2026-01-17T09:15:00Z"], isRequired: true }
   ]
 )
 ```
@@ -242,7 +240,8 @@ update_entity(
 
 - Include ALL unique fields from all commands that target this entity — merge fields across commands
 - Include `relatedEntity` + `cardinality` for relationships to other entities
-- Include `exampleData` (3 realistic values per field)
+- **Always include `exampleData`** (3 realistic values per field). For fields with `relatedEntity`, use the placeholder `["Object", "Object", "Object"]`
+- **Always include `description`** — a concise one-sentence explanation in business language
 - Include `dataType`: `string`, `number`, `boolean`, `object`
 - Mark fields essential for creation with `isRequired: true`
 - Fields populated only during specific lifecycle transitions (cancel, archive, complete) should NOT be required
@@ -257,36 +256,36 @@ commands/read models and their aggregate root entities.
 **This is an iterative loop, not a one-shot check:**
 
 1. Run `validate_domain_model`
-2. If there are **MAJOR** issues, fix them:
-   - **Command field not on entity** → Add the missing field to the entity via `update_entity`, or remove the field from the command via `update_command`
-   - **Missing entity relationship** → Add `relatedEntity` field to entity via `update_entity`
-   - **Denormalized fields on commands** (e.g., `guestEmail`) → Replace with flat ID ref (`guestId`) and let the service look up related data internally
+2. For each issue (MAJOR or MINOR), **judge whether it genuinely indicates a problem** or is a legitimate domain pattern:
+   - **If it's a real problem** → fix it
+   - **If it's a valid domain pattern** → leave it as-is
 3. Re-run `validate_domain_model`
-4. **Repeat until no MAJOR issues remain**
+4. **Repeat until all remaining issues are legitimate patterns you've consciously decided to keep**
 
-**MINOR issues:**
-- `FIELD_NOT_IN_ENTITY` on read model filter fields are often expected — cross-entity query parameters (e.g., `checkInDate` on a Hotel read model) are valid filter fields that don't need to exist on the entity
-- Review MINOR issues but don't blindly fix all of them
+**Do NOT use severity (MAJOR vs MINOR) as the sole deciding factor.** Both need judgment. Some "MAJOR" issues can be valid; some "MINOR" issues should be fixed.
 
-**Important:** Do not consider the workflow complete until the validation loop produces zero MAJOR issues.
+**Common real problems to fix:**
+- **Command field not on entity when it should be stored** → Add the missing field to the entity via `update_entity`, or remove the field from the command via `update_command`
+- **Missing entity relationship** that the business domain requires → Add `relatedEntity` field to entity via `update_entity`
+- **Denormalized fields on commands** (e.g., `guestEmail` when `guestId` already exists) → Replace with flat ID ref and let the service look up related data internally
+- **Typos or inconsistent naming** between command/read model and entity fields → Rename for consistency
+
+**Common legitimate patterns to leave as-is:**
+- **Calculated/derived fields on read models** (e.g., `total`, `subtotal`, `taxTotal`, `shippingTotal` on a "Get Cart Totals" query) — these are computed at runtime from entity fields, not stored on the entity. `FIELD_NOT_IN_ENTITY` warnings on these are expected and correct
+- **Aggregated fields on read models** (e.g., `orderCount`, `averageRating`, `totalSpent`) — same principle: computed from queries over other data
+- **Cross-entity filter parameters** on read models (e.g., `checkInDate` on a Hotel search, `minPrice` on a Product search) — filter fields for search/query parameters don't need to exist on the entity
+- **Formatted/presentation fields** on read models (e.g., `fullName` when entity has `firstName` + `lastName`, `displayAddress` when entity has separate address components) — these are projections for display, not storage
+- **Status/computed flags on read models** (e.g., `isOverdue`, `isExpired`) — derived from date comparisons at query time
+
+**How to judge:** Ask yourself "In a real application, would this field be **stored** on the database table for this entity, or would it be **calculated on the fly** when the query runs?" If the answer is "calculated at runtime" or "joined from another table at query time", the field is a legitimate read model field and the warning can be ignored.
+
+**Important:** Do not consider the workflow complete until every remaining issue has been consciously reviewed and either fixed or judged as a legitimate pattern.
 
 ### Phase 5: Polish (optional)
 
 These steps are cosmetic and can be skipped if not needed.
 
-**Step 12 — Create groups (optional)**
-
-Groups organize events into visual phases on the diagram. Call `create_group` for each phase,
-then assign events to groups using `update_domain_event` with the `group` parameter.
-
-Only set `group` on the **first event** that starts a new group — subsequent events in the same
-group inherit it automatically based on their position.
-
-Common patterns:
-- E-commerce: "Browse & Cart", "Checkout", "Fulfillment"
-- Onboarding: "Registration", "Verification", "Setup", "Activation"
-
-**Step 13 — Set colors (optional)**
+**Step 12 — Set colors (optional)**
 
 Events default to peach color. Only set colors if the user specifically requests color-coding.
 Available colors: peach, yellow, green, teal, blue, lavender, pink, gray.
@@ -327,17 +326,17 @@ with `relatedEntity`.
 
 ### CRUD Service
 
-Lanes: User, Automation | Groups: Create, Read, Update, Delete
+Lanes: User, Automation
 Flow: User action event → Automation processing event per operation
 
 ### Approval Pipeline
 
-Lanes: Requester, Approver, Automation | Groups: Submit, Review, Execute
+Lanes: Requester, Approver, Automation
 Flow: Request submitted → Review pending → Approved/Rejected gateway → Executed
 
 ### Event-Driven Saga
 
-Lanes: Customer, Admin, Automation | Groups per saga step
+Lanes: Customer, Admin, Automation
 Flow: Customer/Admin actions trigger events, Automation handles cross-service coordination via decision gateways
 
 ## Tips for Well-Structured Workflows
@@ -366,4 +365,4 @@ Consult these for detailed rules when creating specific element types:
 ### Example Files
 
 For a complete worked example showing all steps with realistic tool calls and data:
-- **`examples/ecommerce-workflow.md`** — End-to-end e-commerce order workflow creation: empty entities first, then commands/read models/domain events referencing them, entity fields derived last, validation loop, and optional groups
+- **`examples/ecommerce-workflow.md`** — End-to-end e-commerce order workflow creation: empty entities first, then commands/read models/domain events referencing them, entity fields derived last, validation loop

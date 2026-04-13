@@ -338,14 +338,14 @@ update_entity(
   workflowId: "wf-1",
   entity: "#/schemas/entities/Order",
   fields: [
-    { name: "id", dataType: "string", exampleData: ["ord-001", "ord-002", "ord-003"], isRequired: true },
-    { name: "customerId", dataType: "string", exampleData: ["cust-10", "cust-22", "cust-07"], isRequired: true },
-    { name: "status", dataType: "string", exampleData: ["pending", "confirmed", "shipped"], isRequired: true },
-    { name: "totalAmount", dataType: "number", exampleData: ["59.99", "124.50", "9.99"], isRequired: true },
-    { name: "orderItems", dataType: "object", relatedEntity: "#/schemas/entities/OrderItem", cardinality: "one-to-many" },
-    { name: "trackingNumber", dataType: "string", exampleData: ["TRK-001", "TRK-002", "TRK-003"] },
-    { name: "carrier", dataType: "string", exampleData: ["FedEx", "UPS", "DHL"] },
-    { name: "createdAt", dataType: "string", exampleData: ["2026-01-15T10:00:00Z", "2026-01-16T14:30:00Z", "2026-01-17T09:15:00Z"], isRequired: true }
+    { name: "id", dataType: "string", description: "Unique identifier of the order", exampleData: ["ord-001", "ord-002", "ord-003"], isRequired: true },
+    { name: "customerId", dataType: "string", description: "Customer who placed the order", exampleData: ["cust-10", "cust-22", "cust-07"], isRequired: true },
+    { name: "status", dataType: "string", description: "Current fulfillment status of the order", exampleData: ["pending", "confirmed", "shipped"], isRequired: true },
+    { name: "totalAmount", dataType: "number", description: "Total amount including items, taxes, and shipping", exampleData: ["59.99", "124.50", "9.99"], isRequired: true },
+    { name: "orderItems", dataType: "object", description: "Line items included in the order", relatedEntity: "#/schemas/entities/OrderItem", cardinality: "one-to-many", exampleData: ["Object", "Object", "Object"] },
+    { name: "trackingNumber", dataType: "string", description: "Shipping tracking number assigned after shipping", exampleData: ["TRK-001", "TRK-002", "TRK-003"] },
+    { name: "carrier", dataType: "string", description: "Shipping carrier handling the delivery", exampleData: ["FedEx", "UPS", "DHL"] },
+    { name: "createdAt", dataType: "string", description: "Timestamp when the order was placed", exampleData: ["2026-01-15T10:00:00Z", "2026-01-16T14:30:00Z", "2026-01-17T09:15:00Z"], isRequired: true }
   ]
 )
 
@@ -353,10 +353,10 @@ update_entity(
   workflowId: "wf-1",
   entity: "#/schemas/entities/OrderItem",
   fields: [
-    { name: "id", dataType: "string", exampleData: ["ci-001", "ci-002", "ci-003"], isRequired: true },
-    { name: "productName", dataType: "string", exampleData: ["Wireless Mouse", "USB-C Cable", "Laptop Stand"], isRequired: true },
-    { name: "quantity", dataType: "number", exampleData: ["1", "3", "2"], isRequired: true },
-    { name: "unitPrice", dataType: "number", exampleData: ["29.99", "8.50", "45.00"], isRequired: true }
+    { name: "id", dataType: "string", description: "Unique identifier of the order item", exampleData: ["ci-001", "ci-002", "ci-003"], isRequired: true },
+    { name: "productName", dataType: "string", description: "Name of the purchased product", exampleData: ["Wireless Mouse", "USB-C Cable", "Laptop Stand"], isRequired: true },
+    { name: "quantity", dataType: "number", description: "Number of units ordered", exampleData: ["1", "3", "2"], isRequired: true },
+    { name: "unitPrice", dataType: "number", description: "Price per unit at the time of order", exampleData: ["29.99", "8.50", "45.00"], isRequired: true }
   ]
 )
 ```
@@ -372,41 +372,19 @@ Entity fields are derived from all commands/read models that reference each enti
 
 ### Step 11 — Validate and fix the domain model
 
-Run validation, fix MAJOR issues, repeat until clean.
+Run validation and judge each issue — fix real problems, leave legitimate patterns alone.
 
 ```
 validate_domain_model(workflowId: "wf-1", projectId: "proj-1")
 -> { issues: [] }
 ```
 
-No MAJOR issues — validation complete. If issues are returned:
+No outstanding issues — validation complete. If issues are returned, judge each one:
 
-- **Command field not on entity** → Add the missing field to the entity via `update_entity`
-- **Missing relationship** → Add `relatedEntity` field to entity
-- Re-validate until zero MAJOR issues
+- **Real problems** (fix them): command field missing from entity when it should be stored, bad relationships, denormalized data, typos
+- **Legitimate patterns** (leave as-is): calculated fields on read models (`total`, `subtotal`), cross-entity filter parameters, formatted/presentation fields
 
----
-
-## Phase 5: Polish (optional)
-
-### Step 12 — Create groups (optional)
-
-Organize events into visual phases. Set `group` only on the **first** event of each phase.
-
-```
-create_group(workflowId: "wf-1", projectId: "proj-1", name: "Browse & Cart")
-create_group(workflowId: "wf-1", projectId: "proj-1", name: "Checkout")
-create_group(workflowId: "wf-1", projectId: "proj-1", name: "Fulfillment")
-
-update_domain_event(workflowId: "wf-1", projectId: "proj-1",
-  domainEvent: "#/domainEvents/ItemAddedToCart", group: "Browse & Cart")
-
-update_domain_event(workflowId: "wf-1", projectId: "proj-1",
-  domainEvent: "#/domainEvents/OrderPlaced", group: "Checkout")
-
-update_domain_event(workflowId: "wf-1", projectId: "proj-1",
-  domainEvent: "#/domainEvents/OrderShipped", group: "Fulfillment")
-```
+Re-run validation after fixes and repeat until every remaining issue has been consciously reviewed.
 
 ---
 
@@ -422,5 +400,4 @@ The workflow now has:
 - 5 domain event schemas attached to events (every event has an event payload)
 - 5 aggregate root links (every event linked to an entity)
 - 1 bounded context (Order Management)
-- Validated domain model with no MAJOR issues
-- 3 groups organizing events into phases (optional)
+- Validated domain model with no outstanding issues
