@@ -50,9 +50,18 @@ The aggregate root entity must reference nested structures with the **EXACT SAME
 
 ## Field Naming Rules
 
-- **Entity names**: human-readable format with spaces (e.g., "Payment Method", not "PaymentMethod")
-- **Field names**: camelCase (e.g., `paymentMethod`, not "Payment Method")
+- **Entity names**: human-readable format with spaces (e.g., "Payment Method", not "PaymentMethod"). Max 30 characters.
+- **Field names**: camelCase (e.g., `paymentMethod`, not "Payment Method"). Max 30 characters.
 - **Field dataType**: one of `string`, `number`, `boolean`, `object`
+
+## Deriving Entities from Database Tables
+
+When the source material includes database table definitions (rather than commands), model the entities as a **domain/type model**, not a persistence model:
+
+- Describe relationships through **ownership and references**, not storage mechanics
+- Express ownership from the parent type (e.g., `Order.items: LineItem[]`)
+- Omit internal back-reference fields like `parent_id` / foreign key columns unless they're domain-significant
+- Avoid database terms like foreign keys, join tables, cascade deletes — use domain type relationships instead
 
 ## Relationship Rules
 
@@ -82,7 +91,7 @@ Fields populated only during specific lifecycle transitions (expire, cancel, arc
 
 ## Example Data
 
-**Every field MUST include `exampleData`** with 3 realistic example values. Each value must be max 30 characters. This applies to ALL fields, including fields with `relatedEntity`.
+**Every field MUST include `exampleData`** with 3 realistic example values. This applies to ALL fields, including fields with `relatedEntity`.
 
 For fields with `dataType: "object"` and `relatedEntity` (nested entity/value object references), use the placeholder `["Object", "Object", "Object"]`. This is the Qlerify convention — it signals that the field is a reference to another entity whose actual data is defined on that entity itself.
 
@@ -90,16 +99,29 @@ For fields with `dataType: "object"` and `relatedEntity` (nested entity/value ob
 { "name": "orderItems", "dataType": "object", "relatedEntity": "#/schemas/entities/OrderItem", "cardinality": "one-to-many", "exampleData": ["Object", "Object", "Object"] }
 ```
 
-## Field Description
+## Descriptions (Required)
 
-Every field SHOULD include a `description` that briefly explains the field's purpose in business terms. This helps stakeholders understand the model and helps downstream code generation produce better results.
+Both entities/value objects AND their fields must carry `description` properties. Qlerify relies on these for stakeholder communication and downstream code generation.
 
-- Keep descriptions concise (one sentence)
+### Top-level entity/VO description
+
+Every entity or value object must include a **top-level `description`**: one or two concise sentences explaining its role in the domain.
+
+- For **aggregate roots**: explain what the aggregate represents and its lifecycle responsibility (e.g., "Aggregate root that represents a customer purchase and tracks its fulfilment lifecycle from placement to delivery.")
+- For **value objects**: explain its semantics and note that it's replaced as a whole (e.g., "Value object describing a physical postal location; immutable and replaced as a whole.")
+- For **related entities** (non-root entities within an aggregate): explain what they represent and how they relate to the aggregate root
+
+### Field description
+
+Every field must include a `description`: a single concise sentence (ideally under 120 characters) describing what the attribute represents in the domain.
+
+- Do NOT restate the field name — explain meaning, purpose, or role
+- For `id` fields: describe what the entity identifier references (e.g., "Unique identifier of the order")
+- For relationship fields: describe the nature of the relationship (e.g., "Line items included in this order")
 - Use business language, not technical jargon
-- Explain the "what" and "why", not the "how"
 
 ```json
-{ "name": "customerId", "dataType": "string", "description": "Unique identifier of the customer placing the order", "exampleData": ["cust-10", "cust-22", "cust-07"], "isRequired": true }
+{ "name": "customerId", "dataType": "string", "description": "Customer who placed the order", "exampleData": ["cust-10", "cust-22", "cust-07"], "isRequired": true }
 ```
 
 ## Entity Example
@@ -107,6 +129,7 @@ Every field SHOULD include a `description` that briefly explains the field's pur
 ```json
 {
   "name": "Order",
+  "description": "Aggregate root that represents a customer purchase and tracks its fulfilment lifecycle from placement to delivery.",
   "boundedContext": "Order Management",
   "fields": [
     { "name": "id", "dataType": "string", "description": "Unique identifier of the order", "exampleData": ["ord-001", "ord-002", "ord-003"], "isRequired": true },
@@ -125,6 +148,7 @@ Every field SHOULD include a `description` that briefly explains the field's pur
 ```json
 {
   "name": "Address",
+  "description": "Value object describing a physical postal location; immutable and replaced as a whole.",
   "boundedContext": "Order Management",
   "fields": [
     { "name": "street", "dataType": "string", "description": "Street name and number", "exampleData": ["123 Maple Ave", "456 Oak St", "789 Pine Rd"], "isRequired": true },

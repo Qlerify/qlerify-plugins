@@ -72,15 +72,25 @@ Examples: `cartItem`, `shippingAddress`, `appliedPromotion`
 
 ## Important Rules
 
-- Use only fields essential to execute the command (usually 4-8 fields)
+### Identifier rules
+- **Always include the `id` of the aggregate root** as a command argument when that entity already exists (e.g., `UpdateProduct`, `DeleteCustomer`). The aggregate root id field must be named exactly `id`, not `entityNameId`. When first creating the aggregate root, do NOT include an `id`.
+- **When updating an underlying related entity**, include the `id` of that related entity inside its own nested structure to identify which specific instance is being updated. For new (not-yet-existing) related entities, do NOT include an `id`.
+- **Deep nesting id walk**: when updating an underlying nested related entity (or replacing a value object) that is two levels below the aggregate root, include the id of the aggregate root AND the id of the first-level intermediate entity. This lets the backend walk down the hierarchy and find the exact instance.
+- **Value objects never have an `id`** — they are identified by their attributes, not by a unique identifier. VOs are immutable and replaced as a whole.
+
+### Field placement
+- Only place an attribute inside a nested structure if it genuinely belongs to that entity or VO (don't smuggle unrelated fields down)
 - Reuse identical field names consistently across commands
+- Field names should match entity attributes — avoid generic names like `options`, `data`, `params`, `payload`, or `config`
+
+### General
+- Include only the fields essential to execute the command
+- The number of input fields per step varies, typically between 1 and 10
 - Field names: camelCase, max 30 characters
 - Do NOT include UI-specific, technical, or derived fields
 - Prefer business-meaningful names aligned with domain language
-- Field names should match entity attributes — avoid generic names like `options`, `data`, `params`
-- Include an `id` field when the command targets an existing entity (e.g., Update, Delete). Name it exactly `id`, not `entityNameId`. For create commands, do NOT include `id`. For value objects, do NOT include `id`
-- List mandatory fields in the `required` array — only fields that must have a value when submitted
-- When a field represents a mutated entity/value object, the field name MUST be the camelCase of that entity name. Its sub-fields should match the entity's attributes, up to 3 levels deep
+- List mandatory fields in the `required` array — only fields that must have a value when the command is invoked
+- When a field represents a mutated related entity/VO, the field name MUST be the camelCase form of that entity or value object name (e.g., `shippingMethod` for Shipping Method, `cartItem(s)` for Cart Item). Never use generic names like `options` or `data`.
 
 ## MCP Mapping
 
