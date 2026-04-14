@@ -26,6 +26,7 @@ A Qlerify workflow is a BPMN-style diagram combined with domain-driven design (D
 - **Read Models** — Data queries/views attached to events, representing API response payloads
 - **Domain Event Schemas** — Data payloads carried when events occur, capturing the essential facts about what happened
 - **Bounded Contexts** — Logical boundaries grouping related entities, mapping to deployment/service boundaries
+- **Groups** — Optional vertical columns representing phases or stages on the diagram (e.g., "Order Placement", "Fulfillment"). **Never create them unless the user explicitly asks** — see Phase 5.
 
 ### How elements reference each other
 
@@ -104,6 +105,7 @@ Optional parameters:
 
 Build the flow left-to-right, top-to-bottom, creating events in the order they occur in the
 business process. Do NOT set `aggregateRoot` yet — entities don't exist at this point.
+Do NOT set `group` either — groups are a cosmetic polish step handled later (Phase 5) and only if the user explicitly asks for them.
 
 ### Phase 3: Domain Model
 
@@ -293,10 +295,24 @@ commands/read models and their aggregate root entities.
 
 These steps are cosmetic and can be skipped if not needed.
 
-**Step 12 — Set colors (optional)**
+**Step 12 — Create groups (optional, only on explicit user request)**
 
-Events default to peach color. Only set colors if the user specifically requests color-coding.
-Available colors: peach, yellow, green, teal, blue, lavender, pink, gray.
+> **Do NOT create groups as part of a default workflow generation.** Skip this step entirely unless the user explicitly asks for them — e.g., "group the events into phases", "add groups for the checkout/fulfillment stages", "organize events into stages". A newly generated workflow should have zero groups by default.
+
+Groups organize events into visual vertical phases on the diagram. When the user asks for them:
+
+1. Call `create_group` for each phase, in the order they appear on the timeline.
+2. Assign events to groups using `update_domain_event` with the `group` parameter. Only set `group` on the **first event** that starts a new group — subsequent events in the same group inherit it automatically based on their position on the timeline.
+
+Common phase patterns (use these as inspiration only when the user asks):
+- E-commerce: "Browse & Cart", "Checkout", "Fulfillment"
+- Onboarding: "Registration", "Verification", "Setup", "Activation"
+
+**Step 13 — Set colors (optional, only on explicit user request)**
+
+> **Do NOT set colors as part of a default workflow generation.** Skip this step entirely unless the user explicitly asks for them — e.g., "color-code the events by lane", "make the automation events blue", "highlight the checkout events in green". A newly generated workflow should leave every event on its default peach color.
+
+When the user asks, call `update_domain_event` with the `color` parameter. Available colors: peach, yellow, green, teal, blue, lavender, pink, gray.
 
 ```
 update_domain_event(domainEvent: "#/domainEvents/OrderPlaced", color: "blue")
