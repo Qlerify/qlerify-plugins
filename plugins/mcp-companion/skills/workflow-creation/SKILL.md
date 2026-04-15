@@ -204,7 +204,14 @@ Read models represent what the API returns. Fields can be richer than command fi
 - **Use `relatedEntity` for composed response data** — nested objects make sense in responses (e.g., `guest` field with relatedEntity Guest containing `firstName`, `lastName`, `email`)
 - Name nested object fields as the entity name (`guest`, `hotel`, `room`), NOT with "Id" suffix
 
-**Step 9 — Create domain event schemas on events** *(see `references/domain-event-generation.md` for detailed field rules)*
+**Step 9 — Create domain event schemas on events (optional)** *(see `references/domain-event-generation.md` for detailed field rules)*
+
+> **Skip this step by default.** Domain event schemas describe the payload published when an event fires, which is only meaningful in **Event Sourcing** architectures where events are the source of truth. Only perform this step if:
+>
+> - The user explicitly asks for it (e.g., "add domain event schemas", "set up event payloads", "we need the event contracts"), OR
+> - You are reverse-engineering a codebase that already uses Event Sourcing (events are persisted and replayed to rebuild state)
+>
+> For regular CRUD/state-based applications, leave events without schemas — the workflow is complete without them. If unsure, ask the user before creating schemas.
 
 Call `create_domain_event_schema` for each event to define the data payload published when
 the event occurs. Each schema is automatically attached to an event via the required `domainEvent`
@@ -228,9 +235,9 @@ happened, not the full entity state:
 
 **Step 10 — Update entities with full fields** *(see `references/entity-generation.md` for detailed derivation rules)*
 
-Now that all commands, read models, and domain event schemas exist, update each entity with its
-real fields. At this point you have full visibility into every schema that references each entity,
-so you can derive the correct set of fields.
+Now that all commands and read models exist (plus any domain event schemas, if Step 9 was performed),
+update each entity with its real fields. At this point you have full visibility into every schema
+that references each entity, so you can derive the correct set of fields.
 
 ```
 update_entity(
@@ -322,8 +329,8 @@ update_domain_event(domainEvent: "#/domainEvents/OrderPlaced", color: "blue")
 
 - **One Aggregate Root card per event** — An event can only have one entity linked as aggregate root
 - **One Command card per event** — An event can only have one command
-- **One Domain Event card per event** — An event can only have one domain event schema
-- **Every event should have an aggregate root, a command, and a domain event schema** — No naked events
+- **One Domain Event card per event** — An event can only have one domain event schema (when one is created)
+- **Every event should have an aggregate root and a command** — No naked events. Domain event schemas are optional and only expected for Event Sourcing workflows (see Step 9)
 - **Read Model cards require cardinality** — Always specify "one-to-one" or "one-to-many"
 - **Lanes cannot be deleted if they contain events** — Move or delete events first
 - **Domain events require a lane** — Every event must be assigned to a lane
