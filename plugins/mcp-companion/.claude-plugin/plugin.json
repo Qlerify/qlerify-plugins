@@ -1,7 +1,7 @@
 {
   "name": "mcp-companion",
-  "description": "Teaches AI agents how to effectively use Qlerify's MCP server — domain model sync, fast data export, and more",
-  "version": "0.2.3",
+  "description": "Teaches AI agents how to plan and build Qlerify workflows via the MCP server — domain model sync, workflow creation, aggregate extraction, and fast data export",
+  "version": "0.3.0",
   "author": {
     "name": "Qlerify",
     "email": "support@qlerify.com"
@@ -13,7 +13,13 @@
     "domain-driven-design",
     "ddd",
     "domain-model",
+    "aggregate",
+    "event-storming",
+    "reverse-engineering",
+    "legacy-modernization",
+    "workflow",
     "sync",
+    "mcp",
     "qlerify"
   ]
 }
