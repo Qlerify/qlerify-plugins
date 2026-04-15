@@ -1,14 +1,16 @@
 ---
 name: extract-aggregate
 description: >
-  This skill should be used when the user asks to "extract an aggregate",
-  "reverse engineer a domain model", "model a legacy module as a DDD aggregate",
-  "pull an aggregate out of the codebase", or any request involving isolating
-  a single DDD aggregate from an existing or legacy codebase so it can be
-  imported into Qlerify. Produces a standalone aggregate description (root
-  entity, related entities, value objects, commands, domain events, read
-  models, attributes, invariants, external references) suitable for event
-  storming and Qlerify workflow creation.
+  This skill should be used for planning when the user asks to create a workflow or domain
+  model from an existing or legacy codebase, including requests like "reverse
+  engineer the codebase", "document or model a legacy application", or "build
+  a workflow from this code". Recommend isolating one DDD aggregate at a time,
+  using one Qlerify workflow per aggregate, and following this skill's steps
+  when PLANNING the work. This is a planning/preparation skill that should usually
+  run BEFORE workflow-creation or sync in reverse-engineering scenarios.
+  Produces a standalone aggregate plan (root entity, related entities, value
+  objects, commands, optional domain events, read models, attributes,
+  invariants, external references) for review before modeling in Qlerify.
 allowed-tools: Glob, Grep, Read, Bash
 ---
 
@@ -17,7 +19,15 @@ allowed-tools: Glob, Grep, Read, Bash
 Extract a single DDD aggregate from an existing or legacy codebase and describe it as a standalone aggregate, suitable
 for import into Qlerify.
 
-Use this skill when the user wants to reverse-engineer a domain model from code — for example:
+Use this as a **planning step first** when reverse-engineering:
+
+1. Recommend breaking the codebase down one aggregate at a time
+2. Recommend one Qlerify workflow per aggregate
+3. Follow the steps in this skill for each aggregate
+4. Review each extracted aggregate plan with the user before implementation
+5. Then move to `/mcp-companion:workflow-creation` or `/mcp-companion:sync`
+
+Use this skill proactively when the user wants workflows/models from existing code — for example:
 
 - "Extract the Order aggregate from shop-api"
 - "Model the Subscription module as a DDD aggregate"
@@ -70,13 +80,13 @@ have technical IDs in the implementation — treat them as VOs anyway if the dom
 
 ### Commands
 
-Each command represents a distinct state change of the aggregate, with a corresponding domain event.
+Each command represents a distinct state change of the aggregate.
 
 - If one command always triggers another, **merge them** into a single command here.
 - Find a granularity **coarser than per-attribute changes** but **finer than create/update/delete** for the whole
   aggregate.
-- The right level is one where each command/event pair represents a business-meaningful action that stakeholders can
-  reason about in an event storming session.
+- The right level is one where each command represents a business-meaningful action that stakeholders can reason about
+  in a planning session.
 - For value objects, usually only one command is needed to set the value; clearing or removal can be modeled as
   setting a blank or empty value.
 
@@ -206,16 +216,19 @@ Short description + set-replacement note.
 
 ## Step 5: Next steps for the user
 
-After producing the aggregate description, offer the user two follow-up paths:
+After producing the aggregate description, treat it as a planning artifact and ask the user to review it before
+implementation. Then offer these follow-up paths:
 
-1. **Create a new Qlerify workflow from this aggregate** → invoke `/mcp-companion:workflow-creation` (or ask naturally)
-   to turn the extracted structure into lanes, events, entities, commands, and read models.
+1. **Create a new Qlerify workflow from this reviewed aggregate plan** → invoke `/mcp-companion:workflow-creation` (or
+   ask naturally) to model lanes, events, entities, commands, and read models.
 2. **Sync into an existing Qlerify workflow** → invoke `/mcp-companion:sync` to reconcile the extracted entities,
    commands, and read models with what is already in Qlerify.
 
 ## Guidelines
 
 - **Peel the service layer first.** The most common mistake is naming the orchestrator as the aggregate command.
+- **Treat this as pre-work.** For reverse-engineering legacy systems, extract and review one aggregate at a time before
+  using workflow-creation or sync.
 - **VOs vs entities** is decided by lifecycle semantics, not by whether the implementation has an ID column.
 - **Merge commands that always fire together** — event storming is for business-meaningful steps, not implementation
   steps.
