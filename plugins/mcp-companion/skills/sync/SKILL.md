@@ -5,13 +5,18 @@ description: >
   "update Qlerify", "push changes to Qlerify", "sync schemas", "sync entities",
   "sync domain events", or after implementing features that add or change entities,
   API endpoints, domain events, database schemas, migrations, or Prisma/GraphQL
-  types. Syncs the local codebase's domain model with Qlerify.
+  types. For brownfield/legacy codebases with unclear boundaries, first extract
+  one aggregate at a time (use the extract-aggregate skill) before broad
+  sync operations. Syncs the local codebase's domain model with Qlerify.
 allowed-tools: Glob, Grep, Read
 ---
 
 # Sync Domain Model with Qlerify
 
 Sync the local codebase's domain model with Qlerify. Detect entities, commands, read models, and domain event schemas in code and ensure they match Qlerify.
+
+If this is a brownfield or legacy codebase and the aggregate boundaries are unclear, first
+extract one aggregate at a time (use the extract-aggregate skill), then run sync.
 
 ## Step 1: Identify the workflow
 

@@ -6,6 +6,9 @@ description: >
    "create BPMN diagram", "model a business process", "set up domain events",
    "add commands and read models to workflow", or any request involving building
    a Qlerify workflow from scratch or adding structural elements to an existing one.
+   If the user wants to model from an existing or legacy codebase, first extract
+   one aggregate at a time (use the extract-aggregate skill, typically one
+   workflow per aggregate), then continue with this skill.
    Provides the full creation sequence, tool ordering, and domain modeling guidance.
 allowed-tools: Read, Glob, Grep
 ---
@@ -14,6 +17,16 @@ allowed-tools: Read, Glob, Grep
 
 Build well-structured Qlerify workflows by following a specific tool sequence. Skipping steps
 or calling tools out of order leads to broken references and incomplete diagrams.
+
+## Reverse-engineering from existing code
+
+When the source of truth is an existing or legacy codebase, do not jump directly into workflow creation.
+First extract one aggregate at a time (use the extract-aggregate skill):
+
+1. Isolate one aggregate at a time
+2. Use one Qlerify workflow per aggregate
+3. Review the extracted aggregate plan with the user
+4. Then return to this skill to model the workflow
 
 ## Core Concepts
 

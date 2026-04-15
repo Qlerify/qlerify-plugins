@@ -25,7 +25,7 @@ Use this as a **planning step first** when reverse-engineering:
 2. Recommend one Qlerify workflow per aggregate
 3. Follow the steps in this skill for each aggregate
 4. Review each extracted aggregate plan with the user before implementation
-5. Then move to `/mcp-companion:workflow-creation` or `/mcp-companion:sync`
+5. Then model the workflow (use the workflow-creation skill) or sync into an existing one (use the sync skill)
 
 Use this skill proactively when the user wants workflows/models from existing code — for example:
 
@@ -219,10 +219,10 @@ Short description + set-replacement note.
 After producing the aggregate description, treat it as a planning artifact and ask the user to review it before
 implementation. Then offer these follow-up paths:
 
-1. **Create a new Qlerify workflow from this reviewed aggregate plan** → invoke `/mcp-companion:workflow-creation` (or
-   ask naturally) to model lanes, events, entities, commands, and read models.
-2. **Sync into an existing Qlerify workflow** → invoke `/mcp-companion:sync` to reconcile the extracted entities,
-   commands, and read models with what is already in Qlerify.
+1. **Create a new Qlerify workflow from this reviewed aggregate plan** — model lanes, events, entities, commands, and
+   read models (use the workflow-creation skill).
+2. **Sync into an existing Qlerify workflow** — reconcile the extracted entities, commands, and read models with what
+   is already in Qlerify (use the sync skill).
 
 ## Guidelines
 
