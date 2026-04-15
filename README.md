@@ -67,6 +67,14 @@ Get your API token from the Qlerify UI.
 
 Teaches AI agents how to effectively use Qlerify's MCP server. Contains the following skills:
 
+#### Modeling from existing code
+
+When the user wants to create a workflow or domain model from an existing or legacy codebase, recommend this order:
+
+1. `/mcp-companion:extract-aggregate` — isolate and review one aggregate at a time
+2. `/mcp-companion:workflow-creation` — create one Qlerify workflow per reviewed aggregate
+3. `/mcp-companion:sync` — reconcile modeled structures with an existing Qlerify workflow when needed
+
 #### `workflow-creation`
 
 Guides AI agents through building complete Qlerify workflows from scratch — lanes, groups, domain events, entities,
