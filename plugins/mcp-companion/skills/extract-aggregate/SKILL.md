@@ -153,8 +153,8 @@ Short description.
 
 ### Attributes
 | Name | Type | Required | Default | Description |
-|---|---|---|---|---|
-| ... | ... | ... | ... | ... |
+|------|------|----------|---------|-------------|
+| ...  | ...  | ...      | ...     | ...         |
 
 ## Related Entities
 
@@ -163,7 +163,8 @@ Short description.
 
 #### Attributes
 | Name | Type | Required | Default | Description |
-|---|---|---|---|---|
+|------|------|----------|---------|-------------|
+| ...  | ...  | ...      | ...     | ...         |
 
 ## Value Objects
 
@@ -172,29 +173,31 @@ Short description + set-replacement note.
 
 #### Attributes
 | Name | Type | Required | Default | Description |
-|---|---|---|---|---|
+|------|------|----------|---------|-------------|
+| ...  | ...  | ...      | ...     | ...         |
 
 ## Commands
-| Command | Triggered By | Fields | Notes |
-|---|---|---|---|
-| PlaceOrder | customer checkout | ... | ... |
+| Command    | Triggered By      | Fields | Notes |
+|------------|-------------------|--------|-------|
+| PlaceOrder | customer checkout | ...    | ...   |
 
 ## Domain Events (1:1 with commands)
-| Event | Emitted After | Carries |
-|---|---|---|
-| OrderPlaced | PlaceOrder | ... |
+| Event       | Emitted After | Carries |
+|-------------|---------------|---------|
+| OrderPlaced | PlaceOrder    | ...     |
 
 ## Read Models / Queries
 | Name | Returns | Computed Fields |
-|---|---|---|
+|------|---------|-----------------|
+| ...  | ...     | ...             |
 
 ## Invariants
 - ...
 
 ## External References
-| Field | Points To | Bounded Context |
-|---|---|---|
-| customerId | Customer | Customer Management |
+| Field      | Points To | Bounded Context     |
+|------------|-----------|---------------------|
+| customerId | Customer  | Customer Management |
 
 ## Out of Scope (noted for reference only)
 - Cross-aggregate orchestration X that calls into this aggregate
