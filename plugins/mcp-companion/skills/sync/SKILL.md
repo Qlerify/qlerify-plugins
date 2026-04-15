@@ -3,22 +3,21 @@ name: sync
 description: >
   This skill should be used when the user asks to "sync domain model",
   "update Qlerify", "push changes to Qlerify", "sync schemas", "sync entities",
-  or after implementing features that add or change entities, API endpoints,
-  database schemas, migrations, or Prisma/GraphQL types. Syncs the local
-  codebase's domain model with Qlerify.
+  "sync domain events", or after implementing features that add or change entities,
+  API endpoints, domain events, database schemas, migrations, or Prisma/GraphQL
+  types. Syncs the local codebase's domain model with Qlerify.
 allowed-tools: Glob, Grep, Read
 ---
 
 # Sync Domain Model with Qlerify
 
-Sync the local codebase's domain model with Qlerify. Detect entities, commands, and read models in code and ensure they
-match Qlerify.
+Sync the local codebase's domain model with Qlerify. Detect entities, commands, read models, and domain event schemas in code and ensure they match Qlerify.
 
 ## Step 1: Identify the workflow
 
 1. Call `list_workflows` to get all accessible workflows.
 2. Match by project name or ask the user which workflow to sync with.
-3. Call `get_workflow` to understand current state (events, entities, commands, read models, bounded contexts).
+3. Call `get_workflow` to understand current state (events, entities, commands, read models, domain event schemas, bounded contexts).
 
 ## Step 2: Scan codebase for domain objects
 
@@ -29,11 +28,13 @@ Scan for the following:
 - **Commands**: Functions or DTOs for state-changing operations (`CreateOrder`, `UpdateCustomer`, POST/PUT/DELETE
   endpoints).
 - **Read Models**: Query handlers or GET endpoints (`GetOrderById`, `ListProducts`).
+- **Domain Event Schemas**: Event classes, records, or DTOs representing published event payloads (`OrderPlacedEvent`, `PaymentConfirmedEvent`).
 
 Search patterns:
 - Models: `src/domain/`, `src/models/`, `src/entities/`, `**/entity.ts`, `**/model.ts`
 - Commands: `src/commands/`, `src/handlers/`, `**/command.ts`
 - Queries: `src/queries/`, `src/read-models/`, `**/query.ts`
+- Events: `src/events/`, `src/domain-events/`, `**/event.ts`, `**/*Event.ts`, `**/*Event.java`
 - API routes: `src/routes/`, `src/api/`, `src/controllers/`
 - Schemas: `prisma/schema.prisma`, `**/schema.graphql`, `**/migrations/`
 
@@ -41,7 +42,7 @@ Also check git diff for recently changed schema files to detect field-level chan
 
 ## Step 3: Compare and sync
 
-1. Call `get_workflow` to get all entities, commands, and read models from Qlerify.
+1. Call `get_workflow` to get all entities, commands, read models, and domain event schemas from Qlerify.
 2. Compare code vs Qlerify.
 3. For differences:
     - **New in code**: Create in Qlerify with proper fields and example data.
@@ -54,6 +55,7 @@ Summarize:
 - Entities created/updated/deleted
 - Commands created/updated/deleted
 - Read models created/updated/deleted
+- Domain event schemas created/updated/deleted
 - Fields added/modified/removed
 - Conflicts needing manual resolution
 
@@ -85,3 +87,11 @@ When creating read models:
 - Link to entity via `entity` ($ref path)
 - Fields represent both inputs and outputs: set `isFilter: true` for query parameters, omit for returned data fields
 - Use nested `fields` with `relatedEntity` ($ref path) for return fields that reference other entities
+
+When creating domain event schemas:
+- Name matching the event (e.g., "Order Placed", "Payment Confirmed")
+- Link to the aggregate root entity via `entity` ($ref path)
+- Include identifier fields (e.g., `orderId`) so event consumers can correlate
+- Include timestamp fields when timing is business-relevant (e.g., `placedAt`, `confirmedAt`)
+- Capture essential facts about the state change, not the full entity state
+- Use nested `fields` with `relatedEntity` ($ref path) for embedded event data
