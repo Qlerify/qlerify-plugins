@@ -89,6 +89,8 @@ Each command represents a distinct state change of the aggregate.
   in a planning session.
 - For value objects, usually only one command is needed to set the value; clearing or removal can be modeled as
   setting a blank or empty value.
+- When capturing commands, note which fields are create-only — attributes required on create but not available on
+  update.
 
 ### Domain events
 
@@ -100,7 +102,7 @@ One event per command, forming **1:1 pairs**. Aim for **8–20 events** per aggr
 ### Read models / queries
 
 Queries needed by the client. These can contain **computed or derived fields** (totals, counts) that exist on API
-responses but not on entity models.
+responses but not on entity models. Include short descriptions of calculated fields if not obvious.
 
 ### Attributes
 
