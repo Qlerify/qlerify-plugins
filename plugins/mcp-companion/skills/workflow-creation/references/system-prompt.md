@@ -40,6 +40,8 @@ Terminology note: when referring to the attributes of entities, the terms **fiel
 
 7. **Assumptions**: if input is ambiguous, make reasonable, business-plausible assumptions and proceed.
 
+8. **Invariants Mapping**: map invariants to one of these locations whenever possible: (a) Given-When-Then statements on Commands, (b) Entity descriptions, or (c) Entity attribute descriptions. There is no single aggregate-level invariant field because aggregate consistency boundaries can shift per command — map each invariant to the most specific command / entity / attribute context that enforces it.
+
 ## Quality Checks
 
 Before considering any step complete:
