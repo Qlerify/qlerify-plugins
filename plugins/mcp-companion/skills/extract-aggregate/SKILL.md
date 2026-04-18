@@ -102,7 +102,8 @@ One event per command, forming **1:1 pairs**. Aim for **8–20 events** per aggr
 ### Read models / queries
 
 Queries needed by the client. These can contain **computed or derived fields** (totals, counts) that exist on API
-responses but not on entity models. Include short descriptions of calculated fields if not obvious.
+responses but not on entity models. When a field is clearly projection-only (totals, rollups), prefer listing it
+here instead of also on entity/VO attribute tables. Include short descriptions of calculated fields if not obvious.
 
 ### Attributes
 
