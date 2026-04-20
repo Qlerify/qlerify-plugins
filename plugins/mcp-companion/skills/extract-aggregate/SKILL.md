@@ -124,6 +124,16 @@ Business rules, for example:
 - Snapshot patterns (e.g. product data copied at add-time)
 - Computed-only fields
 
+### Tests
+
+For each aggregate command, extract tests that validate the command's behavior **at the aggregate boundary**. Use
+business language, not code identifiers or framework details.
+
+- If only service-level or orchestration tests exist, extract only the part that proves aggregate behavior; ignore
+  external orchestration.
+- Example: "Given no Order exists, When the caller creates an Order with a valid customer id, Then an Order is
+  returned with an assigned id."
+
 ### External references
 
 Fields pointing to **other aggregates by ID only** (e.g. `customerId` → `Customer` in a separate bounded context).
