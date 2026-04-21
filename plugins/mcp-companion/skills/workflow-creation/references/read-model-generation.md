@@ -9,7 +9,17 @@ For each domain event, the read model defines a query that displays the current 
 ## Field Design
 
 ### Simple Fields
-Primitive values returned by the query. Tag with `isFilter: true` if the field is a search/filter parameter: `{ "name": "status", "isFilter": true }`, `{ "name": "totalAmount" }`
+Primitive values returned by the query. Tag with `isFilter: true` if the field is a search/filter parameter: `{ "name": "status", "isFilter": true }`, `{ "name": "totalAmount", "computed": true }`
+
+### Computed Fields
+When a read model needs a field that is not stored on the queried entity because it is calculated at runtime — aggregates (totals, counts, sums), derived values, or composed/formatted values — mark it with `computed: true`. This tells the system the field is legitimate even though no matching entity field exists. Do not use `computed` for plain entity attributes, filter parameters, or related entity references.
+```json
+[
+  { "name": "totalAmount", "computed": true },
+  { "name": "itemCount", "computed": true }
+]
+```
+
 
 ### ID Reference Fields (cross-context)
 When referencing an entity in another bounded context, use `{entityName}Id` — no nested fields: `{ "name": "customerId", "isFilter": true }`
@@ -41,6 +51,7 @@ When the response includes data from a related entity, use `relatedEntity` with 
 - Link to the source entity via the `entity` parameter — this should be the entity that is the starting point for building the query
 - The queried entity should preferably match an entity from the workflow. If the read model clearly suggests a different entity, use that name
 - Read model fields should preferably match the fields of the queried entity from the specification
+- When a field legitimately can't match the entity because it is calculated at runtime (totals, counts, derived values), mark it with `computed: true` instead of forcing it onto the entity
 - Field names: camelCase, max 30 characters
 - Usually 2-8 fields are sufficient
 
@@ -70,7 +81,7 @@ The read model shows the actor the data they need BEFORE executing the command:
         { "name": "unitPrice" }
       ]
     },
-    { "name": "totalAmount" }
+    { "name": "totalAmount", "computed": true }
   ]
 }
 ```
