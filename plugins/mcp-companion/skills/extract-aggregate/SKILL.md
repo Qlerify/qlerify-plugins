@@ -102,7 +102,8 @@ One event per command, forming **1:1 pairs**. Aim for **8–20 events** per aggr
 ### Read models / queries
 
 Queries needed by the client. These can contain **computed or derived fields** (totals, counts) that exist on API
-responses but not on entity models. Include short descriptions of calculated fields if not obvious.
+responses but not on entity models. When a field is clearly projection-only (totals, rollups), prefer listing it
+here instead of also on entity/VO attribute tables. Include short descriptions of calculated fields if not obvious.
 
 ### Attributes
 
@@ -122,6 +123,16 @@ Business rules, for example:
 - Set-replacement semantics (e.g. "adjustments are always replaced atomically — you cannot patch a single one")
 - Snapshot patterns (e.g. product data copied at add-time)
 - Computed-only fields
+
+### Tests
+
+For each aggregate command, extract tests that validate the command's behavior **at the aggregate boundary**. Use
+business language, not code identifiers or framework details.
+
+- If only service-level or orchestration tests exist, extract only the part that proves aggregate behavior; ignore
+  external orchestration.
+- Example: "Given no Order exists, When the caller creates an Order with a valid customer id, Then an Order is
+  returned with an assigned id."
 
 ### External references
 
