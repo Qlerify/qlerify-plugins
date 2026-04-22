@@ -40,6 +40,12 @@ When the response includes data from a related entity, use `relatedEntity` with 
 }
 ```
 
+## Descriptions (optional)
+
+- Provide a short read-model-level `description` (one sentence) explaining what the query returns and when it is used. Omit it when the read model name already makes the intent obvious.
+- Field-level `description` is optional. Add a short description ONLY on fields where the meaning, purpose, or filter/computed intent is non-obvious from the name. Omit `description` on self-explanatory fields (e.g. `id`, `name`, `email`).
+- Descriptions apply at both the top-level fields and nested sub-fields.
+
 ## Important Rules
 
 - Include the `id` of the queried entity — name it just `id`, not `entityNameId`
@@ -66,11 +72,16 @@ The read model shows the actor the data they need BEFORE executing the command:
 ```json
 {
   "name": "Get Cart Details",
+  "description": "Full cart contents shown to the shopper before checkout.",
   "entity": "#/schemas/entities/Cart",
   "cardinality": "one-to-one",
   "fields": [
     { "name": "id" },
-    { "name": "status", "isFilter": true },
+    {
+      "name": "status",
+      "isFilter": true,
+      "description": "Current cart status (e.g. active, checked-out), used for filtering."
+    },
     {
       "name": "cartItem",
       "relatedEntity": "#/schemas/entities/CartItem",
@@ -78,10 +89,17 @@ The read model shows the actor the data they need BEFORE executing the command:
       "fields": [
         { "name": "productName" },
         { "name": "quantity" },
-        { "name": "unitPrice" }
+        {
+          "name": "unitPrice",
+          "description": "Price per unit at the time the item was added."
+        }
       ]
     },
-    { "name": "totalAmount", "computed": true }
+    {
+      "name": "totalAmount",
+      "computed": true,
+      "description": "Sum of line-item prices, computed at read time."
+    }
   ]
 }
 ```
