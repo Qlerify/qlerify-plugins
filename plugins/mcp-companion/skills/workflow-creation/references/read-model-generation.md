@@ -42,9 +42,13 @@ When the response includes data from a related entity, use `relatedEntity` with 
 
 ## Descriptions (optional)
 
-- Provide a short read-model-level `description` (one sentence) explaining what the query returns and when it is used. Omit it when the read model name already makes the intent obvious.
+- Provide a short read-model-level `description` (one sentence) explaining what the query returns and when it is used. Omit it when the queried entity and fields already make the intent obvious.
 - Field-level `description` is optional. Add a short description ONLY on fields where the meaning, purpose, or filter/computed intent is non-obvious from the name. Omit `description` on self-explanatory fields (e.g. `id`, `name`, `email`).
 - Descriptions apply at both the top-level fields and nested sub-fields.
+
+## Nesting Depth
+
+Nesting is limited to ONE level deep. Inside an already-nested field (e.g., `items`, `cartItems`, `shippingAddress`), sub-fields must NOT themselves contain a `fields` array. If a sub-field represents a related entity or collection (e.g., `adjustments`, `taxLines`), include it by name and `cardinality` only — do NOT specify its `fields`.
 
 ## Important Rules
 
