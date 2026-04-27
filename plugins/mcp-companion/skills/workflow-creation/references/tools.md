@@ -147,20 +147,24 @@ deleted event's parent, preserving the flow.
 Entities represent persistent domain objects — the data structures at the heart of the domain
 model. Use `get_workflow` to see existing entities with their fields.
 
-### create_entity
-Define a new domain entity with typed fields. Each field needs a name, data type, and ideally
-example data to make the model concrete.
+### create_entities
+Define one or more domain entities in a single atomic workflow write. Pass an array of entities;
+for a single entity, pass an array with one element. One bulk call avoids the version-conflict
+races that arise when creating entities in parallel.
 
 - `workflowId` — Identifies the workflow
-- `name` — Entity name (e.g., "Order", "Customer")
-- `boundedContext` — Optional. Name of the bounded context to assign this entity to
-- `fields` — Array of field definitions:
-  - `name` — Field name in camelCase
-  - `dataType` — One of: `string`, `number`, `boolean`, `object`
-  - `exampleData` — Array of 3 realistic example values
-  - `isRequired` — Whether the field is mandatory (true/false)
-  - `relatedEntity` — `$ref` path to another entity (e.g., `#/schemas/entities/OrderItem`)
-  - `cardinality` — `"one-to-one"` or `"one-to-many"` for fields with `relatedEntity`
+- `entities` — Array of entity definitions, each with:
+  - `name` — Entity name (e.g., "Order", "Customer")
+  - `boundedContext` — Optional. Name of the bounded context to assign this entity to
+  - `fields` — Array of field definitions:
+    - `name` — Field name in camelCase
+    - `dataType` — One of: `string`, `number`, `boolean`, `object`
+    - `exampleData` — Array of 3 realistic example values
+    - `isRequired` — Whether the field is mandatory (true/false)
+    - `relatedEntity` — `$ref` path to another entity (e.g., `#/schemas/entities/OrderItem`)
+    - `cardinality` — `"one-to-one"` or `"one-to-many"` for fields with `relatedEntity`
+
+The whole batch is atomic: if any entity fails validation (e.g. duplicate name), none are created.
 
 ### update_entity
 Modify an entity — rename it, add/update/remove fields, or change its bounded context assignment.
@@ -186,21 +190,24 @@ Commands represent state-changing operations — actions that modify data. They 
 POST/PUT/DELETE API endpoints or write operations. Commands are created directly on domain events
 and automatically create a Command card on that event. Use `get_workflow` to see existing commands.
 
-### create_command
-Define a new command with input fields, attached to a specific domain event. Auto-creates
-a Command card on the event. Commands represent **API request payloads** — what a caller sends
-to perform an action.
+### create_commands
+Define one or more commands in a single atomic workflow write. Pass an array of commands, each
+bound to its own domain event; for a single command, pass an array with one element. Auto-creates
+a Command card on each event. Commands represent **API request payloads** — what a caller sends
+to perform an action. Each event can have only ONE Command card, so each command in the batch
+must target a different event.
 
 - `workflowId` — Identifies the workflow
-- `domainEvent` — `$ref` path to the event (e.g., `#/domainEvents/OrderPlaced`). Required.
-- `name` — Command name with verb prefix and spaces (e.g., "Create Order", "Cancel Subscription")
-- `fields` — Array of field definitions:
-  - `name` — Field name in camelCase
-  - `isRequired` — Whether the field is required/mandatory
-  - `hideInForm` — Set true for auto-generated fields like IDs and timestamps
-  - `relatedEntity` — `$ref` path to a related entity. **Only use for embedded collections** where multiple fields from the related entity are needed (e.g., `orderItems`). Do NOT use for simple ID references — use a plain string field instead (e.g., `customerId`, `bookingId`).
-  - `cardinality` — `"one-to-one"` or `"one-to-many"` for fields with `relatedEntity`
-  - `fields` — Nested field names from the related entity (for reference fields)
+- `commands` — Array of command definitions, each with:
+  - `domainEvent` — `$ref` path to the event (e.g., `#/domainEvents/OrderPlaced`). Required.
+  - `name` — Command name with verb prefix and spaces (e.g., "Create Order", "Cancel Subscription")
+  - `fields` — Array of field definitions:
+    - `name` — Field name in camelCase
+    - `isRequired` — Whether the field is required/mandatory
+    - `hideInForm` — Set true for auto-generated fields like IDs and timestamps
+    - `relatedEntity` — `$ref` path to a related entity. **Only use for embedded collections** where multiple fields from the related entity are needed (e.g., `orderItems`). Do NOT use for simple ID references — use a plain string field instead (e.g., `customerId`, `bookingId`).
+    - `cardinality` — `"one-to-one"` or `"one-to-many"` for fields with `relatedEntity`
+    - `fields` — Nested field names from the related entity (for reference fields)
 
 **Field design rules for commands:**
 
@@ -233,20 +240,23 @@ state). Domain event schemas are created directly on domain events and automatic
 a Domain Event card on that event. Use `get_workflow` to see existing domain event schemas
 under `schemas/domainEvents/`.
 
-### create_domain_event_schema
-Define a new domain event schema with payload fields, attached to a specific domain event.
-Auto-creates a Domain Event card on the event. The schema represents the data that is published
-when the event fires.
+### create_domain_event_schemas
+Define one or more domain event schemas in a single atomic workflow write. Pass an array of
+schemas, each bound to its own domain event; for a single schema, pass an array with one element.
+Auto-creates a Domain Event card on each event. Schemas represent the data payload published when
+the event fires. Each event can have only ONE Domain Event card, so each schema in the batch must
+target a different event.
 
 - `workflowId` — Identifies the workflow
-- `domainEvent` — `$ref` path to the event (e.g., `#/domainEvents/OrderPlaced`). Required.
-- `name` — Schema name with spaces (e.g., "Order Placed", "Payment Processed")
-- `entity` — `$ref` path to the aggregate root entity that produces this event (e.g., `#/schemas/entities/Order`). Recommended.
-- `fields` — Array of field definitions representing the event payload:
-  - `name` — Field name in camelCase
-  - `relatedEntity` — `$ref` path to a related entity. Use for nested event data (e.g., order items carried in the event).
-  - `cardinality` — `"one-to-one"` or `"one-to-many"` for fields with `relatedEntity`
-  - `fields` — Nested field names from the related entity (for reference fields)
+- `domainEventSchemas` — Array of schema definitions, each with:
+  - `domainEvent` — `$ref` path to the event (e.g., `#/domainEvents/OrderPlaced`). Required.
+  - `name` — Schema name with spaces (e.g., "Order Placed", "Payment Processed")
+  - `entity` — `$ref` path to the aggregate root entity that produces this event (e.g., `#/schemas/entities/Order`). Recommended.
+  - `fields` — Array of field definitions representing the event payload:
+    - `name` — Field name in camelCase
+    - `relatedEntity` — `$ref` path to a related entity. Use for nested event data (e.g., order items carried in the event).
+    - `cardinality` — `"one-to-one"` or `"one-to-many"` for fields with `relatedEntity`
+    - `fields` — Nested field names from the related entity (for reference fields)
 
 **Field design rules for domain event schemas:**
 
@@ -280,22 +290,31 @@ correspond to GET API endpoints or query operations. Read models are created dir
 events and automatically create a Read Model card on that event. Use `get_workflow` to see
 existing read models.
 
-### create_read_model
+### create_read_models
 
-Define a new read model/query, attached to a specific domain event. Auto-creates a Read Model
-card on the event. Read models represent **API response payloads** — what the API returns to callers.
+Define one or more read models/queries in a single atomic workflow write. Pass an array of read
+models, each bound to its own domain event; for a single read model, pass an array with one element.
+Auto-creates a Read Model card on each event. Read models represent **API response payloads** — what
+the API returns to callers. Each event can have only ONE Read Model card, so each read model in the
+batch must target a different event.
+
+**Reuse:** if two entries in the batch (or an entry and an existing workflow query) share the same
+`name`, both events are linked to the same underlying Query schema and their fields are unioned.
+Use this to share a query across multiple events (e.g., "Get Order Details" on several events along
+an Order's lifecycle).
 
 - `workflowId` — Identifies the workflow
-- `domainEvent` — `$ref` path to the event (e.g., `#/domainEvents/OrderPlaced`). Required.
-- `name` — Read model name with spaces (e.g., "Get Order Details", "List Active Products", "Search Customers")
-- `cardinality` — Required. `"one-to-one"` for single-record queries, `"one-to-many"` for list queries.
-- `entity` — `$ref` path to the source entity (e.g., `#/schemas/entities/Order`). Recommended.
-- `fields` — Array of field definitions representing the full query contract (both inputs and outputs):
-  - `name` — Field name in camelCase
-  - `isFilter` — Set true for query parameters/filters, omit for returned data fields. Filter fields can be cross-entity parameters (e.g., `checkInDate`, `priceMin`) — this is valid.
-  - `relatedEntity` — `$ref` path to a related entity. Use for **composed response data** — nested objects in API responses (e.g., `guest` with `firstName`, `lastName`, `email` from Guest entity). Name these fields as the entity name (`guest`, `hotel`), not with "Id" suffix.
-  - `cardinality` — `"one-to-one"` or `"one-to-many"` for fields with `relatedEntity`
-  - `fields` — Nested field names from the related entity (for reference fields)
+- `readModels` — Array of read model definitions, each with:
+  - `domainEvent` — `$ref` path to the event (e.g., `#/domainEvents/OrderPlaced`). Required.
+  - `name` — Read model name with spaces (e.g., "Get Order Details", "List Active Products", "Search Customers")
+  - `cardinality` — Required. `"one-to-one"` for single-record queries, `"one-to-many"` for list queries.
+  - `entity` — `$ref` path to the source entity (e.g., `#/schemas/entities/Order`). Recommended.
+  - `fields` — Array of field definitions representing the full query contract (both inputs and outputs):
+    - `name` — Field name in camelCase
+    - `isFilter` — Set true for query parameters/filters, omit for returned data fields. Filter fields can be cross-entity parameters (e.g., `checkInDate`, `priceMin`) — this is valid.
+    - `relatedEntity` — `$ref` path to a related entity. Use for **composed response data** — nested objects in API responses (e.g., `guest` with `firstName`, `lastName`, `email` from Guest entity). Name these fields as the entity name (`guest`, `hotel`), not with "Id" suffix.
+    - `cardinality` — `"one-to-one"` or `"one-to-many"` for fields with `relatedEntity`
+    - `fields` — Nested field names from the related entity (for reference fields)
 
 ### update_read_model
 Modify a read model — rename, change source entity, or modify fields. Field operations are

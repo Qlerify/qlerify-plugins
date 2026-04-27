@@ -146,16 +146,20 @@ Create bounded contexts BEFORE entities, so entities can be assigned during crea
 Create entities with just their name and bounded context — **no fields yet**. This establishes
 `$ref` paths so commands, read models, and domain event schemas can reference them.
 
-```
-create_entity(workflowId: "wf-1", name: "Order", boundedContext: "Order Management")
--> { $ref: "#/schemas/entities/Order" }
+Call `create_entities` **once** with all entities in a single array. This is a bulk tool — one atomic
+workflow write creates all entities together, which avoids version-conflict races.
 
-create_entity(workflowId: "wf-1", name: "Order Item", boundedContext: "Order Management")
--> { $ref: "#/schemas/entities/OrderItem" }
+```
+create_entities(workflowId: "wf-1", entities: [
+  { name: "Order", boundedContext: "Order Management" },
+  { name: "Order Item", boundedContext: "Order Management" },
+  { name: "Customer", boundedContext: "Order Management" }
+])
+-> creates $ref paths: #/schemas/entities/Order, #/schemas/entities/OrderItem, #/schemas/entities/Customer
 ```
 
 Identify ALL entities and value objects the domain needs — aggregate roots, child entities,
-and value objects. Create them all now so their `$ref` paths are available for subsequent steps.
+and value objects — and create them in a single call.
 
 **Step 6 — Link aggregate roots to events**
 
@@ -169,13 +173,14 @@ update_domain_event(domainEvent: "#/domainEvents/OrderPlaced", aggregateRoot: "#
 
 **Step 7 — Create commands on events** *(see `references/command-generation.md` for detailed field rules)*
 
-Call `create_command` for each state-changing operation. Each command is automatically attached
-to an event via the required `domainEvent` parameter (a `$ref` path like `#/domainEvents/OrderPlaced`).
-This auto-creates the Command card on that event.
+Call `create_commands` **once** with all commands in a single array. Each command is automatically
+attached to its event via the required `domainEvent` parameter (a `$ref` path like `#/domainEvents/OrderPlaced`).
+This auto-creates the Command card on that event. Single bulk call creates all commands + cards atomically.
 
 - Name with action verbs and spaces (e.g., "Create Order", "Cancel Subscription")
 - Mark auto-generated fields (IDs, timestamps) with `hideInForm: true`
 - Use `relatedEntity` on nested fields pointing to the empty entities created in Step 5
+- Each command must target a different event (one Command card per event limit)
 
 **Every event should have a command.** After creating commands, call `get_workflow` and verify there
 are no events without a command card. Events without commands represent gaps in the business process.
@@ -193,21 +198,24 @@ Commands represent what a caller sends to perform an action.
 
 **Step 8 — Create read models on events** *(see `references/read-model-generation.md` for detailed field rules)*
 
-Call `create_read_model` for each data retrieval view. Each read model is automatically attached
-to an event via the required `domainEvent` parameter. This auto-creates the Read Model card.
+Call `create_read_models` **once** with all read models in a single array. Each read model is
+automatically attached to its event via the required `domainEvent` parameter. This auto-creates
+the Read Model card. Single bulk call creates all read models + cards atomically.
 
 - Name with Get/List/Search prefixes and spaces (e.g., "Get Order Details", "List Customer Orders")
 - Link to the source entity via `entity` ($ref path like `#/schemas/entities/Order`)
 - Requires `cardinality`: `"one-to-one"` for single-record queries, `"one-to-many"` for list queries
 - Use `relatedEntity` on nested fields pointing to the empty entities created in Step 5
+- Each read model targets a different event (one Read Model card per event limit)
 
 **Reuse read models across events when it makes sense.**
 
 Multiple events in the same workflow often need the same query — for example, several events along an Order's lifecycle all need "Get Order
-Details". Instead of creating a separate near-duplicate read model per event, just call`create_read_model` again with the **same name** on
-the new event. The backend recognizes the existing query, attaches the new event's card to the same shared schema, and merges any new fields
-you passed into that schema. Judge reuse case-by-case: if a new event genuinely needs the same data shape and the same queried entity as an
-existing one, reuse it (same name); if the shape or entity differs, pick a different name and create a distinct read model.
+Details". Instead of creating a separate near-duplicate read model per event, include another entry in the `create_read_models` array with the
+**same `name`** on the new event. The backend recognizes the shared name, attaches each event's card to the same underlying Query schema, and
+merges any new fields you passed into that schema (union by field name, recursive for nested fields). Judge reuse case-by-case: if a new event
+genuinely needs the same data shape and the same queried entity as an existing one, reuse the same name; if the shape or entity differs, pick
+a different name and create a distinct read model.
 
 **Read model field rules (API response payloads):**
 
@@ -227,14 +235,15 @@ Read models represent what the API returns. Fields can be richer than command fi
 >
 > For regular CRUD/state-based applications, leave events without schemas — the workflow is complete without them. If unsure, ask the user before creating schemas.
 
-Call `create_domain_event_schema` for each event to define the data payload published when
-the event occurs. Each schema is automatically attached to an event via the required `domainEvent`
-parameter. This auto-creates the Domain Event card.
+Call `create_domain_event_schemas` **once** with all schemas in a single array. Each schema is
+automatically attached to its event via the required `domainEvent` parameter. This auto-creates
+the Domain Event card. Single bulk call creates all schemas + cards atomically.
 
 - Name matching the event (e.g., "Order Created", "Payment Processed")
 - Link to the aggregate root entity via `entity` ($ref path like `#/schemas/entities/Order`)
 - Include fields that capture the essential facts about the state change
 - Use `relatedEntity` on nested fields pointing to the empty entities created in Step 5
+- Each schema targets a different event (one Domain Event card per event limit)
 
 **Domain event schema field rules (event payload):**
 

@@ -100,7 +100,7 @@ Examples: `cartItem`, `shippingAddress`, `appliedPromotion`
 
 ## MCP Mapping
 
-When using `create_command` or `update_command`:
+When using `create_commands` or `update_command`:
 - Category 1 fields → `{ name: "quantity" }`
 - Category 2 fields → `{ name: "productId" }`
 - Category 3 fields → `{ name: "customer" }` (no relatedEntity, no nested fields)
