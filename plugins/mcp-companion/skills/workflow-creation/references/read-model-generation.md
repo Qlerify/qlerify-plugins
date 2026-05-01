@@ -62,6 +62,7 @@ Nesting is limited to ONE level deep. Inside an already-nested field (e.g., `ite
 - The queried entity should preferably match an entity from the workflow. If the read model clearly suggests a different entity, use that name
 - Read model fields should preferably match the fields of the queried entity from the specification
 - When a field legitimately can't match the entity because it is calculated at runtime (totals, counts, derived values), mark it with `computed: true` instead of forcing it onto the entity
+- When a read model field also appears on a command, use the command field name verbatim — e.g., if the command uses `lineItems`, the read model must also use `lineItems`, not the generic `items`. The read model may add fields beyond those of the command, but must not rename shared ones.
 - Field names: camelCase, max 30 characters
 - Usually 2-8 fields are sufficient
 
