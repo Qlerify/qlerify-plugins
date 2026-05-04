@@ -182,8 +182,9 @@ are no events without a command card. Events without commands represent gaps in 
 
 **Command field rules (API request payloads):**
 
-Commands represent what a caller sends to perform an action. Fields should be flat and simple:
+Commands represent what a caller sends to perform an action.
 
+- **Mirror the aggregate hierarchy** — the command's argument structure must mirror the structure of the entities and VOs inside the aggregate and their attribute names. Even if user input or source documentation prescribes a flat command structure, restructure to mirror the nested aggregate hierarchy
 - **Use plain fields for ID references:** `bookingId` (string), `hotelId` (string), `customerId` (string). Do NOT use `relatedEntity` for simple ID lookups — it creates nonsensical nested structures like `{ hotelId: { id: "123" } }` instead of the correct `{ hotelId: "123" }`
 - **Only use `relatedEntity` on commands for embedded collections** where you need to send multiple fields from a related entity (e.g., `orderItems` with `productName`, `quantity`, `unitPrice`)
 - **Commands support up to 3 levels of nesting** — a field can have nested `fields` with `relatedEntity`, and those nested fields can also have their own `fields` with `relatedEntity` for deeper structures

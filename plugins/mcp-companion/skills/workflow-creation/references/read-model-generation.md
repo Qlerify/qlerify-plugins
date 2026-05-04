@@ -40,6 +40,16 @@ When the response includes data from a related entity, use `relatedEntity` with 
 }
 ```
 
+## Descriptions (optional)
+
+- Provide a short read-model-level `description` (one sentence) explaining what the query returns and when it is used. Omit it when the queried entity and fields already make the intent obvious.
+- Field-level `description` is optional. Add a short description ONLY on fields where the meaning, purpose, or filter/computed intent is non-obvious from the name. Omit `description` on self-explanatory fields (e.g. `id`, `name`, `email`).
+- Descriptions apply at both the top-level fields and nested sub-fields.
+
+## Nesting Depth
+
+Nesting is limited to ONE level deep. Inside an already-nested field (e.g., `items`, `cartItems`, `shippingAddress`), sub-fields must NOT themselves contain a `fields` array. If a sub-field represents a related entity or collection (e.g., `adjustments`, `taxLines`), include it by name and `cardinality` only — do NOT specify its `fields`.
+
 ## Important Rules
 
 - Include the `id` of the queried entity — name it just `id`, not `entityNameId`
@@ -52,6 +62,7 @@ When the response includes data from a related entity, use `relatedEntity` with 
 - The queried entity should preferably match an entity from the workflow. If the read model clearly suggests a different entity, use that name
 - Read model fields should preferably match the fields of the queried entity from the specification
 - When a field legitimately can't match the entity because it is calculated at runtime (totals, counts, derived values), mark it with `computed: true` instead of forcing it onto the entity
+- When a read model field also appears on a command, use the command field name verbatim — e.g., if the command uses `lineItems`, the read model must also use `lineItems`, not the generic `items`. The read model may add fields beyond those of the command, but must not rename shared ones.
 - Field names: camelCase, max 30 characters
 - Usually 2-8 fields are sufficient
 
@@ -66,11 +77,16 @@ The read model shows the actor the data they need BEFORE executing the command:
 ```json
 {
   "name": "Get Cart Details",
+  "description": "Full cart contents shown to the shopper before checkout.",
   "entity": "#/schemas/entities/Cart",
   "cardinality": "one-to-one",
   "fields": [
     { "name": "id" },
-    { "name": "status", "isFilter": true },
+    {
+      "name": "status",
+      "isFilter": true,
+      "description": "Current cart status (e.g. active, checked-out), used for filtering."
+    },
     {
       "name": "cartItem",
       "relatedEntity": "#/schemas/entities/CartItem",
@@ -78,10 +94,17 @@ The read model shows the actor the data they need BEFORE executing the command:
       "fields": [
         { "name": "productName" },
         { "name": "quantity" },
-        { "name": "unitPrice" }
+        {
+          "name": "unitPrice",
+          "description": "Price per unit at the time the item was added."
+        }
       ]
     },
-    { "name": "totalAmount", "computed": true }
+    {
+      "name": "totalAmount",
+      "computed": true,
+      "description": "Sum of line-item prices, computed at read time."
+    }
   ]
 }
 ```

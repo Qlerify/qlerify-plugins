@@ -6,6 +6,12 @@ This is how Qlerify internally generates command schemas. Follow these rules whe
 
 For each domain event, the command defines the set of input fields required to invoke the action on the aggregate. Think of each command as a UX input form (wireframe-style) that the actor fills in and submits.
 
+## Core Principle: Mirror the Aggregate
+
+The command's argument structure must always mirror the structure of the entities and VOs inside the aggregate and their attribute names. Even if the user input explicitly prescribes a flat command structure, make sure to mirror the nested structure of the aggregate.
+
+This applies even for batch operations that update many nested items — mirror all nested levels rather than collapsing into a flat array.
+
 ## The 4 Field Categories
 
 Every command field belongs to exactly one category:
@@ -90,7 +96,7 @@ Examples: `cartItem`, `shippingAddress`, `appliedPromotion`
 - Do NOT include UI-specific, technical, or derived fields
 - Prefer business-meaningful names aligned with domain language
 - List mandatory fields in the `required` array — only fields that must have a value when the command is invoked
-- When a field represents a mutated related entity/VO, the field name MUST be the camelCase form of that entity or value object name (e.g., `shippingMethod` for Shipping Method, `cartItem(s)` for Cart Item). Never use generic names like `options` or `data`.
+- When a field represents a mutated related entity/VO, the field name MUST be the camelCase form of that entity or value object name (e.g., `shippingMethod` for Shipping Method, `cartItem(s)` for Cart Item). Never use generic names like `options` or `data`. This applies even when the source uses a shorter or more generic name — e.g., if the source describes a Cart with an `items` collection of Line Items, the command field must still be `cartItems` (or `lineItems`), not `items`.
 
 ## MCP Mapping
 
