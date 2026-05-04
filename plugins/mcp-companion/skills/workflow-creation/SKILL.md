@@ -67,7 +67,7 @@ Event names are converted to PascalCase `$ref` keys:
 Use only alphanumeric characters and spaces in event names. If you use hyphens, call `get_workflow`
 afterward to verify the actual `$ref` key before referencing it in subsequent calls.
 
-**Note:** Gateway events (`bpmn:ExclusiveGateway`) may not appear in the `get_workflow` domainEvents section.
+**Note:** Gateway events (`decision`) may not appear in the `get_workflow` domainEvents section.
 If you need to reference a gateway, call `get_workflow` to discover its actual `$ref` path, or use a clean
 name without special characters and infer the PascalCase key.
 
@@ -109,11 +109,14 @@ Call `create_lane` for each actor. Aim for 2-4 lanes.
 **Step 3 — Create domain events** *(see `references/event-generation.md` for naming and chronology rules)*
 
 Build the event flow by chaining calls to `create_domain_event`. Each event needs:
+
+- `description` — Aggregate Name + Space + Past Tense Verb
 - `lane` — The lane name (e.g., "Customer")
 - `follows` — A `$ref` path to the preceding event, or `"start"` for flow entry points
-- `type` — Either `bpmn:Task` (regular event) or `bpmn:ExclusiveGateway` (decision diamond)
+- `type` — Either `domainEvent` (regular event) or `decision` (decision diamond)
 
 Optional parameters:
+
 - `acceptanceCriteria` — Array of Given-When-Then acceptance criteria strings
 
 Build the flow left-to-right, top-to-bottom, creating events in the order they occur in the
@@ -129,10 +132,9 @@ Create bounded contexts BEFORE entities, so entities can be assigned during crea
 
 **Bounded context design rules:**
 
-- A bounded context maps to a **microservice or standalone service deployment boundary** — don't create more than you would actually deploy as separate services
-- For small/medium workflows (< 10 entities, single team), **one bounded context wrapping everything is fine**
+- A bounded context often maps to a **microservice or to a module inside a modular monolith**
 - Only split into multiple BCs when there are genuinely independent domains with clear interaction boundaries
-- Ask: "Would a team realistically build and deploy this as a separate service?" If not → same BC
+- Ask: "Could a team realistically build and deploy this as a separate service?" If not → same BC
 - Over-splitting creates unnecessary inter-service complexity (distributed transactions, API contracts, eventual consistency)
 - Common pattern: start with 1 BC, split later when the domain grows and clear boundaries emerge
 
@@ -141,9 +143,9 @@ Create bounded contexts BEFORE entities, so entities can be assigned during crea
 - Hotel Booking (6 entities): 1 BC — "Hotel Booking"
 - Large E-commerce Platform (20+ entities): 3-4 BCs — "Order Management", "Inventory", "Customer Management", "Payments"
 
-**Step 5 — Create empty entities**
+**Step 5 — Generate entity and value object names without attributes**
 
-Create entities with just their name and bounded context — **no fields yet**. This establishes
+Create entities and value objects with just their name and bounded context — **no fields yet**. This establishes
 `$ref` paths so commands, read models, and domain event schemas can reference them.
 
 ```
@@ -152,9 +154,12 @@ create_entity(workflowId: "wf-1", name: "Order", boundedContext: "Order Manageme
 
 create_entity(workflowId: "wf-1", name: "Order Item", boundedContext: "Order Management")
 -> { $ref: "#/schemas/entities/OrderItem" }
+
+create_entity(workflowId: "wf-1", name: "Address", boundedContext: "Order Management")
+-> { $ref: "#/schemas/valueObjects/Address" }
 ```
 
-Identify ALL entities and value objects the domain needs — aggregate roots, child entities,
+Identify ALL entities and value objects the domain needs — aggregate root entities, related or associated entities,
 and value objects. Create them all now so their `$ref` paths are available for subsequent steps.
 
 **Step 6 — Link aggregate roots to events**
@@ -169,27 +174,23 @@ update_domain_event(domainEvent: "#/domainEvents/OrderPlaced", aggregateRoot: "#
 
 **Step 7 — Create commands on events** *(see `references/command-generation.md` for detailed field rules)*
 
-Call `create_command` for each state-changing operation. Each command is automatically attached
-to an event via the required `domainEvent` parameter (a `$ref` path like `#/domainEvents/OrderPlaced`).
-This auto-creates the Command card on that event.
+Call `create_command` for each state-changing operation. Commands and domain events have a one-to-one relationship. Associate a command with an event via the required `domainEvent` parameter (a `$ref` path like `#/domainEvents/OrderPlaced`).
+A command is attached to a domain event using a card on that event.
 
-- Name with action verbs and spaces (e.g., "Create Order", "Cancel Subscription")
-- Mark auto-generated fields (IDs, timestamps) with `hideInForm: true`
-- Use `relatedEntity` on nested fields pointing to the empty entities created in Step 5
+- Name commands using action verbs and spaces (e.g., "Create Order", "Cancel Subscription")
+- Use `relatedEntity` when an attribute holds related entities or value objects
+
+For each domain event, specify the name and arguments (also referred to as fields, attributes or properties) of the command that produces the event. Think of the command attributes as information fields that the actor (human or automation) fills in and submits. Each field name must be in camelCase. Commands are always invoked on aggregates through the aggregate root. The command attributes on the first level correspond to attributes on the aggregate root. Fields can be nested up to two levels down from the aggregate root and should be nested when updating underlying related entities or value objects. The command's argument structure must always mirror the structure of the entities and VOs inside the aggregate and their attribute names. Even if the user input explicitly prescribes a flat command structure, make sure to mirror the nested structure of the aggregate. Remember that VOs always carry all their attributes and have no id field. (While mirroring the internal aggregate structure in the command might not be recommended as a best practice in DDD, we choose this tradeoff to increase transparency when modeling.) Model each command attribute according to one of the following 4 attribute categories and rules:
+
+1. Simple Attributes (Primitive Values): Implicitly typed as string, number, or boolean. Use this for basic input values. No nested sub-fields. Examples: comment, quantity, isApproved. Usually mapped to simple attributes of the aggregate root.
+2. References (ID Only): Implicitly typed as string. Use this when referencing an existing entity from another bounded context. Field name must end with Id. No nested sub-fields. Represents a reference only (no mutation of referenced entity). Examples: userId, paymentId, productId. Usually a string attribute on the aggregate root.
+3. Referenced Entity or Value Object (same bounded context): Implicitly typed as object but must never contain any nested sub-fields. Can be a single reference or a collection; set `cardinality` to `"one-to-one"` for a single reference and `"one-to-many"` for a collection. Use this when the referenced entity or value object lives within the same bounded context but outside the current aggregate's consistency boundary, and is not mutated. Unlike a Category 2 reference, the structural attributes of the referenced entity or value object are known (although not included here in the command); unlike Category 4, it is not mutated. Field name must be in camelCase without Id suffix. Do not model any nested sub-fields in your reply. The absence of nested sub-fields shows that we are not mutating the related entity or value object (mutations use Category 4). Omit the Id suffix, since the technical decision of how the reference is implemented is a later concern. Examples: currency, country, shippingMethod.
+4. Nested Related Entity or Value Object to Be Mutated: Implicitly typed as an object. It must always contain at least one nested sub-field. It may be a single object or a collection; set `cardinality` to `"one-to-one"` for a single object and `"one-to-many"` for a collection. Use this when creating or updating one or more nested entities or VOs inside the aggregate. This field name must be identical to the camelCase form of the targeted nested entity or VO name. Never use generic or implementation-specific command argument names such as options, data, params, or payload when targeting an underlying entity or VO. The nested sub-field names must be identical to the attribute names of the targeted related entity or VO. Nested attributes may themselves be Category 4 fields, with their own second level of nested sub-fields. For example, if the aggregate has an entity/VO structure with three levels — order => orderItems => taxRate — then the command setTaxRate should mirror all levels in its argument structure: setTaxRate({ id: "order-123", orderItems: [{ id: "item-456", taxRate: { percentage: 25, countryCode: "SE" } }] }). Note that the id fields are named exactly id and that the value object has no id. Follow this pattern even for batch operations that update multiple nested items: mirror all nested levels in the command structure.
 
 **Every event should have a command.** After creating commands, call `get_workflow` and verify there
 are no events without a command card. Events without commands represent gaps in the business process.
 
-**Command field rules (API request payloads):**
-
-Commands represent what a caller sends to perform an action.
-
-- **Mirror the aggregate hierarchy** — the command's argument structure must mirror the structure of the entities and VOs inside the aggregate and their attribute names. Even if user input or source documentation prescribes a flat command structure, restructure to mirror the nested aggregate hierarchy
-- **Use plain fields for ID references:** `bookingId` (string), `hotelId` (string), `customerId` (string). Do NOT use `relatedEntity` for simple ID lookups — it creates nonsensical nested structures like `{ hotelId: { id: "123" } }` instead of the correct `{ hotelId: "123" }`
-- **Only use `relatedEntity` on commands for embedded collections** where you need to send multiple fields from a related entity (e.g., `orderItems` with `productName`, `quantity`, `unitPrice`)
-- **Commands support up to 3 levels of nesting** — a field can have nested `fields` with `relatedEntity`, and those nested fields can also have their own `fields` with `relatedEntity` for deeper structures
 - **Search/filter parameters do NOT belong on commands** — they belong on Read Models with `isFilter: true`
-- **NEVER combine an "Id" suffix field name with `relatedEntity`** — if the field ends in "Id", it's a flat string reference, not a nested object
 
 **Step 8 — Create read models on events** *(see `references/read-model-generation.md` for detailed field rules)*
 
@@ -296,12 +297,14 @@ commands/read models and their aggregate root entities.
 **Do NOT use severity (MAJOR vs MINOR) as the sole deciding factor.** Both need judgment. Some "MAJOR" issues can be valid; some "MINOR" issues should be fixed.
 
 **Common real problems to fix:**
+
 - **Command field not on entity when it should be stored** → Add the missing field to the entity via `update_entity`, or remove the field from the command via `update_command`
 - **Missing entity relationship** that the business domain requires → Add `relatedEntity` field to entity via `update_entity`
 - **Denormalized fields on commands** (e.g., `guestEmail` when `guestId` already exists) → Replace with flat ID ref and let the service look up related data internally
 - **Typos or inconsistent naming** between command/read model and entity fields → Rename for consistency
 
 **Common legitimate patterns to leave as-is:**
+
 - **Calculated/derived fields on read models** (e.g., `total`, `subtotal`, `taxTotal`, `shippingTotal` on a "Get Cart Totals" query) — these are computed at runtime from entity fields, not stored on the entity. `FIELD_NOT_IN_ENTITY` warnings on these are expected and correct
 - **Aggregated fields on read models** (e.g., `orderCount`, `averageRating`, `totalSpent`) — same principle: computed from queries over other data
 - **Cross-entity filter parameters** on read models (e.g., `checkInDate` on a Hotel search, `minPrice` on a Product search) — filter fields for search/query parameters don't need to exist on the entity
@@ -326,6 +329,7 @@ Groups organize events into visual vertical phases on the diagram. When the user
 2. Assign events to groups using `update_domain_event` with the `group` parameter. Only set `group` on the **first event** that starts a new group — subsequent events in the same group inherit it automatically based on their position on the timeline.
 
 Common phase patterns (use these as inspiration only when the user asks):
+
 - E-commerce: "Browse & Cart", "Checkout", "Fulfillment"
 - Onboarding: "Registration", "Verification", "Setup", "Activation"
 
@@ -353,8 +357,9 @@ update_domain_event(domainEvent: "#/domainEvents/OrderPlaced", color: "blue")
 
 ## `relatedEntity` Usage Summary
 
+
 | Context                       | Use `relatedEntity`?                          | Example                                     |
-|-------------------------------|-----------------------------------------------|---------------------------------------------|
+| ----------------------------- | --------------------------------------------- | ------------------------------------------- |
 | Command: simple ID lookup     | **NO** — use flat string field                | `bookingId: "bk-001"`                       |
 | Command: embedded collection  | **YES** — multiple fields needed              | `orderItems: [{ productName, qty, price }]` |
 | Read Model: composed response | **YES** — nested joined data                  | `guest: { firstName, lastName, email }`     |
@@ -362,6 +367,7 @@ update_domain_event(domainEvent: "#/domainEvents/OrderPlaced", color: "blue")
 | Domain Event: embedded data   | **YES** — nested event payload data           | `orderItems: [{ productId, qty, price }]`   |
 | Domain Event: ID reference    | **NO** — use flat field                       | `orderId`, `customerId`                     |
 | Entity: relationship          | **YES** — defines data model links            | `order → OrderItem (one-to-many)`           |
+
 
 **Naming rule:** If using `relatedEntity`, name the field as the entity (`guest`, `hotel`, `orderItems`).
 If it's a flat ID reference, name it with "Id" suffix (`guestId`, `hotelId`). Never combine "Id" suffix
@@ -399,6 +405,7 @@ Flow: Customer/Admin actions trigger events, Automation handles cross-service co
 ### Reference Files
 
 Consult these for detailed rules when creating specific element types:
+
 - **`references/system-prompt.md`** — DDD/event modeling expert context, naming conventions, character limits, quality checks
 - **`references/event-generation.md`** — Event naming rules, role conventions, chronology, gateway patterns
 - **`references/command-generation.md`** — The 4 command field categories, naming rules, 3-level nesting guidelines
@@ -410,4 +417,6 @@ Consult these for detailed rules when creating specific element types:
 ### Example Files
 
 For a complete worked example showing all steps with realistic tool calls and data:
+
 - **`examples/ecommerce-workflow.md`** — End-to-end e-commerce order workflow creation: empty entities first, then commands/read models/domain events referencing them, entity fields derived last, validation loop
+

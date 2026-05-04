@@ -37,7 +37,7 @@ Do NOT set `aggregateRoot` yet — entities don't exist. Do NOT set `group` — 
 create_domain_event(
   workflowId: "wf-1", projectId: "proj-1",
   description: "Item Added to Cart",
-  type: "bpmn:Task",
+  type: "domainEvent",
   lane: "Customer",
   follows: "start"
 )
@@ -46,7 +46,7 @@ create_domain_event(
 create_domain_event(
   workflowId: "wf-1", projectId: "proj-1",
   description: "Order Placed",
-  type: "bpmn:Task",
+  type: "domainEvent",
   lane: "Customer",
   follows: "#/domainEvents/ItemAddedToCart"
 )
@@ -55,7 +55,7 @@ create_domain_event(
 create_domain_event(
   workflowId: "wf-1", projectId: "proj-1",
   description: "Payment Outcome",
-  type: "bpmn:ExclusiveGateway",
+  type: "decision",
   lane: "Automation",
   follows: "#/domainEvents/OrderPlaced"
 )
@@ -64,7 +64,7 @@ create_domain_event(
 create_domain_event(
   workflowId: "wf-1", projectId: "proj-1",
   description: "Payment Confirmed",
-  type: "bpmn:Task",
+  type: "domainEvent",
   lane: "Automation",
   follows: "#/domainEvents/PaymentOutcome"
 )
@@ -77,7 +77,7 @@ update_domain_event(workflowId: "wf-1", projectId: "proj-1",
 create_domain_event(
   workflowId: "wf-1", projectId: "proj-1",
   description: "Payment Failed",
-  type: "bpmn:Task",
+  type: "domainEvent",
   lane: "Automation",
   follows: "#/domainEvents/PaymentOutcome"
 )
@@ -89,7 +89,7 @@ update_domain_event(workflowId: "wf-1", projectId: "proj-1",
 create_domain_event(
   workflowId: "wf-1", projectId: "proj-1",
   description: "Order Shipped",
-  type: "bpmn:Task",
+  type: "domainEvent",
   lane: "Warehouse Staff",
   follows: "#/domainEvents/PaymentConfirmed"
 )
