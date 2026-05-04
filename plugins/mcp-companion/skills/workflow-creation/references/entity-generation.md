@@ -9,11 +9,13 @@ Generate all entities (aggregate roots) and value objects involved in the execut
 ## Entities vs Value Objects
 
 **Entities** have their own identity and lifecycle. They are referenced by ID from other entities.
+
 - MUST have `id` as the first field
 - MUST include `id` in the `required` array
 - Examples: Customer, Order, Product, Cart Item
 
 **Value Objects** are defined only by their attributes — no `id` field.
+
 - Must NOT have an `id` field
 - Derive from nested structures in commands without a lifecycle and persistent identity
 - Examples: Money, Address, Adjustment
@@ -21,30 +23,39 @@ Generate all entities (aggregate roots) and value objects involved in the execut
 ## Critical Rules
 
 ### Explicit Field Inclusion
+
 For every command that targets an aggregate, include ALL command attributes in an entity or value object. Every command attribute needs a corresponding attribute on an entity/value object as its "destination". No command attribute should be left out or ignored.
 
 ### Merge Command Fields
+
 When an entity is targeted by multiple commands, assemble ALL unique command attributes from all associated commands. The resulting entity attributes should be the **union** of all unique command attributes.
 
 ### No Field Filtering
+
 Include ALL command attributes without exception. Do NOT filter or omit:
+
 - Timestamp fields (e.g., `createdAt`, `pickedAt`, `deliveredAt`)
 - URL fields (e.g., `shippingLabelUrl`)
 - Signature fields (e.g., `deliverySignature`)
 - Note fields (e.g., `deliveryNotes`)
 
 ### Step-by-Step Derivation
+
 1. Identify the input data/arguments for each command
 2. Determine which entity acts as the aggregate root and its associated entities/value objects
 3. Extract all unique fields from these commands and include them on the appropriate entity/value object
 
 ### Handling Nested Command Fields
+
 When a command has a field with nested sub-fields (e.g., `shippingAddress` containing street, city, postalCode, country), create a corresponding entity or value object with a matching name:
+
 - Command field `shippingAddress` → Entity/Value Object "Shipping Address"
 - Include ALL the nested sub-fields as attributes
 
 ### Aggregate Root References to Nested Structures
+
 The aggregate root entity must reference nested structures with the **EXACT SAME ATTRIBUTE NAME** as the command field:
+
 - Command field `shippingAddress` → aggregate root field `shippingAddress` (NOT `shippingAddressId`)
 - Set `dataType: "object"` and `relatedEntity` to the referenced entity
 
@@ -66,7 +77,9 @@ When the source material includes database table definitions (rather than comman
 ## Relationship Rules
 
 ### Same bounded context (relatedEntity)
+
 Name the field as the entity in camelCase (singular or plural):
+
 ```json
 [
   { "name": "orderItems", "dataType": "object", "relatedEntity": "#/schemas/entities/OrderItem", "cardinality": "one-to-many" },
@@ -75,7 +88,9 @@ Name the field as the entity in camelCase (singular or plural):
 ```
 
 ### Cross-context reference (flat ID)
+
 Name the field as `{entityName}Id` with `dataType: "string"`:
+
 ```json
 [
   { "name": "customerId", "dataType": "string" },
