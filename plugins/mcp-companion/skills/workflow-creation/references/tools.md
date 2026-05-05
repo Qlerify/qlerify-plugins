@@ -50,9 +50,7 @@ one bounded context with entities. Useful for bootstrapping API implementations 
 
 ## Lane Tools
 
-Lanes are the horizontal swim lanes in the BPMN diagram. Each lane represents a **real-world actor
-role** (person) or **Automation** (system-triggered actions). Do NOT create lanes for internal
-services or technical components. Use `get_workflow` to see existing lanes.
+Lanes are the horizontal swim lanes on the Event Storming board. Lanes represent human actors or roles (Customer, Admin, Hotel Staff, Warehouse Worker) or the exact word **Automation** (used for system-triggered actions). Do NOT create lanes for internal services (Payment Service, Notification Service, Order Service, etc.) or technical components — these are bounded contexts. System-triggered actions (sending emails, processing payments, generating invoices, checking availability) belong in the **Automation** lane. Use `get_workflow` to see existing lanes.
 
 ### create_lane
 
@@ -110,9 +108,8 @@ Remove a group. The group must be empty — move or delete all events in it firs
 
 ## Domain Event Tools
 
-Domain events are the core elements of the BPMN diagram — they represent things that happen
-in the business process. Events are placed at the intersection of a lane and optionally a group.
-Use `get_workflow` to see existing events with their linked cards and schemas.
+Domain Events are the core building blocks in Event Storming and Event Modeling — they represent things that happen
+in the business process. Use `get_workflow` to see existing events with their linked cards and schemas.
 
 ### create_domain_event
 
@@ -133,7 +130,7 @@ make up the process flow.
 
 ### update_domain_event
 
-Modify an existing event — change its name, lane, color, aggregate root, or acceptance criteria.
+Modify an existing domain event — change its name, lane, color, aggregate root, or acceptance criteria.
 
 - `workflowId`, `projectId` — Identifies the workflow
 - `domainEvent` — `$ref` path to the event (e.g., `#/domainEvents/OrderPlaced`)
@@ -161,12 +158,12 @@ model. Use `get_workflow` to see existing entities with their fields.
 
 ### create_entity
 
-Define a new domain entity with typed fields. Each field needs a name, data type, and ideally
-example data to make the model concrete.
+Define a new domain entity or value object with typed fields. Each field needs a name, data type, and ideally
+example data to make the model concrete. Note: Value Objects are created with the same tool as entities but always without an id attribute. In the domain model, VOs have a separate path from entities based on the existence of an id field.
 
 - `workflowId` — Identifies the workflow
-- `name` — Entity name (e.g., "Order", "Customer")
-- `boundedContext` — Optional. Name of the bounded context to assign this entity to
+- `name` — Entity or VO name (e.g., "Order", "Customer")
+- `boundedContext` — Optional. Name of the bounded context to assign this entity / VO to
 - `fields` — Optional. Array of field definitions:
   - `name` — Field name in camelCase (entities must always have one attribute named exactly `id`; value objects must never have a field named `id`)
   - `dataType` — One of: `string`, `number`, `boolean`, `object`
@@ -202,8 +199,8 @@ Commands represent state-changing operations — actions that modify data. They 
 ### create_command
 
 Define a new command with input fields, attached to a specific domain event. Auto-creates
-a Command card on the event. Commands represent **API request payloads** — what a caller sends
-to perform an action.
+a Command card on the event. Commands with their attributes represent the information an actor submits
+to perform a state-changing action on an aggregate.
 
 - `workflowId` — Identifies the workflow
 - `domainEvent` — `$ref` path to the event (e.g., `#/domainEvents/OrderPlaced`). Required.

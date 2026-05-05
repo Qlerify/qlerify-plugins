@@ -30,16 +30,17 @@ First extract one aggregate at a time (use the extract-aggregate skill):
 
 ## Core Concepts
 
-A Qlerify workflow is a BPMN-style diagram combined with domain-driven design (DDD) elements:
+A Qlerify workflow is a structured (Software Design Level) Event Storming diagram combined with detailed elements and concepts from domain-driven design (DDD):
 
-- **Lanes** — Horizontal swim lanes representing real-world actor roles or automation (e.g., "Customer", "Hotel Staff", "Automation")
-- **Domain Events** — The core building blocks placed in lanes. Each event represents something that happens in the business process (e.g., "Order Created", "Payment Received")
-- **Entities** — Persistent domain objects (Aggregate Roots) with typed fields and relationships
-- **Commands** — State-changing operations attached to events, representing API request payloads
-- **Read Models** — Data queries/views attached to events, representing API response payloads
-- **Domain Event Schemas** — Data payloads carried when events occur, capturing the essential facts about what happened
-- **Bounded Contexts** — Logical boundaries grouping related entities, mapping to deployment/service boundaries
-- **Groups** — Optional vertical columns representing phases or stages on the diagram (e.g., "Order Placement", "Fulfillment"). **Never create them unless the user explicitly asks** — see Phase 5.
+- **Lanes** — Horizontal swim lanes representing actors that invoke commands. Either human actors such as "Customer" and "Hotel Staff", or systems. When a system is the actor, always use the lane name "Automation" — do NOT create lanes for internal services (Payment Service, Notification Service, Order Service, etc.), these are Bounded Contexts, not actors.
+- **Domain Events** — Always placed in sequence within lanes. Each event represents something that happened in a business process (e.g., "Order Created", "Payment Received"). Contains a verb in past tense. A domain event is the result of a role invoking a state-changing command on an aggregate. Valid: Order Created, Invoice Approved, Payment Cancelled. Invalid (no state change): Page Viewed, Form Opened. Domain Events are the starting point of the modeling process — they are usually created before entities, commands, or read models, which are all later linked or attached to events (through Cards).
+- **Entities** — An Entity is a domain object that is defined by its identity, not by its attributes. An entity must have an id attribute and a life cycle. Entities can have attributes and other related entities. Some entities play the role of aggregate root from the perspective of a given command. Examples: Order, Customer, Product.
+- **Value Objects** — A VO is a domain object that is defined by its attributes. A VO has no identity and is immutable (replaced as a whole when updated). Examples: Money (amount + currency), Address (street + city + postal code), Date Range (start date + end date). A VO must not have an id attribute.
+- **Commands** — A Command is a state-changing operation invoked on an aggregate and can trigger a domain event. Commands and domain events have a one-to-one relationship. Commands have arguments (also referred to as fields, attributes or properties) representing data that the actor (human or automation) submits. Examples: "Create Order", "Cancel Subscription", "Add Item to Cart".
+- **Read Models** — A Read Model represents the queries, projections or views used to provide the actor with the information needed before invoking a command (used for data retrieval and not state change). A Read Model can have attributes, including filter/search parameters and computed fields, and can have nested related entities or value objects as attributes. Examples: "Get Order Details", "Search Available Rooms", "List Customer Orders".
+- **Domain Event Schemas** — Define the structure and meaning of domain event payloads, capturing the essential facts about what happened in the domain.
+- **Bounded Contexts** — Logical boundaries that group related domain objects and business rules around a specific capability. They usually map to modules, services, or deployment boundaries. Examples: Order Management, Inventory, Customer Management, Payments.
+- **Groups** — Optional visual columns used only to help human viewers organize the diagram into phases or stages, such as Order Placement or Fulfillment. Groups carry no domain, ownership, or architectural meaning. Do not create groups unless the user explicitly asks for them — see Phase 5.
 
 ### How elements reference each other
 
@@ -48,11 +49,12 @@ where each element has a `$ref` path:
 
 - Domain events: `#/domainEvents/OrderPlaced`
 - Entities: `#/schemas/entities/Order`
+- Value Objects: `#/schemas/valueObjects/Address`
 - Commands: `#/schemas/commands/CreateOrder`
 - Read models: `#/schemas/queries/GetOrderDetails`
 - Domain event schemas: `#/schemas/domainEvents/OrderPlaced`
 
-Use these paths when creating commands, read models, domain event schemas, or referencing entities in fields.
+Use these paths when creating commands, read models, entities, value objects, domain event schemas, or referencing entities in fields.
 
 **Tip:** The workflow specification returned by `get_workflow` includes a `$schema` URL (e.g., `https://app.qlerify.com/schemas/domain-model/v1`). Fetch this JSON Schema to understand the full structure of the spec — field types, allowed values, and relationships between elements.
 
@@ -67,9 +69,8 @@ Event names are converted to PascalCase `$ref` keys:
 Use only alphanumeric characters and spaces in event names. If you use hyphens, call `get_workflow`
 afterward to verify the actual `$ref` key before referencing it in subsequent calls.
 
-**Note:** Gateway events (`decision`) may not appear in the `get_workflow` domainEvents section.
-If you need to reference a gateway, call `get_workflow` to discover its actual `$ref` path, or use a clean
-name without special characters and infer the PascalCase key.
+**Note:** Decisions (`decision`) are visualised as a separate shape on the event storming board taking up the same space as other events, but don't appear in the `get_workflow` domainEvents section. How to find a decision: a domain event is preceded by a decision shape if the domain event has a conditions attribute set. The name of the shape is hidden under the if property ("conditions":[{"after":{"$ref":"#/domainEvents/CustomerCreated"},"if":"Large Customer?","is":"YES"}]). If you need to reference a decision, call `get_workflow`, take the description from the "if" property, PascalCase it (drop spaces and punctuation, capitalize each word), and use it as the $ref segment. For example, a decision described as "Is order paid?" is referenced as #/domainEvents/IsOrderPaid.
+
 
 ## Creation Sequence
 
@@ -84,17 +85,12 @@ its current state. For a new workflow, call `create_workflow` with a descriptive
 
 **Step 2 — Create lanes**
 
-Every event must belong to a lane. Lanes represent **real-world actor roles** (people) or
-**Automation** (system-triggered actions). Do NOT create lanes for internal services or technical
-components.
+Every domain event must belong to a lane.
 
 Call `create_lane` for each actor. Aim for 2-4 lanes.
 
 **Lane design rules:**
-
-- Lanes are **people/roles** (Customer, Admin, Hotel Staff, Warehouse Worker) or **Automation** (any action triggered by the system without human intervention)
-- Do NOT create lanes for internal services (Payment Service, Notification Service, Order Service, etc.)
-- System-triggered actions (sending emails, processing payments, generating invoices, checking availability) belong in the **Automation** lane
+- See the section "Lane Tools" in `references/tools.md`.
 - Ask: "Is this a person who performs an action, or a system that runs automatically?" If the latter → Automation
 
 **Common patterns:**
@@ -102,7 +98,6 @@ Call `create_lane` for each actor. Aim for 2-4 lanes.
 - E-commerce: Customer, Warehouse Staff, Automation
 - Hotel Booking: Guest, Hotel Staff, Automation
 - HR Onboarding: Candidate, HR Manager, Automation
-- Order Management: Customer, Admin, Automation
 
 ### Phase 2: Event Flow
 
@@ -132,8 +127,6 @@ Create bounded contexts BEFORE entities, so entities can be assigned during crea
 
 **Bounded context design rules:**
 
-- A bounded context often maps to a **microservice or to a module inside a modular monolith**
-- Only split into multiple BCs when there are genuinely independent domains with clear interaction boundaries
 - Ask: "Could a team realistically build and deploy this as a separate service?" If not → same BC
 - Over-splitting creates unnecessary inter-service complexity (distributed transactions, API contracts, eventual consistency)
 - Common pattern: start with 1 BC, split later when the domain grows and clear boundaries emerge
@@ -141,12 +134,12 @@ Create bounded contexts BEFORE entities, so entities can be assigned during crea
 **Examples:**
 
 - Hotel Booking (6 entities): 1 BC — "Hotel Booking"
-- Large E-commerce Platform (20+ entities): 3-4 BCs — "Order Management", "Inventory", "Customer Management", "Payments"
+- Large E-commerce Platform (20+ entities): 4-5 BCs — "Product Catalog", "Order Management", "Inventory", "Customer Management", "Payments"
 
 **Step 5 — Generate entity and value object names without attributes**
 
 Create entities and value objects with just their name and bounded context — **no fields yet**. This establishes
-`$ref` paths so commands, read models, and domain event schemas can reference them.
+`$ref` paths so commands, read models, and domain event schemas can reference them. Although entities and VOs have separate paths in the schema, they are created with the same `create_entity` tool; the presence of an `id` field is the differentiator.
 
 ```
 create_entity(workflowId: "wf-1", name: "Order", boundedContext: "Order Management")
@@ -164,13 +157,13 @@ and value objects. Create them all now so their `$ref` paths are available for s
 
 **Step 6 — Link aggregate roots to events**
 
-Now that entities exist, link each event to its aggregate root entity:
+Now that all entities exist, although we have not created commands yet, identify the entities that are likely aggregate roots for the commands / domain events. The domain event often contains a hint. "Order Created" indicates that the Order entity is likely the aggregate root. Link each domain event to its aggregate root entity:
 
 ```
 update_domain_event(domainEvent: "#/domainEvents/OrderPlaced", aggregateRoot: "#/schemas/entities/Order")
 ```
 
-**Every event must have an aggregate root before proceeding.** This identifies which entity each event primarily affects.
+**Every event must be associated with an aggregate root before proceeding.**
 
 **Step 7 — Create commands on events** *(see `references/command-generation.md` for detailed field rules)*
 

@@ -6,9 +6,7 @@ For each domain event, the command defines the set of arguments required to invo
 
 ## Core Principle: Mirror the Aggregate
 
-The command's argument structure must always mirror the structure of the entities and VOs inside the aggregate and their attribute names. Even if the user input explicitly prescribes a flat command structure, make sure to mirror the nested structure of the aggregate.
-
-This applies even for batch operations that update many nested items — mirror all nested levels rather than collapsing into a flat array.
+The command's argument structure must always mirror the structure of the entities and VOs inside the aggregate and their attribute names. Even if the user input explicitly prescribes a flat command structure, make sure to mirror the nested structure of the aggregate. This applies even for operations that update multiple nested items — mirror all nested levels rather than collapsing into a flat array.
 
 ## The 4 Field Categories
 
@@ -65,20 +63,50 @@ Examples: `cartItem`, `shippingAddress`, `appliedPromotion`
 
 ```json
 {
-  "name": "cartItem",
-  "fields": [
-    { "name": "productId" },
-    { "name": "quantity" },
-    { "name": "unitPrice" },
-    {
-      "name": "adjustment",
-      "fields": [
-        { "name": "amount" },
-        { "name": "code" },
-        { "name": "description" }
-      ]
-    }
-  ]
+  "SetLineItemAdjustments": {
+    "required": [
+      "id",
+      "lineItems"
+    ],
+    "fields": [
+      {
+        "name": "id"
+      },
+      {
+        "name": "lineItems",
+        "relatedEntity": {
+          "$ref": "#/schemas/entities/LineItem"
+        },
+        "array": true,
+        "required": [
+          "id"
+        ],
+        "fields": [
+          {
+            "name": "id"
+          },
+          {
+            "name": "adjustments",
+            "array": true,
+            "relatedEntity": {
+              "$ref": "#/schemas/valueObjects/LineItemAdjustment"
+            },
+            "fields": [
+              {
+                "name": "amount"
+              },
+              {
+                "name": "code"
+              },
+              {
+                "name": "description"
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
 }
 ```
 
@@ -99,7 +127,6 @@ Examples: `cartItem`, `shippingAddress`, `appliedPromotion`
 
 ### General
 
-- Include only the fields essential to execute the command
 - The number of input fields per step varies, typically between 1 and 10
 - Field names: camelCase, max 30 characters
 - Do NOT include UI-specific, technical, or derived fields
@@ -113,7 +140,7 @@ When using `create_command` or `update_command`:
 
 - Category 1 fields → `{ name: "quantity" }`
 - Category 2 fields → `{ name: "productId" }`
-- Category 3 fields → `{ name: "customer" }` (no relatedEntity, no nested fields)
+- Category 3 fields → `{ name: "customer", relatedEntity: "#/schemas/entities/Customer", cardinality: "one-to-one" }` (no nested fields)
 - Category 4 fields → `{ name: "cartItem", relatedEntity: "#/schemas/entities/CartItem", cardinality: "one-to-many", fields: [...] }`
 
 The `relatedEntity` $ref is needed in MCP because there's no post-hoc name matching like the internal flow. The entity must already exist (created empty in Step 5).

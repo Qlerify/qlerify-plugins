@@ -9,15 +9,19 @@ For each domain event, the schema defines the data payload published when the ev
 ## Field Design
 
 ### Identifier Fields
+
 Include aggregate/entity IDs so event consumers can correlate the event: `orderId`, `customerId`, `cartId`
 
 ### Timestamp Fields
+
 Include when timing is business-relevant: `placedAt`, `completedAt`, `cancelledAt`
 
 ### Simple Data Fields
+
 Primitive values that capture what happened: `totalAmount`, `failureReason`, `status`
 
 ### Nested Data (embedded event payload)
+
 When the event carries complex data (e.g., order items), use nested fields with `relatedEntity`:
 
 ```json
@@ -49,6 +53,7 @@ When the event carries complex data (e.g., order items), use nested fields with 
 ## Examples
 
 **Simple event:**
+
 ```json
 {
   "name": "Order Placed",
@@ -63,6 +68,7 @@ When the event carries complex data (e.g., order items), use nested fields with 
 ```
 
 **Event with nested data:**
+
 ```json
 {
   "name": "Item Added to Cart",
@@ -82,3 +88,4 @@ When the event carries complex data (e.g., order items), use nested fields with 
   ]
 }
 ```
+
