@@ -187,30 +187,16 @@ are no events without a command card. Events without commands represent gaps in 
 
 **Step 8 — Create read models on events** *(see `references/read-model-generation.md` for detailed field rules)*
 
-Call `create_read_model` for each data retrieval view. Each read model is automatically attached
-to an event via the required `domainEvent` parameter. This auto-creates the Read Model card.
+Call `create_read_model` for each query / view / projection. Each read model is associated with a domain event using the required `domainEvent` parameter. The read model represents the input data needed by the actor BEFORE triggering the Command that in turn triggers the event.
 
 - Name with Get/List/Search prefixes and spaces (e.g., "Get Order Details", "List Customer Orders")
 - Link to the source entity via `entity` ($ref path like `#/schemas/entities/Order`)
-- Requires `cardinality`: `"one-to-one"` for single-record queries, `"one-to-many"` for list queries
-- Use `relatedEntity` on nested fields pointing to the empty entities created in Step 5
 
 **Reuse read models across events when it makes sense.**
 
 Multiple events in the same workflow often need the same query — for example, several events along an Order's lifecycle all need "Get Order
 Details". Instead of creating a separate near-duplicate read model per event, just call`create_read_model` again with the **same name** on
-the new event. The backend recognizes the existing query, attaches the new event's card to the same shared schema, and merges any new fields
-you passed into that schema. Judge reuse case-by-case: if a new event genuinely needs the same data shape and the same queried entity as an
-existing one, reuse it (same name); if the shape or entity differs, pick a different name and create a distinct read model.
-
-**Read model field rules (API response payloads):**
-
-Read models represent what the API returns. Fields can be richer than command fields:
-
-- Set `isFilter: true` for query parameters (what you search/filter by). Filter fields can be cross-entity parameters (e.g., `checkInDate`, `priceMin` on a hotel search) — this is expected and valid
-- Omit `isFilter` for returned data fields
-- **Use `relatedEntity` for composed response data** — nested objects make sense in responses (e.g., `guest` field with relatedEntity Guest containing `firstName`, `lastName`, `email`)
-- Name nested object fields as the entity name (`guest`, `hotel`, `room`), NOT with "Id" suffix
+the new event. The backend will merge any new fields into that same schema. Judge reuse case-by-case: if a new event genuinely needs the same data shape and the same queried entity as an existing one, reuse it (same name); if the shape or entity differs, pick a different name and create a distinct read model.
 
 **Step 9 — Create domain event schemas on events (optional)** *(see `references/domain-event-generation.md` for detailed field rules)*
 
