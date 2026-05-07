@@ -1,10 +1,8 @@
 # Entity Generation Guide
 
-This is how Qlerify internally generates entities and value objects. Follow these rules when updating entities with full fields (Step 10) via MCP tools.
-
 ## Purpose
 
-Generate all entities (aggregate roots) and value objects involved in the execution of all commands. Each command operates on an aggregate root entity, which may have associated entities and value objects.
+Generate all entities and value objects involved in the execution of all commands. Each command operates on an aggregate root entity, which may have associated entities and value objects.
 
 ## Entities vs Value Objects
 
@@ -12,7 +10,7 @@ Generate all entities (aggregate roots) and value objects involved in the execut
 
 - MUST have `id` as the first field
 - MUST include `id` in the `required` array
-- Examples: Customer, Order, Product, Cart Item
+- Examples: Customer, Order, Product, Cart
 
 **Value Objects** are defined only by their attributes — no `id` field.
 
@@ -47,17 +45,18 @@ Include ALL command attributes without exception. Do NOT filter or omit:
 
 ### Handling Nested Command Fields
 
-When a command has a field with nested sub-fields (e.g., `shippingAddress` containing street, city, postalCode, country), create a corresponding entity or value object with a matching name:
+When a command ("Create Order" operating on the aggregate root "Order") has a field with nested sub-fields (e.g., `shippingAddress` containing street, city, postalCode, country), create a corresponding attribute on the Order entity, and create an entity or value object with a matching name:
 
-- Command field `shippingAddress` → Entity/Value Object "Shipping Address"
+- Command field `shippingAddress` → We need an Entity or Value Object named "Shipping Address" or "Address"
 - Include ALL the nested sub-fields as attributes
 
 ### Aggregate Root References to Nested Structures
 
-The aggregate root entity must reference nested structures with the **EXACT SAME ATTRIBUTE NAME** as the command field:
+The aggregate root entity must reference nested structures with the **EXACT SAME ATTRIBUTE NAME** as the corresponding command field. For example, if the command "Create Order" (operating on the aggregate root "Order") has an attribute named `shippingAddress`, then the entity Order must have:
 
-- Command field `shippingAddress` → aggregate root field `shippingAddress` (NOT `shippingAddressId`)
-- Set `dataType: "object"` and `relatedEntity` to the referenced entity
+- A field named `shippingAddress` (NOT `shippingAddressId`)
+- With `dataType` set to `"object"`
+- And `relatedEntity` set to the referenced entity / VO "Shipping Address"
 
 ## Field Naming Rules
 
@@ -89,10 +88,11 @@ Name the field as the entity in camelCase (singular or plural):
 
 ### Cross-context reference (flat ID)
 
-Name the field as `{entityName}Id` with `dataType: "string"`:
+When referencing an entity that lives in a different bounded context, just use a string id, don't model the entity details. Name the field as `{entityName}Id` with `dataType: "string"`.
 
 ```json
 [
+  // when detailed customer and product information live in a different bounded context
   { "name": "customerId", "dataType": "string" },
   { "name": "productId", "dataType": "string" }
 ]

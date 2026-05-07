@@ -153,8 +153,7 @@ deleted event's parent, preserving the flow.
 
 ## Entity Tools
 
-Entities represent persistent domain objects — the data structures at the heart of the domain
-model. Use `get_workflow` to see existing entities with their fields.
+Entities are persistent domain objects. Value Objects are attribute-based types typically used within those entities as part of the domain model. Use `get_workflow` to see existing entities and value objects with their fields.
 
 ### create_entity
 

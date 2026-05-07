@@ -25,19 +25,19 @@ When a read model needs a field that is not stored on the queried entity because
 
 
 ### ID Reference Fields (cross-context)
-When a query attribute is an id string pointing to an entity in another bounded context, always use `Id` as suffix and never include nested fields. Use a separate query if you need to query data from multiple bounded contexts.
+When a query attribute is an id string pointing to an entity in another bounded context, always use `Id` as suffix and never include nested fields. Use a separate query if you need to query data from multiple bounded contexts. In the example below the user entity lives in another bounded context:
 ```json
 [
-  { "name": "userId" } // the user entity lives in another bounded context
+  { "name": "userId" }
 ]
 ```
 
 ### Nested Structures In Response Data
-When a query has a field that contains a nested structure of data from a different related entity or value object, other than the entity that is the starting point of the query, but in the same bounded context, set `relatedEntity` and include nested sub-fields. Name the top level field as the related entity / VO in camelCase WITHOUT an "Id" suffix:
+When a query has a field that contains a nested structure of data from a different related entity or value object, other than the entity that is the starting point of the query, but in the same bounded context, set `relatedEntity` and include nested sub-fields. Name the top level field as the related entity / VO in camelCase WITHOUT an "Id" suffix. Exception: when the same Entity/VO type fills multiple semantic roles in the response, use role-specific names instead (e.g., `shippingAddress` and `billingAddress` both referencing a VO named "Address"):
 
 ```json
 {
-  "name": "cartItem", // exact camelCase name of the entity / VO
+  "name": "cartItem",
   "relatedEntity": "#/schemas/entities/CartItem",
   "cardinality": "one-to-many",
   "fields": [

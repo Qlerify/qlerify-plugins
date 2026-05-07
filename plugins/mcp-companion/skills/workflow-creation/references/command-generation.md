@@ -51,7 +51,7 @@ Input data that mutates a related entity or value object of the aggregate root.
 
 Rules:
 
-- Field name MUST be the camelCase form of the related entity name (e.g., `cartItem` for "Cart Item", `shippingAddress` for "Shipping Address")
+- Field name should be the camelCase form of the related entity / VO name (e.g., `cartItem` for "Cart Item"). **Exception:** when the same Entity/VO type plays multiple semantic roles on the aggregate, name each field after the role — e.g., command fields `shippingAddress` and `billingAddress` both referencing a single VO named "Address".
 - Never use generic names like `options`, `data`, `params`, or `payload`
 - MUST contain at least one nested sub-field (sub-fields signal mutation)
 - Sub-fields can themselves be Category 4 with their own nested sub-fields — **up to 3 levels deep**
@@ -132,7 +132,7 @@ Examples: `cartItem`, `shippingAddress`, `appliedPromotion`
 - Do NOT include UI-specific, technical, or derived fields
 - Prefer business-meaningful names aligned with domain language
 - List mandatory fields in the `required` array — only fields that must have a value when the command is invoked
-- When a field represents a mutated related entity/VO, the field name MUST be the camelCase form of that entity or value object name (e.g., `shippingMethod` for Shipping Method, `cartItem(s)` for Cart Item). Never use generic names like `options` or `data`. This applies even when the source uses a shorter or more generic name — e.g., if the source describes a Cart with an `items` collection of Line Items, the command field must still be `cartItems` (or `lineItems`), not `items`.
+- When a field represents a mutated related entity/VO, the field name should be the camelCase form of that entity or value object name (e.g., `shippingMethod` for Shipping Method, `cartItem(s)` for Cart Item). **Exception:** when one Entity/VO type fills multiple roles on the same aggregate, name each field after its role and let several fields share the same `relatedEntity` (e.g., `shippingAddress` and `billingAddress` both referencing a VO named "Address"). Never use generic names like `options` or `data`. This applies even when the source uses a shorter or more generic name — e.g., if the source describes a Cart with an `items` collection of Line Items, the command field must still be `cartItems` (or `lineItems`), not `items`.
 
 ## MCP Mapping
 

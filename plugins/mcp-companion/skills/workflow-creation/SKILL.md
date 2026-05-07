@@ -178,7 +178,7 @@ For each domain event, specify the name and arguments (also referred to as field
 1. Simple Attributes (Primitive Values): Implicitly typed as string, number, or boolean. Use this for basic input values. No nested sub-fields. Examples: comment, quantity, isApproved. Usually mapped to simple attributes of the aggregate root.
 2. References (ID Only): Implicitly typed as string. Use this when referencing an existing entity from another bounded context. Field name must end with Id. No nested sub-fields. Represents a reference only (no mutation of referenced entity). Examples: userId, paymentId, productId. Usually a string attribute on the aggregate root.
 3. Referenced Entity or Value Object (same bounded context): Implicitly typed as object but must never contain any nested sub-fields. Can be a single reference or a collection; set `cardinality` to `"one-to-one"` for a single reference and `"one-to-many"` for a collection. Use this when the referenced entity or value object lives within the same bounded context but outside the current aggregate's consistency boundary, and is not mutated. Unlike a Category 2 reference, the structural attributes of the referenced entity or value object are known (although not included here in the command); unlike Category 4, it is not mutated. Field name must be in camelCase without Id suffix. Do not model any nested sub-fields in your reply. The absence of nested sub-fields shows that we are not mutating the related entity or value object (mutations use Category 4). Omit the Id suffix, since the technical decision of how the reference is implemented is a later concern. Examples: currency, country, shippingMethod.
-4. Nested Related Entity or Value Object to Be Mutated: Implicitly typed as an object. It must always contain at least one nested sub-field. It may be a single object or a collection; set `cardinality` to `"one-to-one"` for a single object and `"one-to-many"` for a collection. Use this when creating or updating one or more nested entities or VOs inside the aggregate. This field name must be identical to the camelCase form of the targeted nested entity or VO name. Never use generic or implementation-specific command argument names such as options, data, params, or payload when targeting an underlying entity or VO. The nested sub-field names must be identical to the attribute names of the targeted related entity or VO. Nested attributes may themselves be Category 4 fields, with their own second level of nested sub-fields. For example, if the aggregate has an entity/VO structure with three levels — order => orderItems => taxRate — then the command setTaxRate should mirror all levels in its argument structure: setTaxRate({ id: "order-123", orderItems: [{ id: "item-456", taxRate: { percentage: 25, countryCode: "SE" } }] }). Note that the id fields are named exactly id and that the value object has no id. Follow this pattern even for batch operations that update multiple nested items: mirror all nested levels in the command structure.
+4. Nested Related Entity or Value Object to Be Mutated: Implicitly typed as an object. It must always contain at least one nested sub-field. It may be a single object or a collection; set `cardinality` to `"one-to-one"` for a single object and `"one-to-many"` for a collection. Use this when creating or updating one or more nested entities or VOs inside the aggregate. This field name should be the camelCase form of the targeted nested entity or VO name. Exception: when the same Entity/VO type fills multiple semantic roles on the aggregate, name each field after the role and let multiple fields point to the same `relatedEntity` (e.g., `shippingAddress` and `billingAddress` both referencing a VO named "Address"). Never use generic or implementation-specific command argument names such as options, data, params, or payload when targeting an underlying entity or VO. The nested sub-field names must be identical to the attribute names of the targeted related entity or VO. Nested attributes may themselves be Category 4 fields, with their own second level of nested sub-fields. For example, if the aggregate has an entity/VO structure with three levels — order => orderItems => taxRate — then the command setTaxRate should mirror all levels in its argument structure: setTaxRate({ id: "order-123", orderItems: [{ id: "item-456", taxRate: { percentage: 25, countryCode: "SE" } }] }). Note that the id fields are named exactly id and that the value object has no id. Follow this pattern even for batch operations that update multiple nested items: mirror all nested levels in the command structure.
 
 **Every event should have a command.** After creating commands, call `get_workflow` and verify there
 are no events without a command card. Events without commands represent gaps in the business process.
@@ -255,7 +255,7 @@ update_entity(
 - **Always include `description`** — a concise one-sentence explanation in business language
 - Include `dataType`: `string`, `number`, `boolean`, `object`
 - Mark fields essential for creation with `isRequired: true`
-- Fields populated only during specific lifecycle transitions (cancel, archive, complete) should NOT be required
+- Fields populated only during specific lifecycle transitions (cancel, archive, complete) should NOT be set as required fields
 
 ### Phase 4: Validation Loop
 
@@ -282,16 +282,6 @@ commands/read models and their aggregate root entities.
 - **Denormalized fields on commands** (e.g., `guestEmail` when `guestId` already exists) → Replace with flat ID ref and let the service look up related data internally
 - **Typos or inconsistent naming** between command/read model and entity fields → Rename for consistency
 
-**Common legitimate patterns to leave as-is:**
-
-- **Calculated/derived fields on read models** (e.g., `total`, `subtotal`, `taxTotal`, `shippingTotal` on a "Get Cart Totals" query) — these are computed at runtime from entity fields, not stored on the entity. `FIELD_NOT_IN_ENTITY` warnings on these are expected and correct
-- **Aggregated fields on read models** (e.g., `orderCount`, `averageRating`, `totalSpent`) — same principle: computed from queries over other data
-- **Cross-entity filter parameters** on read models (e.g., `checkInDate` on a Hotel search, `minPrice` on a Product search) — filter fields for search/query parameters don't need to exist on the entity
-- **Formatted/presentation fields** on read models (e.g., `fullName` when entity has `firstName` + `lastName`, `displayAddress` when entity has separate address components) — these are projections for display, not storage
-- **Status/computed flags on read models** (e.g., `isOverdue`, `isExpired`) — derived from date comparisons at query time
-
-**How to judge:** Ask yourself "In a real application, would this field be **stored** on the database table for this entity, or would it be **calculated on the fly** when the query runs?" If the answer is "calculated at runtime" or "joined from another table at query time", the field is a legitimate read model field and the warning can be ignored.
-
 **Important:** Do not consider the workflow complete until every remaining issue has been consciously reviewed and either fixed or judged as a legitimate pattern.
 
 ### Phase 5: Polish (optional)
@@ -302,7 +292,7 @@ These steps are cosmetic and can be skipped if not needed.
 
 > **Do NOT create groups as part of a default workflow generation.** Skip this step entirely unless the user explicitly asks for them — e.g., "group the events into phases", "add groups for the checkout/fulfillment stages", "organize events into stages". A newly generated workflow should have zero groups by default.
 
-Groups organize events into visual vertical phases on the diagram. When the user asks for them:
+Groups split the workflow into phases seen on the diagram with labels spread out horizontally from left to right at the top of the diagram and vertical dividers splitting the flow into phases. When the user asks for them:
 
 1. Call `create_group` for each phase, in the order they appear on the timeline.
 2. Assign events to groups using `update_domain_event` with the `group` parameter. Only set `group` on the **first event** that starts a new group — subsequent events in the same group inherit it automatically based on their position on the timeline.
@@ -324,50 +314,52 @@ update_domain_event(domainEvent: "#/domainEvents/OrderPlaced", color: "blue")
 
 ## Constraints and Rules
 
-- **One Aggregate Root card per event** — An event can only have one entity linked as aggregate root
+- **Every domain event should have a command and an aggregate root** — No naked events. Domain event schemas are optional and only expected for Event Sourcing workflows (see Step 9)
 - **One Command card per event** — An event can only have one command
+- **One Aggregate Root card per event** — An event can only have one entity linked as aggregate root
 - **One Domain Event card per event** — An event can only have one domain event schema (when one is created)
-- **Every event should have an aggregate root and a command** — No naked events. Domain event schemas are optional and only expected for Event Sourcing workflows (see Step 9)
 - **Read Model cards require cardinality** — Always specify "one-to-one" or "one-to-many"
 - **Lanes cannot be deleted if they contain events** — Move or delete events first
-- **Domain events require a lane** — Every event must be assigned to a lane
+- **Domain events require a lane** — Every event must be assigned to an actor
 - **Chain events via follows** — Use "start" for root events, otherwise reference the parent via `$ref` path
 - **Bounded contexts must exist before referencing them** — Create BCs before assigning entities to them
 
 ## `relatedEntity` Usage Summary
 
-
-| Context                       | Use `relatedEntity`?                          | Example                                     |
-| ----------------------------- | --------------------------------------------- | ------------------------------------------- |
-| Command: simple ID lookup     | **NO** — use flat string field                | `bookingId: "bk-001"`                       |
-| Command: embedded collection  | **YES** — multiple fields needed              | `orderItems: [{ productName, qty, price }]` |
-| Read Model: composed response | **YES** — nested joined data                  | `guest: { firstName, lastName, email }`     |
-| Read Model: filter parameter  | **NO** — use flat field with `isFilter: true` | `checkInDate` (isFilter)                    |
-| Domain Event: embedded data   | **YES** — nested event payload data           | `orderItems: [{ productId, qty, price }]`   |
-| Domain Event: ID reference    | **NO** — use flat field                       | `orderId`, `customerId`                     |
-| Entity: relationship          | **YES** — defines data model links            | `order → OrderItem (one-to-many)`           |
+| Context                               | Use `relatedEntity`?                          | Example                                     |
+| ------------------------------------- | --------------------------------------------- | ------------------------------------------- |
+| Command: primitive type               | **NO** — use flat primitive field             | `bookingId: "bk-001"`                       |
+| Command: nested structure             | **YES** — multiple fields needed              | `orderItems: [{ productName, qty, price }]` |
+| Read Model: nested structure          | **YES** — nested joined data                  | `guest: { firstName, lastName, email }`     |
+| Read Model: filter parameter          | **NO** — use flat field with `isFilter: true` | `checkInDate` (isFilter)                    |
+| Domain Event: nested structure        | **YES** — nested event payload data           | `orderItems: [{ productId, qty, price }]`   |
+| Domain Event: ID reference            | **NO** — use flat field                       | `orderId`, `customerId`                     |
+| Entity: related entity                | **YES** — defines data model links            | `order → OrderItem (one-to-many)`           |
 
 
 **Naming rule:** If using `relatedEntity`, name the field as the entity (`guest`, `hotel`, `orderItems`).
+When one Entity/VO type plays multiple semantic roles on the same aggregate, use role-specific field names that all point to the same `relatedEntity` — e.g., `shippingAddress` and `billingAddress` both referencing a VO named "Address".
 If it's a flat ID reference, name it with "Id" suffix (`guestId`, `hotelId`). Never combine "Id" suffix
 with `relatedEntity`.
+
+**Attribute-name mirroring (strict):** Across a command, its aggregate root entity, and any read model that exposes the same data, a shared attribute MUST use the same name in all three places. The attribute name is independent of the related Entity/VO **type** name — multiple attributes may reference the same Entity/VO type under different role names (see the Address example above).
 
 ## Common Workflow Patterns
 
 ### CRUD Service
 
-Lanes: User, Automation
-Flow: User action event → Automation processing event per operation
+- Lanes: User, Automation
+- Flow: User action event → Automation processing event per operation
 
 ### Approval Pipeline
 
-Lanes: Requester, Approver, Automation
-Flow: Request submitted → Review pending → Approved/Rejected gateway → Executed
+- Lanes: Requester, Approver, Automation
+- Flow: Request submitted → Review pending → Approved/Rejected gateway → Executed
 
 ### Event-Driven Saga
 
-Lanes: Customer, Admin, Automation
-Flow: Customer/Admin actions trigger events, Automation handles cross-service coordination via decision gateways
+- Lanes: Customer, Admin, Automation
+- Flow: Customer/Admin actions trigger events, Automation handles cross-service coordination via decision gateways
 
 ## Tips for Well-Structured Workflows
 
