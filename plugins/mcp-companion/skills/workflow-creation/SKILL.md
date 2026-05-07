@@ -195,8 +195,8 @@ Call `create_read_model` for each query / view / projection. Each read model is 
 **Reuse read models across events when it makes sense.**
 
 Multiple events in the same workflow often need the same query — for example, several events along an Order's lifecycle all need "Get Order
-Details". Instead of creating a separate near-duplicate read model per event, just call`create_read_model` again with the **same name** on
-the new event. The backend will merge any new fields into that same schema. Judge reuse case-by-case: if a new event genuinely needs the same data shape and the same queried entity as an existing one, reuse it (same name); if the shape or entity differs, pick a different name and create a distinct read model.
+Details". Instead of creating a separate near-duplicate read model per event, just call `create_read_model` again with the **same read model name** on
+the new domain event. The backend will merge any new fields into that same read model schema. Judge reuse case-by-case: if a new event genuinely needs the same data shape and the same queried entity as an existing one, reuse it (same name); if the shape or entity differs, pick a different name and create a distinct read model.
 
 **Step 9 — Create domain event schemas on events (optional)** *(see `references/domain-event-generation.md` for detailed field rules)*
 
