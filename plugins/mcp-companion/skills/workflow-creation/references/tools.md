@@ -117,7 +117,7 @@ Add a new domain event to the workflow. This is the most important creation tool
 make up the process flow.
 
 - `workflowId`, `projectId` — Identifies the workflow
-- `description` — The event name (use past-tense: "Order Created", not "Create Order"). **Avoid special characters** (`?`, `!`, `&`, `#`) — they break `$ref` path resolution. Hyphens are removed and the next letter capitalized in `$ref` keys (e.g., "Check-in" → `CheckIn`).
+- `description` — The event name (use past-tense: "Order Created", not "Create Order"). **Avoid special characters** (`?`, `!`, `&`, `#`, `/`) — they break `$ref` path resolution. Hyphens are removed and the next letter capitalized in `$ref` keys (e.g., "Check-in" → `CheckIn`).
 - `type` — Either `'domainEvent'` (regular event) or `'decision'`
 - `lane` — Name of the actor this event belongs to (required). Auto-created on the fly if no lane with that name exists yet, so you don't need a separate `create_lane` call when seeding a new workflow. Pass exactly the same name across events that share a lane to avoid duplicates.
 - `follows` — A `$ref` path to the preceding event (e.g., `#/domainEvents/OrderPlaced`), or `"start"` for flow entry points. The new event is inserted after the parent in the flow sequence.
