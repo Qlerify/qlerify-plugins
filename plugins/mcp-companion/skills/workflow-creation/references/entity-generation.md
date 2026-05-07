@@ -45,10 +45,12 @@ Include ALL command attributes without exception. Do NOT filter or omit:
 
 ### Handling Nested Command Fields
 
-When a command ("Create Order" operating on the aggregate root "Order") has a field with nested sub-fields (e.g., `shippingAddress` containing street, city, postalCode, country), create a corresponding attribute on the Order entity, and create an entity or value object with a matching name:
+When a command (e.g., "Create Order" operating on the aggregate root "Order") has a field with nested sub-fields (e.g., `shippingAddress` containing street, city, postalCode, country):
 
-- Command field `shippingAddress` → We need an Entity or Value Object named "Shipping Address" or "Address"
-- Include ALL the nested sub-fields as attributes
+1. **Add an attribute to the aggregate root** using the exact command field name (`shippingAddress`) — see "Aggregate Root References to Nested Structures" below.
+2. **Point its `relatedEntity` at an Entity or Value Object** that holds those sub-fields. **Strongly prefer a type name that matches the attribute name** (e.g., attribute `shippingAddress` → type "Shipping Address"). This is the default and should be your first choice.
+   - **Exception — shared/general type** (e.g., "Address"): only use this when the *same* structure is genuinely reused across multiple role-specific attributes on the same aggregate (e.g., both `shippingAddress` and `billingAddress` point at a single shared `Address` VO). If only one role exists, stick with the matching name.
+3. **Include ALL the nested sub-fields as attributes** on that Entity/VO.
 
 ### Aggregate Root References to Nested Structures
 
@@ -56,7 +58,7 @@ The aggregate root entity must reference nested structures with the **EXACT SAME
 
 - A field named `shippingAddress` (NOT `shippingAddressId`)
 - With `dataType` set to `"object"`
-- And `relatedEntity` set to the referenced entity / VO "Shipping Address"
+- And `relatedEntity` set to whichever Entity/VO name you chose in the previous step — by default the matching name (e.g., `"Shipping Address"`), or a shared name (e.g., `"Address"`) only if you're deliberately reusing one type across multiple role-specific attributes
 
 ## Field Naming Rules
 
