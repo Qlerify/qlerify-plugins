@@ -291,27 +291,24 @@ Remove a domain event schema and its card from the event.
 
 ## Read Model Tools
 
-Read models represent data queries and views — how data is retrieved and displayed. They
-correspond to GET API endpoints or query operations. Read models are created directly on domain
-events and automatically create a Read Model card on that event. Use `get_workflow` to see
-existing read models.
+Read models represent data queries and views — what the API returns to callers (GET endpoints / query operations). Use `get_workflow` to see existing read models. See `references/read-model-generation.md` for field design rules.
 
 ### create_read_model
 
-Define a new read model/query, attached to a specific domain event. Auto-creates a Read Model
-card on the event. Read models represent **API response payloads** — what the API returns to callers.
+Define a new read model/query, attached to a specific domain event. Auto-creates a Read Model card on the event.
 
 - `workflowId` — Identifies the workflow
-- `domainEvent` — `$ref` path to the event (e.g., `#/domainEvents/OrderPlaced`). Required.
-- `name` — Read model name with spaces (e.g., "Get Order Details", "List Active Products", "Search Customers")
-- `cardinality` — Required. `"one-to-one"` for single-record queries, `"one-to-many"` for list queries.
-- `entity` — `$ref` path to the source entity (e.g., `#/schemas/entities/Order`). Recommended.
-- `fields` — Array of field definitions representing the full query contract (both inputs and outputs):
-  - `name` — Field name in camelCase
-  - `isFilter` — Set true for query parameters/filters, omit for returned data fields. Filter fields can be cross-entity parameters (e.g., `checkInDate`, `priceMin`) — this is valid.
-  - `relatedEntity` — `$ref` path to a related entity. Use for **composed response data** — nested objects in API responses (e.g., `guest` with `firstName`, `lastName`, `email` from Guest entity). Name these fields as the entity name (`guest`, `hotel`), not with "Id" suffix.
-  - `cardinality` — `"one-to-one"` or `"one-to-many"` for fields with `relatedEntity`
-  - `fields` — Nested field names from the related entity (for reference fields)
+- `domainEvent` — Required. `$ref` path to the event (e.g., `#/domainEvents/OrderPlaced`)
+- `name` — Read model name with spaces (e.g., "Get Order Details")
+- `cardinality` — Required. `"one-to-one"` or `"one-to-many"`
+- `entity` — Recommended. `$ref` path to the source entity (e.g., `#/schemas/entities/Order`)
+- `fields` — Array of field definitions. Each field:
+  - `name` — camelCase
+  - `isFilter` — Boolean; mark query/filter parameters
+  - `computed` — Boolean; mark fields calculated at runtime
+  - `relatedEntity` — `$ref` path; use for nested composed data
+  - `cardinality` — `"one-to-one"` or `"one-to-many"` for `relatedEntity` fields
+  - `fields` — Nested sub-fields when `relatedEntity` is set
 
 ### update_read_model
 
