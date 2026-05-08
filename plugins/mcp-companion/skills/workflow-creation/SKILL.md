@@ -32,7 +32,7 @@ First extract one aggregate at a time (use the extract-aggregate skill):
 
 A Qlerify workflow is a structured (Software Design Level) Event Storming diagram combined with detailed elements and concepts from domain-driven design (DDD):
 
-- **Lanes** — Horizontal swim lanes representing actors that invoke commands. Either human actors such as "Customer" and "Hotel Staff", or systems. When a system is the actor, always use the lane name "Automation" — do NOT create lanes for internal services (Payment Service, Notification Service, Order Service, etc.), these are Bounded Contexts, not actors.
+- **Lanes** — Horizontal swimlanes representing **roles** — actors that invoke commands. Either a human role (e.g., "Customer", "Hotel Staff") or the exact word "Automation" for any system-triggered step. All automated steps share the single Automation lane — do NOT create lanes for internal services (Payment Service, Notification Service, etc.); those belong in bounded contexts. See "Lane Tools" in `references/tools.md` for full naming rules.
 - **Domain Events** — Always placed in sequence within lanes. Each event represents something that happened in a business process (e.g., "Order Created", "Payment Received"). Contains a verb in past tense. A domain event is the result of a role invoking a state-changing command on an aggregate. Valid: Order Created, Invoice Approved, Payment Cancelled. Invalid (no state change): Page Viewed, Form Opened. Domain Events are the starting point of the modeling process — they are usually created before entities, commands, or read models, which are all later linked or attached to events (through Cards).
 - **Entities** — An Entity is a domain object that is defined by its identity, not by its attributes. An entity must have an id attribute and a life cycle. Entities can have attributes and other related entities. Some entities play the role of aggregate root from the perspective of a given command. Examples: Order, Customer, Product.
 - **Value Objects** — A VO is a domain object that is defined by its attributes. A VO has no identity and is immutable (replaced as a whole when updated). Examples: Money (amount + currency), Address (street + city + postal code), Date Range (start date + end date). A VO must not have an id attribute.
@@ -90,13 +90,13 @@ its current state. For a new workflow, call `create_workflow` with a descriptive
 Build the event flow by chaining calls to `create_domain_event`. Each event needs:
 
 - `description` — Aggregate Name + Space + Past Tense Verb
-- `lane` — The actor or system the event belongs to (e.g., "Customer", "Automation"). Auto-created on the fly if no lane with that name exists yet — no separate setup step. Pass exactly the same name across events that share a lane to avoid duplicate auto-created lanes. See "Lane Tools" in `references/tools.md` for actor naming rules.
+- `lane` — The role/actor the event belongs to (e.g., "Customer", "Automation"). Auto-created on the fly the first time an unfamiliar name is referenced, so you typically don't need `create_lane` when building a workflow from scratch. Pass exactly the same name (case-sensitive) across events that share a lane.
 - `follows` — A `$ref` path to the preceding event, or `"start"` for flow entry points
 - `type` — Either `domainEvent` (regular event) or `decision` (decision diamond)
 
 **Common lane patterns:**
 
-- E-commerce: Customer, Warehouse Staff, Automation
+- E-commerce: Customer, Warehouse Worker, Automation
 - Hotel Booking: Guest, Hotel Staff, Automation
 - HR Onboarding: Candidate, HR Manager, Automation
 
@@ -104,8 +104,7 @@ Optional parameters:
 
 - `acceptanceCriteria` — Array of Given-When-Then acceptance criteria strings
 
-Build the flow left-to-right, top-to-bottom, creating events in the order they occur in the
-business process. Do NOT set `aggregateRoot` yet — entities don't exist at this point.
+Build the flow left-to-right, creating events in the order they occur in the business process. Do NOT set `aggregateRoot` yet — entities don't exist at this point.
 Do NOT set `group` either — groups are a cosmetic polish step handled later (Phase 5) and only if the user explicitly asks for them.
 
 ### Phase 3: Domain Model
@@ -351,7 +350,6 @@ with `relatedEntity`.
 
 - **Start with events, not entities.** Map the business process flow first, then identify what data each step needs.
 - **Use decision gateways sparingly.** Only for genuine branching logic, not optional steps.
-- **2-4 lanes is ideal.** Typically, 1-2 human roles + Automation. More than 4 makes the diagram hard to read.
 - **Name events as past-tense occurrences.** "Order Created", not "Create Order" — commands go on cards.
 - **Avoid special characters in event names.** Use only alphanumeric characters and spaces. No `?`, `!`, `&`, `#`.
 - **Include realistic example data.** 3 values per field helps stakeholders understand the model.

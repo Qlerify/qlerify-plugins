@@ -50,14 +50,22 @@ one bounded context with entities. Useful for bootstrapping API implementations 
 
 ## Lane Tools
 
-Lanes are the horizontal swim lanes on the Event Storming board. Lanes represent human actors or roles (Customer, Admin, Hotel Staff, Warehouse Worker) or the exact word **Automation** (used for system-triggered actions). Do NOT create lanes for internal services (Payment Service, Notification Service, Order Service, etc.) or technical components — these are bounded contexts. System-triggered actions (sending emails, processing payments, generating invoices, checking availability) belong in the **Automation** lane. Use `get_workflow` to see existing lanes.
+Swimlanes (or "lanes") are the horizontal rows on the Event Storming board, each representing a **role** — an actor that invokes commands. Use short business names (Customer, Hotel Staff, Admin, Warehouse Worker) or the exact word **Automation** for any system-triggered action (sending emails, processing payments, generating invoices). Aim for 2–4 lanes — more makes the diagram hard to read.
+
+**Naming rules:**
+
+- Max 18 characters; alphanumerics and spaces only — no `?`, `!`, `&`, `#`, `/` (these break `$ref` resolution).
+- Matching is **exact and case-sensitive** — `Customer` and `customer` produce two separate lanes.
+- Use exactly `Automation` for system-triggered steps. Do NOT create lanes for internal services (Payment Service, Notification Service, etc.) — those are bounded contexts.
+
+When `create_domain_event` references an unfamiliar lane name, the lane is auto-created and appended to the bottom of the diagram. Use `get_workflow` to see existing lanes.
 
 ### create_lane
 
-Add a new swim lane to the workflow. Name it after the actor role or "Automation" for system actions. Usually you don't need this tool when building a workflow from scratch — `create_domain_event` auto-creates a lane on the fly the first time you reference an unfamiliar lane name. Use `create_lane` only when you want to seed lanes ahead of any events.
+Seed an empty lane before any events reference it. Usually unnecessary since `create_domain_event` auto-creates lanes. Duplicate names are not blocked but create a separate lane each time — check `get_workflow` first.
 
 - `workflowId`, `projectId` — Identifies the workflow
-- `name` — The lane name (e.g., "Customer", "Hotel Staff", "Automation"). NOT service names like "Payment Service"
+- `name` — The lane name. See "Naming rules" above.
 
 ### update_lane
 
@@ -69,7 +77,7 @@ Rename an existing lane. Does not affect events already in the lane.
 
 ### delete_lane
 
-Remove a lane from the workflow. The lane must be empty — move or delete all events in it first.
+Remove a lane. The lane must be empty — move or delete its events first.
 
 - `workflowId`, `projectId` — Identifies the workflow
 - `lane` — Lane name to delete
@@ -119,7 +127,7 @@ make up the process flow.
 - `workflowId`, `projectId` — Identifies the workflow
 - `description` — The event name (use past-tense: "Order Created", not "Create Order"). **Avoid special characters** (`?`, `!`, `&`, `#`, `/`) — they break `$ref` path resolution. Hyphens are removed and the next letter capitalized in `$ref` keys (e.g., "Check-in" → `CheckIn`).
 - `type` — Either `'domainEvent'` (regular event) or `'decision'`
-- `lane` — Name of the actor this event belongs to (required). Auto-created on the fly if no lane with that name exists yet, so you don't need a separate `create_lane` call when seeding a new workflow. Pass exactly the same name across events that share a lane to avoid duplicates.
+- `lane` — Name of the role/actor this event belongs to (required). Auto-created on the fly if no lane with that name exists; pass the exact same name across events that share a lane (matching is case-sensitive). See "Lane Tools" above for naming rules.
 - `follows` — A `$ref` path to the preceding event (e.g., `#/domainEvents/OrderPlaced`), or `"start"` for flow entry points. The new event is inserted after the parent in the flow sequence.
 - `group` — Optional. Sets a group boundary starting at this event. Only set on the **first** event of a new group. Do not set group on subsequent events in the same group.
 - `aggregateRoot` — Optional. `$ref` path to an entity (e.g., `#/schemas/entities/Order`). Links an entity as aggregate root for the command triggering this event. **Every command / event should have one** — if the entity doesn't exist yet, set it later via `update_domain_event` after creating entities.

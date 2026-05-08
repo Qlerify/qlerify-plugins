@@ -1,6 +1,6 @@
-# Example: E-Commerce Order Workflow
+# Example: Simple Order Management Workflow
 
-A complete workflow creation sequence for a simple e-commerce order process.
+The creation sequence of a simple example order management workflow described.
 All IDs and `$ref` paths below are illustrative — actual calls return real UUIDs and paths.
 
 ---
@@ -10,7 +10,7 @@ All IDs and `$ref` paths below are illustrative — actual calls return real UUI
 ### Step 1 — Create workflow
 
 ```
-create_workflow(projectId: "proj-1", name: "E-Commerce Order Process")
+create_workflow(projectId: "proj-1", name: "Simple Order Process")
 -> { workflowId: "wf-1" }
 ```
 
@@ -21,26 +21,26 @@ create_workflow(projectId: "proj-1", name: "E-Commerce Order Process")
 ### Step 2 — Create domain events
 
 Build the chain left-to-right. Each event references the previous one via `follows`. Lanes
-("Customer", "Warehouse Staff", "Automation") are auto-created on the fly the first time each
-name is used in `lane`, so there's no separate setup step. Do NOT set `aggregateRoot` yet —
-entities don't exist. Do NOT set `group` — groups are optional and come later.
+("Customer", "Warehouse Worker", "Automation") are auto-created the first time each name is
+referenced. Do NOT set `aggregateRoot` yet — entities don't exist. Do NOT set `group` — groups
+are optional and come later.
 
 ```
 create_domain_event(
   workflowId: "wf-1", projectId: "proj-1",
-  description: "Item Added to Cart",
+  description: "Item Added to Order",
   type: "domainEvent",
   lane: "Customer",
   follows: "start"
 )
--> { $ref: "#/domainEvents/ItemAddedToCart" }
+-> { $ref: "#/domainEvents/ItemAddedToOrder" }
 
 create_domain_event(
   workflowId: "wf-1", projectId: "proj-1",
   description: "Order Placed",
   type: "domainEvent",
   lane: "Customer",
-  follows: "#/domainEvents/ItemAddedToCart"
+  follows: "#/domainEvents/ItemAddedToOrder"
 )
 -> { $ref: "#/domainEvents/OrderPlaced" }
 
@@ -82,7 +82,7 @@ create_domain_event(
   workflowId: "wf-1", projectId: "proj-1",
   description: "Order Shipped",
   type: "domainEvent",
-  lane: "Warehouse Staff",
+  lane: "Warehouse Worker",
   follows: "#/domainEvents/PaymentConfirmed"
 )
 -> { $ref: "#/domainEvents/OrderShipped" }
@@ -94,7 +94,7 @@ create_domain_event(
 
 ### Step 3 — Create bounded context
 
-One BC is fine for a small workflow like this.
+Just one BC since all events belong to the same part of the system, even the same aggregate.
 
 ```
 create_bounded_context(workflowId: "wf-1", projectId: "proj-1", name: "Order Management")
@@ -102,10 +102,9 @@ create_bounded_context(workflowId: "wf-1", projectId: "proj-1", name: "Order Man
 
 ### Step 4 — Create entities and link aggregate roots to events
 
-Create the entities with `create_entities`, batching when it makes sense. Each entity carries the
-`id` field at creation — this classifies it as an entity (vs. a value object, which omits `id`).
-In the same call, link each entity to the events it is the aggregate root for via `aggregateRootFor`.
-The call atomically establishes the $ref paths and links the aggregate roots to their events.
+Create empty entities and value objects with `create_entities`, batching when it makes sense. Each entity carries the `id` attribute at creation — this classifies it as an entity (vs. a value object, which omits `id`). In the same call, link each aggregate root entity to the events that it is the aggregate root for via `aggregateRootFor`. The call atomically establishes the $ref paths and links the aggregate roots to their events.
+
+In this example we model Order Item as a **value object** (no `id`) — the line items are immutable. Model it as an **entity** (with its own `id`) when items have an independent lifecycle — for example, when each line is individually returnable.
 
 ```
 create_entities(workflowId: "wf-1", entities: [
@@ -114,32 +113,33 @@ create_entities(workflowId: "wf-1", entities: [
     boundedContext: "Order Management",
     fields: [{ name: "id" }],
     aggregateRootFor: [
-      "#/domainEvents/ItemAddedToCart",
+      "#/domainEvents/ItemAddedToOrder",
       "#/domainEvents/OrderPlaced",
       "#/domainEvents/PaymentConfirmed",
       "#/domainEvents/PaymentFailed",
       "#/domainEvents/OrderShipped"
     ]
   },
-  { name: "Order Item", boundedContext: "Order Management", fields: [{ name: "id" }] }
+  { name: "Order Item", boundedContext: "Order Management", fields: [] }
 ])
--> Order, Order Item are entities ($ref under #/schemas/entities/...)
+-> Order is an entity ($ref under #/schemas/entities/Order)
+-> Order Item is a value object ($ref under #/schemas/valueObjects/OrderItem)
 -> Order is set as aggregate root for all 5 events
 ```
 
 ### Step 5 — Create commands on events
 
-All commands go in a single `create_commands` bulk call. Each entry binds to its own event via
-`domainEvent`. Commands reference the empty entities via `relatedEntity` for nested fields.
+All commands go in a single `create_commands` bulk call. Each command binds to its own event via
+`domainEvent`. Commands reference the empty entities via `relatedEntity` for nested fields. In this simple example we assume an order id already exists.
 
 ```
 create_commands(workflowId: "wf-1", commands: [
   {
-    domainEvent: "#/domainEvents/ItemAddedToCart",
-    name: "Add Item To Cart",
+    domainEvent: "#/domainEvents/ItemAddedToOrder",
+    name: "Add Item To Order",
     fields: [
-      { name: "orderId", isRequired: true, hideInForm: true },
-      { name: "orderItem", relatedEntity: "#/schemas/entities/OrderItem", cardinality: "one-to-one",
+      { name: "id", isRequired: true, hideInForm: true },
+      { name: "orderItem", relatedEntity: "#/schemas/valueObjects/OrderItem", cardinality: "one-to-one",
         fields: [{ name: "productName" }, { name: "quantity" }, { name: "unitPrice" }] }
     ]
   },
@@ -147,25 +147,24 @@ create_commands(workflowId: "wf-1", commands: [
     domainEvent: "#/domainEvents/OrderPlaced",
     name: "Place Order",
     fields: [
-      { name: "customerId", isRequired: true },
-      { name: "orderItems", relatedEntity: "#/schemas/entities/OrderItem", cardinality: "one-to-many",
-        fields: [{ name: "productName" }, { name: "quantity" }, { name: "unitPrice" }] }
+      { name: "id", isRequired: true },
+      { name: "customerId", isRequired: true }
     ]
   },
   {
     domainEvent: "#/domainEvents/PaymentConfirmed",
     name: "Confirm Payment",
     fields: [
-      { name: "orderId", isRequired: true },
+      { name: "id", isRequired: true },
       { name: "transactionId", isRequired: true },
-      { name: "amount", isRequired: true }
+      { name: "paidAmount", isRequired: true }
     ]
   },
   {
     domainEvent: "#/domainEvents/PaymentFailed",
     name: "Record Payment Failure",
     fields: [
-      { name: "orderId", isRequired: true },
+      { name: "id", isRequired: true },
       { name: "failureReason", isRequired: true }
     ]
   },
@@ -173,7 +172,7 @@ create_commands(workflowId: "wf-1", commands: [
     domainEvent: "#/domainEvents/OrderShipped",
     name: "Ship Order",
     fields: [
-      { name: "orderId", isRequired: true },
+      { name: "id", isRequired: true },
       { name: "trackingNumber", isRequired: true },
       { name: "carrier", isRequired: true }
     ]
@@ -181,8 +180,8 @@ create_commands(workflowId: "wf-1", commands: [
 ])
 ```
 
-Note: `customerId` and `orderId` are flat string fields — NOT `relatedEntity` references. The
-caller sends a simple ID string, and the service looks up the related data internally.
+Note: `customerId` and `id` (aggregate root id, in this case order id) are flat string fields — NOT `relatedEntity` references. The
+caller sends a simple ID string.
 
 ### Step 6 — Create read models on events
 
@@ -197,23 +196,24 @@ create_read_models(workflowId: "wf-1", readModels: [
     cardinality: "one-to-one",
     entity: "#/schemas/entities/Order",
     fields: [
-      { name: "orderId", isFilter: true },
+      { name: "id", isFilter: true },
       { name: "customerId" },
       { name: "status" },
       { name: "totalAmount" },
-      { name: "orderItems", relatedEntity: "#/schemas/entities/OrderItem",
+      { name: "orderItems", relatedEntity: "#/schemas/valueObjects/OrderItem",
         fields: [{ name: "productName" }, { name: "quantity" }, { name: "unitPrice" }] },
       { name: "createdAt" }
     ]
   },
   {
     domainEvent: "#/domainEvents/OrderShipped",
-    name: "List Customer Orders",
+    name: "List Orders To Ship",
     cardinality: "one-to-many",
     entity: "#/schemas/entities/Order",
     fields: [
-      { name: "customerId", isFilter: true },
       { name: "status", isFilter: true },
+      { name: "id" },
+      { name: "customerId" },
       { name: "totalAmount" },
       { name: "createdAt" }
     ]
@@ -229,11 +229,11 @@ to its own event. Schemas capture the essential facts about what happened — no
 ```
 create_domain_event_schemas(workflowId: "wf-1", domainEventSchemas: [
   {
-    domainEvent: "#/domainEvents/ItemAddedToCart",
-    name: "Item Added to Cart",
+    domainEvent: "#/domainEvents/ItemAddedToOrder",
+    name: "Item Added to Order",
     entity: "#/schemas/entities/Order",
     fields: [
-      { name: "orderId" },
+      { name: "id" },
       { name: "productName" },
       { name: "quantity" },
       { name: "unitPrice" },
@@ -245,7 +245,7 @@ create_domain_event_schemas(workflowId: "wf-1", domainEventSchemas: [
     name: "Order Placed",
     entity: "#/schemas/entities/Order",
     fields: [
-      { name: "orderId" },
+      { name: "id" },
       { name: "customerId" },
       { name: "totalAmount" },
       { name: "placedAt" }
@@ -256,9 +256,9 @@ create_domain_event_schemas(workflowId: "wf-1", domainEventSchemas: [
     name: "Payment Confirmed",
     entity: "#/schemas/entities/Order",
     fields: [
-      { name: "orderId" },
+      { name: "id" },
       { name: "transactionId" },
-      { name: "amount" },
+      { name: "paidAmount" },
       { name: "confirmedAt" }
     ]
   },
@@ -267,7 +267,7 @@ create_domain_event_schemas(workflowId: "wf-1", domainEventSchemas: [
     name: "Payment Failed",
     entity: "#/schemas/entities/Order",
     fields: [
-      { name: "orderId" },
+      { name: "id" },
       { name: "failureReason" },
       { name: "failedAt" }
     ]
@@ -277,7 +277,7 @@ create_domain_event_schemas(workflowId: "wf-1", domainEventSchemas: [
     name: "Order Shipped",
     entity: "#/schemas/entities/Order",
     fields: [
-      { name: "orderId" },
+      { name: "id" },
       { name: "trackingNumber" },
       { name: "carrier" },
       { name: "shippedAt" }
@@ -288,27 +288,29 @@ create_domain_event_schemas(workflowId: "wf-1", domainEventSchemas: [
 
 ### Step 8 — Update entities with full fields
 
-Now that all commands, read models, and domain event schemas exist, update each entity with
-real fields derived from the schemas that reference them. `update_entities` accepts an array
-of updates and applies them atomically — here we bundle both entities into one call. Entities
-created in Step 4 already have an `id` field, so we use `addFields` to layer on the rest.
+Now that all commands, read models, and domain event schemas exist, update each entity and value
+object with real fields derived from the schemas that reference them. `update_entities` accepts an
+array of updates and applies them atomically — here we bundle the Order entity and the Order Item
+value object into one call. The Order entity created in Step 4 already has an `id` field, so we use
+`addFields` to layer on the rest. The Order Item value object has no fields yet.
 
 ```
 update_entities(workflowId: "wf-1", entities: [
   {
     entity: "#/schemas/entities/Order",
     addFields: [
-      { name: "customerId", dataType: "string", description: "Customer who placed the order", exampleData: ["cust-10", "cust-22", "cust-07"], isRequired: true },
+      { name: "customerId", dataType: "string", description: "Customer who placed the order", exampleData: ["cust-10", "cust-22", "cust-07"]},
       { name: "status", dataType: "string", description: "Current fulfillment status of the order", exampleData: ["pending", "confirmed", "shipped"], isRequired: true },
-      { name: "totalAmount", dataType: "number", description: "Total amount including items, taxes, and shipping", exampleData: ["59.99", "124.50", "9.99"], isRequired: true },
-      { name: "orderItems", dataType: "object", description: "Line items included in the order", relatedEntity: "#/schemas/entities/OrderItem", cardinality: "one-to-many", exampleData: ["Object", "Object", "Object"] },
+      { name: "totalAmount", dataType: "number", description: "Total amount including items, taxes, and shipping", exampleData: ["59.99", "124.50", "9.99"]},
+      { name: "paidAmount", dataType: "number", description: "Total paid amount", exampleData: ["59.99", "124.50", "9.99"]},
+      { name: "orderItems", dataType: "object", description: "Line items included in the order", relatedEntity: "#/schemas/valueObjects/OrderItem", cardinality: "one-to-many", exampleData: ["Object", "Object", "Object"] },
       { name: "trackingNumber", dataType: "string", description: "Shipping tracking number assigned after shipping", exampleData: ["TRK-001", "TRK-002", "TRK-003"] },
       { name: "carrier", dataType: "string", description: "Shipping carrier handling the delivery", exampleData: ["FedEx", "UPS", "DHL"] },
       { name: "createdAt", dataType: "string", description: "Timestamp when the order was placed", exampleData: ["2026-01-15T10:00:00Z", "2026-01-16T14:30:00Z", "2026-01-17T09:15:00Z"], isRequired: true }
     ]
   },
   {
-    entity: "#/schemas/entities/OrderItem",
+    entity: "#/schemas/valueObjects/OrderItem",
     addFields: [
       { name: "productName", dataType: "string", description: "Name of the purchased product", exampleData: ["Wireless Mouse", "USB-C Cable", "Laptop Stand"], isRequired: true },
       { name: "quantity", dataType: "number", description: "Number of units ordered", exampleData: ["1", "3", "2"], isRequired: true },
@@ -319,9 +321,9 @@ update_entities(workflowId: "wf-1", entities: [
 ```
 
 Entity fields are derived from all commands/read models that reference each entity:
-- Order fields include everything from "Place Order", "Confirm Payment", "Ship Order", etc.
+- Order fields include everything from "Add Item To Order", "Place Order", "Confirm Payment", "Ship Order", etc.
 - `trackingNumber` and `carrier` come from "Ship Order" command
-- `orderItems` relationship comes from "Place Order" and "Get Order Details"
+- `orderItems` relationship comes from "Add Item To Order" and "Get Order Details"
 
 ---
 
@@ -339,7 +341,6 @@ validate_domain_model(workflowId: "wf-1", projectId: "proj-1")
 No outstanding issues — validation complete. If issues are returned, judge each one:
 
 - **Real problems** (fix them): command field missing from entity when it should be stored, bad relationships, denormalized data, typos
-- **Legitimate patterns** (leave as-is): calculated fields on read models (`total`, `subtotal`), cross-entity filter parameters, formatted/presentation fields
 
 Re-run validation after fixes and repeat until every remaining issue has been consciously reviewed.
 
@@ -349,11 +350,11 @@ Re-run validation after fixes and repeat until every remaining issue has been co
 
 The workflow now has:
 
-- 3 lanes (Customer, Warehouse Staff, Automation) auto-created via `create_domain_event`
-- 7 domain events with a decision gateway for payment, including condition labels
-- 2 entities (Order, Order Item) with typed fields, relationships, and example data
+- 3 lanes (Customer, Warehouse Worker, Automation) auto-created via `create_domain_event`
+- 6 domain events with a decision gateway for payment, including condition labels
+- 1 entity (Order) and 1 value object (Order Item) with typed fields, relationships, and example data
 - 5 commands attached to events (every event has a command)
-- 2 read models (Get Order Details, List Customer Orders) attached to events
+- 2 read models (Get Order Details, List Orders To Ship) attached to events
 - 5 domain event schemas attached to events (every event has an event payload)
 - 5 aggregate root links set via `aggregateRootFor` on `create_entities`
 - 1 bounded context (Order Management)

@@ -36,17 +36,7 @@ Rules:
 
 ## Roles
 
-For each event, specify who or what triggers it:
-
-**Human actors**: short, business-oriented role names
-
-- Sales Rep, Customer, Courier, Hotel Staff, Admin, Warehouse Worker
-- Max 18 characters
-
-**Automated actions**: always use exactly the word `Automation`
-
-- Sending emails, processing payments, generating invoices, checking availability → all `Automation`
-- Do NOT use service names (Payment Service, Notification Service) as roles
+For each event, specify who or what triggers it via the `lane` parameter — either a human role (Sales Rep, Customer, Courier, Hotel Staff, Admin, Warehouse Worker) or the exact word `Automation` for system-triggered steps. See "Lane Tools" in `references/tools.md` for naming rules, character limits, and matching behavior.
 
 ## Event Flow
 
@@ -91,6 +81,5 @@ start → Product Listed (Admin lane)
 
 - Aim for 5-15 events for a typical business process
 - Each event should represent a genuine state change, not a UI interaction
-- Use Automation for anything triggered by the system without human intervention
 - Think about the full lifecycle: creation → updates → terminal states (completion, cancellation, archival)
 
