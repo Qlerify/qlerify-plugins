@@ -351,7 +351,7 @@ Re-run validation after fixes and repeat until every remaining issue has been co
 The workflow now has:
 
 - 3 lanes (Customer, Warehouse Worker, Automation) auto-created via `create_domain_event`
-- 6 domain events with a decision gateway for payment, including condition labels
+- 5 domain events plus 1 decision gateway for payment, including condition labels
 - 1 entity (Order) and 1 value object (Order Item) with typed fields, relationships, and example data
 - 5 commands attached to events (every event has a command, decisions don't have commands)
 - 2 read models (Get Order Details, List Orders To Ship) attached to events
