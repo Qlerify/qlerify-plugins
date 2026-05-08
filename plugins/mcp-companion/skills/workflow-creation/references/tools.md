@@ -125,13 +125,6 @@ Bulk-create multiple domain events in a single call. Use this when building a ne
 the full event flow — typically the entire chain in one call. For inserting one or two events
 into an existing workflow, use the singular `create_domain_event`.
 
-Each entry uses the same shape as `create_domain_event`. Entries are processed in array order, and
-each entry's `follows` can reference:
-
-- `"start"` for flow entry points,
-- a `$ref` path to a domain event that already exists in the workflow,
-- or the bare description of an event created earlier in the same array (e.g. `"follows": "Order Placed"`).
-
 Lanes are auto-created when first referenced (same as `create_domain_event`), so you don't need to
 create lanes ahead of time. Bounded contexts and aggregate-root entities, if referenced via
 `aggregateRoot`, must already exist.
@@ -141,7 +134,12 @@ first failure and returns which entries succeeded and which failed, so you can f
 entry and call again with only the remaining ones.
 
 - `workflowId`, `projectId` — Identifies the workflow
-- `domainEvents` — Array of event definitions (same fields as `create_domain_event`, see below)
+- `domainEvents` — Array of event definitions, each with:
+  - `description` — The event name (past-tense). Same rules as `create_domain_event`'s `description` below.
+  - `type` — `'domainEvent'` or `'decision'`
+  - `lane` — Role/actor name. Auto-created if unfamiliar; pass the same name across events that share a lane.
+  - `follows` — One of: `"start"`, a `$ref` path to an existing event, OR (bulk-only) the bare description of an event created earlier in the same array (e.g. `"follows": "Order Placed"`).
+  - `group`, `color`, `aggregateRoot`, `acceptanceCriteria` — Optional, same as `create_domain_event` below.
 
 ### create_domain_event
 

@@ -311,7 +311,7 @@ update_domain_event(domainEvent: "#/domainEvents/OrderPlaced", color: "blue")
 - **Read models require cardinality** — Always specify "one-to-one" or "one-to-many"
 - **Lanes cannot be deleted if they contain events** — Move or delete events first
 - **Domain events require a lane** — Every event must be assigned to an actor
-- **Chain events via follows** — Use "start" for root events, otherwise reference the parent via `$ref` path
+- **Chain events via follows** — Use `"start"` for root events. In `create_domain_events`, `follows` may also be the bare description of an earlier event in the same batch; when referencing an already-existing event, use its `$ref` path.
 - **Bounded contexts must exist before referencing them** — Create BCs before assigning entities to them
 
 ## `relatedEntity` Usage Summary
