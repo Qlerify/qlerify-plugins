@@ -54,7 +54,7 @@ Swimlanes (or "lanes") are the horizontal rows on the Event Storming board, each
 
 **Naming rules:**
 
-- Max 18 characters; alphanumerics and spaces only — no `?`, `!`, `&`, `#`, `/` (these break `$ref` resolution).
+- Max 18 characters; alphanumerics and spaces only — no `?`, `!`, `&`, `#`, `/` (these characters are not supported in lane names and can cause validation/escaping issues in the UI and API).
 - Matching is **exact and case-sensitive** — `Customer` and `customer` produce two separate lanes.
 - Use exactly `Automation` for system-triggered steps. Do NOT create lanes for internal services (Payment Service, Notification Service, etc.) — those are bounded contexts.
 
