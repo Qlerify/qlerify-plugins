@@ -3,7 +3,7 @@ name: workflow-creation
 description: >-
   Create, extend, validate, and improve Qlerify workflow diagrams and domain
   models, including domain events, roles, read models, commands, policies,
-  aggregates, entities, attributes, given-when-then scenarios, bounded
+  aggregates, entities, value objects, attributes, given-when-then scenarios, bounded
   contexts, and invariants. Use when the task involves event storming, event
   modeling, domain-driven design (DDD), specification-driven development
   (SDD), model-driven development (MDD), software modeling, domain modeling,

@@ -70,7 +70,7 @@ Teaches AI agents how to effectively use Qlerify's MCP server. Contains the foll
 
 Guides AI agents through building complete Qlerify workflows — lanes, domain events, entities, value objects,
 commands, read models, and bounded contexts. Also supports reverse-engineering existing or legacy codebases into
-DDD aggregates that become workflows.
+DDD aggregates with visualized life cycles.
 
 **Triggers:**
 
