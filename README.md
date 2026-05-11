@@ -68,11 +68,9 @@ Teaches AI agents how to effectively use Qlerify's MCP server. Contains the foll
 
 #### `workflow-creation`
 
-Guides AI agents through building complete Qlerify workflows — lanes, groups, domain events, entities, commands, read
-models, cards, and bounded contexts. Also handles reverse-engineering: when the source is an existing or legacy
-codebase, Phase 0 extracts a single DDD aggregate (root entity, related entities, value objects, commands, domain
-events, read models, attributes, invariants, external references) and feeds it directly into the rest of the creation
-sequence — no separate review step. Includes a full tool reference and a worked e-commerce example.
+Guides AI agents through building complete Qlerify workflows — lanes, domain events, entities, value objects,
+commands, read models, and bounded contexts. Also supports reverse-engineering existing or legacy codebases into
+DDD aggregates that become workflows.
 
 **Triggers:**
 
@@ -87,11 +85,10 @@ sequence — no separate review step. Includes a full tool reference and a worke
 
 **What it does:**
 
-1. Phase 0 (reverse-engineering only): peels the service/orchestration layer away to expose aggregate-level commands; captures the root entity, related entities, value objects, commands, 1:1 domain events, read models, attributes, invariants, and external references
-2. Follows an 8-step creation sequence (events → bounded contexts → entities → commands → read models → domain event schemas → entity field updates → validation)
-3. Provides best practices for naming, field modeling, and entity relationships
-4. Supports nested fields on commands and read models for related entity references
-5. Final adjustments are made via the Phase 4 validation loop — no mid-stream confirmation step
+1. Builds the workflow in dependency order: events → bounded contexts → entities → commands → read models → schemas → validation
+2. Reverse-engineers existing codebases into DDD aggregates (root entity, value objects, commands, events, read models, invariants)
+3. Applies naming and modeling best practices, including nested fields for related entity references
+4. Validates the result and reconciles it against the source code at the end
 
 #### `sync`
 
