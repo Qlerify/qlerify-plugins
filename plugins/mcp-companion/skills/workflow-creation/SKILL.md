@@ -92,7 +92,7 @@ Most business applications have two command layers:
 
 When modeling the aggregate in isolation, peel away the service layer to expose the underlying aggregate commands. If the codebase has a service or orchestrator that coordinates another module and then calls a method on the `{AGGREGATE_NAME}` module, the aggregate command is **that method call** — not the orchestration name. The orchestration stays outside; the aggregate only knows about the data it receives.
 
-Search for the aggregate module and its entry points:
+Search for the aggregate and its entry points:
 
 - `src/domain/{AGGREGATE_NAME}/`, `src/modules/{AGGREGATE_NAME}/`, `**/{AGGREGATE_NAME}.ts`, `**/{AGGREGATE_NAME}.cs`, `**/{AGGREGATE_NAME}.java`
 - Look for repositories, aggregate roots, domain services, and application services that call into them
@@ -114,7 +114,7 @@ orchestration lives **outside** — note that it exists, but do not model it.
 - **Domain events** — one event per command, forming **1:1 pairs**. Aim for **8–20 events** per aggregate. Too many → hard for stakeholders to review on an event storming board. Too few → system becomes hard to reason about.
 - **Read models / queries** — queries needed by the client. Can contain **computed or derived fields** (totals, counts) that exist on API responses but not on entity models. When a field is clearly projection-only, prefer listing it on the read model instead of also on entity/VO attribute tables.
 - **Attributes** — **all** fields for every entity and VO: name, type, required/optional, defaults, notes. Prefer domain/type definitions over database schema. Describe relationships in type form (e.g. `Order.items: LineItem[]`), not database form. Omit internal back-reference fields like `parent_id` or FK fields unless they are domain-significant. Capture a short description for each entity and each attribute.
-- **Invariants** — business rules: required fields, non-negative amounts, set-replacement semantics, snapshot patterns, computed-only fields.
+- **Invariants** — business rules: required fields, non-negative amounts, set-replacement semantics, snapshot patterns, computed-only fields. Invariants will map to GTWs on commands, command attribute rules and entity attribute rules later in the process.
 - **Tests** — for each aggregate command, extract tests that validate the command's behavior **at the aggregate boundary**, in business language. If only service-level tests exist, extract only the part that proves aggregate behavior; ignore external orchestration. Example: "Given no Order exists, When the caller creates an Order with a valid customer id, Then an Order is returned with an assigned id." These map to `acceptanceCriteria` on events in Phase 2 Step 2.
 - **External references** — fields pointing to **other aggregates by ID only** (e.g., `customerId` → `Customer` in a separate bounded context). Do **not** model the external aggregate's internals.
 
@@ -129,25 +129,25 @@ Model the aggregate as a **domain/type model**, not a persistence model. Avoid d
 Use the extracted information directly to drive Phase 1+. Do not produce a separate
 markdown review document for the user. The mapping is:
 
-| Extracted concept                         | Goes into                                          |
-|-------------------------------------------|----------------------------------------------------|
-| Domain events                             | Phase 2 Step 2 (`create_domain_events`)            |
-| Aggregate root, related entities, VOs     | Phase 3 Step 4 (`create_entities`)                 |
-| Commands                                  | Phase 3 Step 5 (`create_commands`)                 |
-| Read models / queries                     | Phase 3 Step 6 (`create_read_models`)              |
-| Attributes                                | Phase 3 Step 8 (`update_entities`)                 |
-| Tests (Given/When/Then)                   | `acceptanceCriteria` on events in Phase 2 Step 2   |
-| Invariants                                | Verified in Phase 4 (`validate_domain_model`)      |
-| External references (IDs to other BCs)    | Category 2 ID-only refs in commands (Phase 3 Step 5) |
-| Bounded context grouping                  | Phase 3 Step 3 (`create_bounded_context`)          |
+| Extracted concept                         | Goes into                                                    |
+|---------------------------------------------------|------------------------------------------------------|
+| Domain events                                     | Phase 2 Step 2 (`create_domain_events`)              |
+| Aggregate root, related entities, VOs             | Phase 3 Step 4 (`create_entities`)                   |
+| Commands                                          | Phase 3 Step 5 (`create_commands`)                   |
+| Read models / queries                             | Phase 3 Step 6 (`create_read_models`)                |
+| Attributes, attribute level invariants.           | Phase 3 Step 8 (`update_entities`)                   |
+| Tests (Given/When/Then), command level invariants | `acceptanceCriteria` on events in Phase 2 Step 2     |
+| Invariants                                        | Verified in Phase 4 (`validate_domain_model`)        |
+| External references (IDs to other BCs)            | Category 2 ID-only refs in commands (Phase 3 Step 5) |
+| Bounded context grouping                          | Phase 3 Step 3 (`create_bounded_context`)            |
 
 **Extraction guidelines**
 
 - **Peel the service layer first.** The most common mistake is naming the orchestrator as the aggregate command.
-- **VOs vs entities** is decided by lifecycle semantics, not by whether the implementation has an ID column.
+- **VOs vs entities** is decided by lifecycle semantics, not by whether the legacy implementation has an ID column.
 - **Merge commands that always fire together** — event storming is for business-meaningful steps, not implementation steps.
 - **Prefer domain types over DB types.** If the code uses `varchar`, write `string`; if it uses `@relation`, write `Order.items: LineItem[]`.
-- **Keep external aggregates opaque.** A `customerId` field is enough; do not pull in `Customer` internals.
+- **Keep external aggregates opaque.** A `userId` field is enough; do not pull in `User` internals unless modeling a User aggregate.
 
 After completing Phase 0, proceed directly to Phase 1.
 
