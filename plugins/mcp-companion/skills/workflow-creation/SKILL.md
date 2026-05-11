@@ -18,18 +18,6 @@ allowed-tools: Read, Glob, Grep, Bash, mcp__plugin_mcp-companion_qlerify__*
 Build well-structured Qlerify workflows by following a specific tool sequence. Skipping steps
 or calling tools out of order leads to broken references and incomplete diagrams.
 
-## Reverse-engineering from existing code
-
-When the source of truth is an existing or legacy codebase, run **Phase 0** below to
-extract the aggregate from code, then continue straight into Phase 1+. Recommend
-one DDD aggregate at a time, one Qlerify workflow per aggregate. Phase 0 feeds
-directly into the rest of the creation sequence — do not pause for user review;
-corrections happen at the end via the Phase 4 loop, which combines structural
-validation (Step 9) with a codebase reconciliation diff (Step 10).
-
-For greenfield workflow creation (no existing codebase), skip Phase 0 entirely and
-start at Phase 1.
-
 ## Core Concepts
 
 A Qlerify workflow is a structured (Software Design Level) Event Storming diagram combined with detailed elements and concepts from domain-driven design (DDD):
@@ -76,7 +64,8 @@ afterward to verify the actual `$ref` key before referencing it in subsequent ca
 
 ## Creation Sequence
 
-Follow these steps in order. Each step depends on the previous one.
+Follow these steps in order. Each step depends on the previous one. For an existing or
+legacy codebase, start at Phase 0; otherwise skip Phase 0 and start at Phase 1.
 
 ### Phase 0: Extract aggregate from codebase (reverse-engineering only)
 
