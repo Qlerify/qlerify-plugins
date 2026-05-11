@@ -21,6 +21,9 @@ point to find the right workflow before doing anything else.
 Create a brand-new empty workflow inside a project. Provide a descriptive name — this appears
 in the UI and helps users find the workflow later. Returns the new workflow ID.
 
+After creation, share the workflow URL with the user using this pattern:
+`https://app.qlerify.com/workflow/{projectId}/{workflowId}`
+
 - `projectId` — The project to create the workflow in
 - `name` — A descriptive name for the workflow
 

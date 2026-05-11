@@ -1,21 +1,16 @@
 ---
 name: workflow-creation
-description: >
-   This skill should be used when the user asks to "create a workflow",
-   "build a domain model", "set up a new Qlerify workflow", "add events and lanes",
-   "create BPMN diagram", "model a business process", "set up domain events",
-   "add commands and read models to workflow", or any request involving building
-   a Qlerify workflow from scratch or adding structural elements to an existing one.
-   ALSO use this skill for reverse-engineering from existing code — requests like
-   "reverse engineer the codebase", "extract the Order aggregate", "model a legacy
-   application as a workflow", "build a workflow from this code". For codebase-driven
-   modeling, isolate one DDD aggregate at a time and use one Qlerify workflow per
-   aggregate. The skill handles aggregate extraction (Phase 0) and workflow creation
-   in a single end-to-end pass; adjustments are made at the end via the Phase 4
-   validation loop, which for reverse-engineered workflows also reconciles the final
-   model against the source code.
-   Provides the full creation sequence, tool ordering, and domain modeling guidance.
-allowed-tools: Read, Glob, Grep, Bash
+description: >-
+  Create, extend, validate, and improve Qlerify workflow diagrams and domain
+  models, including domain events, roles, read models, commands, policies,
+  aggregates, entities, attributes, given-when-then scenarios, bounded
+  contexts, and invariants. Use when the task involves event storming, event
+  modeling, domain-driven design (DDD), specification-driven development
+  (SDD), model-driven development (MDD), software modeling, domain modeling,
+  process modeling, legacy modernization, reverse-engineering code into a
+  model, generating code from a model, or any direct use of the Qlerify
+  modeling tools.
+allowed-tools: Read, Glob, Grep, Bash, mcp__plugin_mcp-companion_qlerify__*
 ---
 
 # Workflow Creation Guide
