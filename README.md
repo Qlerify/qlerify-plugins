@@ -35,7 +35,7 @@ Install the plugin:
 /plugin install mcp-companion@qlerify-plugins
 ```
 
-After installation, skills are available as `/mcp-companion:workflow-creation`, `/mcp-companion:sync`, and `/mcp-companion:download`.
+After installation, skills are available as `/mcp-companion:workflow-creation`, `/mcp-companion:code-generation`, `/mcp-companion:sync`, and `/mcp-companion:download`.
 
 ### Gemini CLI
 
@@ -43,6 +43,7 @@ Install each skill using the `--path` flag:
 
 ```bash
 gemini skills install https://github.com/qlerify/qlerify-plugins.git --path plugins/mcp-companion/skills/workflow-creation
+gemini skills install https://github.com/qlerify/qlerify-plugins.git --path plugins/mcp-companion/skills/code-generation
 gemini skills install https://github.com/qlerify/qlerify-plugins.git --path plugins/mcp-companion/skills/sync
 gemini skills install https://github.com/qlerify/qlerify-plugins.git --path plugins/mcp-companion/skills/download
 ```
@@ -90,6 +91,29 @@ DDD aggregates with visualized life cycles.
 3. Applies naming and modeling best practices, including nested fields for related entity references
 4. Validates the result and reconciles it against the source code at the end
 
+#### `code-generation`
+
+Generates production-ready code from a Qlerify domain model. Pairs with `workflow-creation` (which produces the model)
+and `sync` (which keeps model and code aligned over time).
+
+**Triggers:**
+
+- "generate code from the model"
+- "implement the workflow"
+- "scaffold from Qlerify"
+- "build the aggregate"
+- "code up the domain model"
+- Any request to produce runnable code from a Qlerify workflow
+
+**What it does:**
+
+1. Pre-flight model scan — flags structural blockers before generating anything (missing aggregate roots, contradictory GWTs, misclassified value objects)
+2. Platform selection — matches an existing project's stack, or picks an opinionated default for greenfield
+3. Maps the model to a persistence design — aggregate boundaries, value-object storage, optimistic locking, cross-bounded-context references
+4. Generates entities, invariant guards, command handlers, read-model queries, in-process event bus, and GWT-derived tests
+5. Iterates the test suite until green, escalating to the user only after repeated failures
+6. Writes a `.qlerify/codegen.json` anchor so future runs can apply model deltas as targeted patches
+
 #### `sync`
 
 Syncs your codebase's domain model with Qlerify. Detects entities, commands, and read models in your code and ensures
@@ -131,6 +155,7 @@ standard MCP tools for large data.
 ```bash
 # Invoke skills directly
 /mcp-companion:workflow-creation
+/mcp-companion:code-generation
 /mcp-companion:sync
 /mcp-companion:download
 
@@ -140,4 +165,5 @@ standard MCP tools for large data.
 > download the Cart Microservice workflow to workflow.json
 > save the swagger spec for my workflow to api.yaml
 > extract the Order aggregate from shop-api and build a workflow
+> generate code from the Cart workflow
 ```
