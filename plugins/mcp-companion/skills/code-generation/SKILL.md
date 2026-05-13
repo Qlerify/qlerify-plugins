@@ -123,22 +123,17 @@ One handler per command, mounted at an HTTP endpoint (or RPC method, per stack).
 5. Emits the corresponding domain event on the in-process bus
 6. Returns success, or surfaces invariant violations as 4xx (not 5xx) using whatever the stack idiomatically uses to distinguish domain errors from infrastructure errors
 
-### 4.5 — Read models as queries
+### 4.5 — Read models
 
-For a prototype, implement each read model as a direct read against the write side — no precomputed projection. The `entity` link tells you which store to query; `isFilter: true` fields become query parameters; remaining fields become the projection.
+A read model can be a direct read against the write side, a database view, or a precomputed projection — pick what's idiomatic for the chosen stack. Default to direct reads; reach for precomputed projections only with a concrete reason (cross-BC reads, measured perf needs, event sourcing).
 
-Promote a read model to a precomputed projection only when:
-- It crosses bounded context boundaries, or
-- It has a measured performance requirement the direct read can't meet, or
-- It needs eventual consistency semantics distinct from the write side
-
-Stay simple by default; CQRS-on-day-one is usually wasted complexity for a prototype.
+The `entity` link names what to read from, `isFilter: true` fields are query parameters, and the rest are response fields.
 
 ### 4.6 — Domain events
 
 Default to an **in-process event bus**. Each handler emits its event synchronously after a successful command. Subscribers are registered at startup.
 
-Cross-bounded-context events: keep them in-process for the prototype, but flag in the final report as candidates for an external broker (Kafka, RabbitMQ, NATS) when the system splits into separate services.
+Cross-bounded-context events: keep them in-process while the system is a single deployable. When the bounded contexts split into separate services, promote those events to an external broker (Kafka, RabbitMQ, NATS) — flag candidates in the final report.
 
 **Do not generate a state machine that enforces event ordering.** Two different sequences of events may both be legal — the model doesn't always pin them down. Invariants on commands are what gate "illegal" transitions; the diagram is one valid path, not the only one.
 
@@ -212,4 +207,4 @@ The skill is done when:
 - **Reverse-engineering** code into a model — that's `workflow-creation` Phase 0
 - **Code-drift sync** back into the model — that's the `sync` skill
 - **Event Sourcing infrastructure** — only generate domain event *schemas* if they exist in the model (the model includes them only for Event Sourcing workflows; `workflow-creation` Step 7 is opt-in). For default state-based applications, the in-process bus from 4.6 is sufficient.
-- **Deployment, CI/CD, infrastructure-as-code** — out of scope. Output is a runnable local prototype suitable for production-promotion later.
+- **Deployment, CI/CD, infrastructure-as-code** — out of scope. The code itself is production-grade; deploying it, wiring CI, and provisioning infrastructure are separate concerns.
