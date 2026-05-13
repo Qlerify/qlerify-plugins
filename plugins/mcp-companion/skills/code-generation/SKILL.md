@@ -46,6 +46,7 @@ Before generating any code, scan the model for issues that will produce broken o
 **Hard blockers — ask before proceeding:**
 
 - An event has no aggregate root assigned
+- An event has no command assigned to emit it
 - An entity referenced by `$ref` doesn't exist in the spec
 - A value object has an `id` field or an entity has no `id` field in the model
 - A command's fields don't correspond to any entity attribute, and no GWT or description explains where they go, and it's not self explanatory
