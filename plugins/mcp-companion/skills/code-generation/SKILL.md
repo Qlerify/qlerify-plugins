@@ -21,7 +21,7 @@ This skill produces a working, tested application. The model lives in version co
 
 - **The model is normative; the diagram is illustrative.** Event ordering on the board shows one valid sequence — actual systems may interleave events in any order. Invariants on attributes, commands, and GWTs gate state changes, not the visual sequence. Generate command handlers that enforce invariants and emit events; do not generate rigid state machines that hard-code the diagram sequence.
 - **Invariants are scattered.** Collect them from three sources before generating any handler: command-level GWTs, attribute properties (type, required, min/max, allowed values), and prose descriptions on attributes. Missing any of the three produces silently incorrect code.
-- **Persistence is an implementation detail.** The model gives types, ownership, and dependencies. It does not prescribe storage. This skill chooses tables, foreign keys, cascade behavior, and concurrency strategy.
+- **Persistence is an implementation detail.** The model gives types, ownership, and dependencies. It does not prescribe storage. This skill chooses how aggregates, owned entities, and value objects map onto the chosen engine — relational, document, key-value, or otherwise.
 
 ## Operating mode
 
@@ -47,10 +47,10 @@ Before generating any code, scan the model for issues that will produce broken o
 
 - An event has no aggregate root assigned
 - An entity referenced by `$ref` doesn't exist in the spec
-- A value object has an `id` field (likely misclassified — should be an entity)
-- A command's fields don't correspond to any entity attribute, and no GWT or description explains where they go
+- A value object has an `id` field or an entity has no `id` field in the model
+- A command's fields don't correspond to any entity attribute, and no GWT or description explains where they go, and it's not self explanatory
 - A GWT contradicts an attribute invariant (e.g., GWT says `quantity: 0` is valid, attribute has `min: 1`)
-- An aggregate looks suspiciously large (>~7 entities) — boundary may need splitting
+- An aggregate looks suspiciously large (>~10 entities) — boundary may need splitting
 
 **Soft signals — note and proceed:**
 
@@ -71,22 +71,20 @@ Record the chosen stack in `.qlerify/codegen.json` (created if absent) so subseq
 
 ## Phase 3: Map the model to a persistence design
 
-Decide before generating code, not during:
+The model gives types, ownership, and dependencies — never storage. The agent chooses how to persist, guided by these principles:
 
-| Domain concept                              | Default persistence choice                                                 |
-|---------------------------------------------|----------------------------------------------------------------------------|
-| Aggregate root                              | One table; transaction boundary = single-aggregate write                   |
-| Owned entity (`one-to-many` from aggregate) | Separate table, FK to aggregate root, `ON DELETE CASCADE`                  |
-| Value object, single                        | Inline columns on the owning row, OR JSON column for nested VOs            |
-| Value object, collection                    | Separate table with FK + synthetic row `id`, cascade from owner            |
-| External reference (other bounded context)  | `*Id` column, no FK constraint across BCs, no cascade                      |
-| Concurrency                                 | Optimistic locking via `version` integer on aggregate root                 |
+- **Aggregate = consistency boundary.** Whatever the storage primitive is (table row, document, partition), one command commits one aggregate atomically. Cross-aggregate effects propagate via domain events, not joined transactions.
+- **Owned entities and value objects belong with their root.** Embed where the storage model supports it (document subdocs, JSON columns); otherwise link with whatever the engine uses for relationships, and propagate deletion of the root to its children.
+- **Value objects have no domain identity, but may carry a stable ID at system boundaries** when there's a real need — picking from a UI list, deduplication, audit logging. Set-replacement semantics still hold (the whole VO is overwritten on update, not patched field-by-field). Don't add IDs to VOs just because the storage engine wants them — only when something outside the aggregate needs to reference the VO.
+- **External references stay opaque.** A `*Id` field pointing at another bounded context's aggregate carries no integrity constraint and no cascade across that boundary.
+- **Aggregates need concurrency control.** Optimistic versioning on the root is a common default; conditional writes, pessimistic locking, or transaction isolation are all valid translations.
 
-**Synthetic VO IDs are fine in storage.** The domain model forbids `id` on value objects, but row identity in SQL is a practical necessity. Treat the storage ID as an implementation detail — never surface it in command payloads, event payloads, or API responses; set-replacement semantics still hold (the whole VO row gets replaced on update).
+Translation examples — pick the idiomatic one for the chosen stack:
 
-**Aggregate boundary = transaction boundary.** Cross-aggregate effects propagate via domain events, not joined transactions.
+- **Relational (Postgres/MySQL):** one table per aggregate root, separate tables for owned entity collections with FK + cascade, value objects inlined as columns or JSON, optimistic locking via a `version` integer.
+- **Document store (Mongo/DynamoDB/Firestore):** one document per aggregate root, owned entities and value objects embedded as subdocuments, optimistic locking via document revision or conditional writes.
 
-Record any non-obvious persistence decisions in `.qlerify/codegen.json` so future generations and the `sync` skill can interpret the code correctly.
+Record any non-derivable persistence decisions in `.qlerify/codegen.json` — e.g. "Address VO embedded inline in Order" vs "Address VO stored as its own collection because the UI picker needs to list saved addresses" — so the `sync` skill and future generations can interpret the code.
 
 ## Phase 4: Generate code
 
@@ -94,11 +92,11 @@ Generate in this order so each step has the foundation it needs.
 
 ### 4.1 — Project scaffold
 
-Initialize the project, install dependencies, configure the test runner, set up the database connection. One migration directory ready to receive Phase 4.2 output.
+Initialize the project, install dependencies, configure the test runner, set up the storage connection.
 
-### 4.2 — Schema and migrations
+### 4.2 — Persistence schema
 
-Translate entities and value objects into the persistence layer using the Phase 3 mapping. One migration per generation run, named after the model version hash so future deltas are traceable.
+Translate entities and value objects into the persistence layer using the Phase 3 mapping. If the stack uses schema migrations, generate one per generation run, named after the model version hash so future deltas are traceable. For schema-less stores, the hash recorded in `.qlerify/codegen.json` is enough.
 
 ### 4.3 — Aggregate types and invariant guards
 
@@ -121,19 +119,17 @@ One handler per command, mounted at an HTTP endpoint (or RPC method, per stack).
 1. Authorizes — only the role on the command's lane may invoke it; reject otherwise
 2. Loads the aggregate by ID (full load by default — see "advanced" below)
 3. Calls the aggregate method, which runs invariant guards and mutates state
-4. Persists the aggregate with optimistic-lock version bump (`UPDATE … WHERE id = ? AND version = ?`)
+4. Persists the aggregate with the stack's concurrency control (optimistic version bump, conditional write, or equivalent)
 5. Emits the corresponding domain event on the in-process bus
-6. Returns success, or a domain-specific error mapped to a 4xx response on invariant violation
-
-**Invariant violations must be distinguishable from infrastructure errors** — use a dedicated error type (e.g. `DomainError`, `InvariantViolation`) so the API layer can map cleanly to 400/422 instead of 500.
+6. Returns success, or surfaces invariant violations as 4xx (not 5xx) using whatever the stack idiomatically uses to distinguish domain errors from infrastructure errors
 
 ### 4.5 — Read models as queries
 
-For a prototype, implement each read model as a direct query against the write tables — not a materialized projection. The `entity` link on the read model tells you which table to query; `isFilter: true` fields become query parameters; remaining fields become the projection.
+For a prototype, implement each read model as a direct read against the write side — no precomputed projection. The `entity` link tells you which store to query; `isFilter: true` fields become query parameters; remaining fields become the projection.
 
-Promote a read model to a materialized projection only when:
-- It crosses bounded context boundaries (cross-BC join is undesirable), or
-- It has a measured performance requirement the direct query can't meet, or
+Promote a read model to a precomputed projection only when:
+- It crosses bounded context boundaries, or
+- It has a measured performance requirement the direct read can't meet, or
 - It needs eventual consistency semantics distinct from the write side
 
 Stay simple by default; CQRS-on-day-one is usually wasted complexity for a prototype.
