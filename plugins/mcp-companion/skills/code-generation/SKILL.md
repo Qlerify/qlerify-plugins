@@ -157,14 +157,15 @@ After generating, run the full suite (Phase 5).
 
 ### 4.8 — Frontend
 
-Generate a first-cut UI shaped like the final app, not a debug console. Drive layout from the model:
+Aim for demo-quality polish — a UI you'd be willing to show a stakeholder, not a debug console. Drive layout from the model:
 
 - **Navigation by lane (role), not aggregate.** Landing page is the role's task list / inbox, built from the read models that role can see.
 - **Read models** become real list and detail views; `isFilter: true` fields are filters/search, not raw query-string boxes.
 - **Commands** become forms with labels, inline validation from attribute invariants and GWT preconditions, and meaningful error/success states. Events surface as toasts or status updates.
-- **Use `exampleData` as seed data** in the backing store, not as pre-filled form values — pre-filled forms read as a demo.
+- **Pick UI affordances that match the domain.** A `Cart` aggregate gets a product grid with images and add-to-cart buttons; an `Order` aggregate gets a status timeline; a `Subscription` aggregate gets plan-picker cards. Avoid debug-console tells: no JSON dumps, no raw IDs in URLs, no "click to test command" buttons.
+- **Seed the backing store with beautifully crafted, domain-appropriate data — not the model's `exampleData` verbatim.** For a cart, invent a small catalog of plausible products (real-sounding names, sensible prices, images from a placeholder service like `picsum.photos` or `placehold.co`). For an order history, generate believable past orders across statuses. For subscriptions, named tiers with realistic pricing. The model's `exampleData` is the floor, not the ceiling, and it never belongs as pre-filled form values — that reads as a demo.
 
-Apply a lightweight styling baseline (Tailwind + minimal components, or Pico.css if avoiding a build step) — unstyled HTML is most of what makes a generated UI feel like a test tool. For non-default stacks, ask once whether to include a frontend; the user may already have one or prefer a separate API client.
+Apply a polished styling baseline — Tailwind + small components, or Pico.css when avoiding a build step. Typography, spacing, and visual hierarchy do most of the work; bare HTML is most of what makes a generated UI feel like a test tool. For non-default stacks, ask once whether to include a frontend; the user may already have one or prefer a separate API client.
 
 ## Phase 5: Test-and-iterate loop
 
