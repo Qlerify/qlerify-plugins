@@ -9,7 +9,7 @@ Generate all entities and value objects involved in the execution of all command
 **Entities** have their own identity and lifecycle. They are referenced by ID from other entities.
 
 - MUST have `id` as the first field
-- MUST include `id` in the `required` array
+- MUST mark `id` with `isRequired: true`
 - Examples: Customer, Order, Product, Cart
 
 **Value Objects** are defined only by their attributes — no `id` field.
@@ -62,6 +62,8 @@ The aggregate root entity must reference nested structures with the **EXACT SAME
 - With `dataType` set to `"object"`
 - And `relatedEntity` set to the referenced entity / VO "Shipping Address"
 
+This rule applies to collection renames too: if the command field is `lineItems`, the entity field must also be `lineItems` (not a generic `items`), even when the source description or DB table refers to the same collection as "items".
+
 ## Field Naming Rules
 
 - **Entity names**: human-readable format with spaces (e.g., "Payment Method", not "PaymentMethod"). Max 30 characters.
@@ -104,7 +106,7 @@ When referencing an entity that lives in a different bounded context, just use a
 
 ## Required Fields
 
-Mark fields essential for the entity to exist in a **valid initial state** in the `required` array. Required means the field must have a value from the moment the entity is first created.
+Mark fields essential for the entity to exist in a **valid initial state** with `isRequired: true` on the field. Required means the field must have a value from the moment the entity is first created.
 
 Fields populated only during specific lifecycle transitions (expire, cancel, archive, complete) should NOT be required, even if required in those commands. Example: `expiryReason` is required on an "Expire Cart" command but optional on the Cart entity because it doesn't exist at creation time.
 

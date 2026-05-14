@@ -195,10 +195,12 @@ Define one or more domain entities or value objects in a single atomic workflow 
 - `workflowId` — Identifies the workflow
 - `entities` — Array of entity / VO definitions, each with:
   - `name` — Entity or VO name (e.g., "Order", "Customer")
+  - `description` — One or two concise sentences describing the entity / VO's role in the domain. For aggregate roots, explain what the aggregate represents and its lifecycle responsibility; for value objects, note that it is replaced as a whole.
   - `boundedContext` — Optional. Name of the bounded context to assign this entity / VO to
   - `aggregateRootFor` — Optional. Array of `$ref` paths to events this entity is the aggregate root for (e.g., `["#/domainEvents/OrderPlaced"]`). Only entities with an `id` field can be aggregate roots.
   - `fields` — Optional. Array of field definitions:
     - `name` — Field name in camelCase (entities must always have one attribute named exactly `id`; value objects must never have a field named `id`)
+    - `description` — Short business-language description of the field. Add when the meaning, purpose, or role is non-obvious from the name; omit on self-explanatory fields like `id`, `name`, `email`.
     - `dataType` — One of: `string`, `number`, `boolean`, `object`
     - `exampleData` — Array of 3 realistic example values
     - `isRequired` — Whether the field is mandatory (true/false)
@@ -215,8 +217,9 @@ Modify one or more entities in a single atomic workflow write — rename, add/up
 - `entities` — Array of entity updates, each with:
   - `entity` — `$ref` path to the entity (e.g., `#/schemas/entities/Order`). Required.
   - `name` — New name (optional)
+  - `description` — Updated top-level description for the entity / VO (optional)
   - `boundedContext` — Bounded context name to assign to (optional, empty string to clear)
-  - `addFields`, `updateFields`, `removeFields` — Field modification arrays
+  - `addFields`, `updateFields`, `removeFields` — Field modification arrays. Field bodies in `addFields` and `updateFields[].updates` accept the same properties as `create_entities` fields, including `description`.
 
 The whole batch is atomic: if any update fails validation, none are applied.
 
@@ -342,10 +345,12 @@ Define one or more read models/queries in a single atomic workflow write. Pass a
 - `readModels` — Array of read model definitions, each with:
   - `domainEvent` — Required. `$ref` path to the event (e.g., `#/domainEvents/OrderPlaced`)
   - `name` — Read model name with spaces (e.g., "Get Order Details")
+  - `description` — Optional one-sentence description of what the query returns and when it is used. Omit when the name already makes the intent obvious.
   - `cardinality` — Required. `"one-to-one"` or `"one-to-many"`
   - `entity` — Recommended. `$ref` path to the source entity (e.g., `#/schemas/entities/Order`)
   - `fields` — Array of field definitions. Each field:
     - `name` — camelCase
+    - `description` — Short description of the field's meaning, purpose, or filter/computed intent. Add when non-obvious from the name; omit on self-explanatory fields.
     - `isFilter` — Boolean; mark query/filter parameters
     - `computed` — Boolean; mark fields calculated at runtime
     - `relatedEntity` — `$ref` path; use for nested composed data
