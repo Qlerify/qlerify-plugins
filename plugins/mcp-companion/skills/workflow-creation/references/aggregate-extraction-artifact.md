@@ -75,6 +75,7 @@ structure of the specific aggregate.
 
 **Source:** `{path to aggregate module in the codebase}`
 **Service entry point:** `{class or function name}` (`{path to file}`).
+**Bounded context:** `{Bounded Context Name}` (defaults to the aggregate name; may be a higher-level grouping).
 
 {One paragraph: what's IN this aggregate model and what's explicitly OUT (e.g.,
 "The service layer in X orchestrates across A + B + C. Those workflows are outside

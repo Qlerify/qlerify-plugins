@@ -180,6 +180,7 @@ user has approved the artifact.**
 | Tests (Given/When/Then), command-level invariants | `acceptanceCriteria` on events in Phase 2 Step 2             |
 | Invariants                                        | Verified in Phase 4 (`validate_domain_model`)                |
 | External references (IDs to other BCs)            | Category 2 ID-only refs in commands (Phase 3 Step 5)         |
+| Bounded context (from title metadata)             | Phase 3 Step 3 (`create_bounded_context`)                    |
 
 After completing Phase 0 and securing user approval of the artifact, proceed to Phase 1.
 
