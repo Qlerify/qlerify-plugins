@@ -198,8 +198,8 @@ Define one or more domain entities or value objects in a single atomic workflow 
   - `description` — One or two concise sentences describing the entity / VO's role in the domain. For aggregate roots, explain what the aggregate represents and its lifecycle responsibility; for value objects, note that it is replaced as a whole.
   - `boundedContext` — Optional. Name of the bounded context to assign this entity / VO to
   - `aggregateRootFor` — Optional. Array of `$ref` paths to events this entity is the aggregate root for (e.g., `["#/domainEvents/OrderPlaced"]`). Only entities with an `id` field can be aggregate roots.
-  - `fields` — Optional. Array of field definitions. Use this when you want to create the entity / VO with its fields in the same call; for minimal initial creation, you can omit `fields` here and add or enrich field metadata later via `update_entities`.
-    - `name` — Field name in camelCase (entities must always have one attribute named exactly `id`; value objects must never have a field named `id`)
+  - `fields` — Optional only for value objects or non-classified drafts. If you intend to create an entity, include `fields` in the initial `create_entities` call and include a field named exactly `id`; otherwise the item may be classified as a value object, and `aggregateRootFor` will not work. You can still add or enrich non-identity field metadata later via `update_entities`.
+    - `name` — Field name in camelCase (entities must always have one attribute named exactly `id` at creation time; value objects must never have a field named `id`)
     - `description` — Required for every field definition you include in this request. Use a short business-language description of the field; for self-explanatory fields like `id`, `name`, or `email`, keep it brief and precise.
     - `dataType` — One of: `string`, `number`, `boolean`, `object`
     - `exampleData` — Array of 3 realistic example values
