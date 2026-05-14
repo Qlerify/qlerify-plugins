@@ -541,6 +541,47 @@ To build parallel branches, give each branch the same `follows` and set `paralle
 - **Include realistic example data.** 3 values per field helps stakeholders understand the model.
 - **After completing the workflow, use the `/download` skill** to save the specification to a file. This is much faster than fetching via MCP tools for large workflows.
 
+## Common mistakes
+
+Recurring errors observed across past runs. Treat each item as a red flag to actively avoid — not just a rule, but a known failure mode. Re-read this list before reporting done.
+
+_(Empty — populated over time from skill self-improvement retros.)_
+
+## When to suggest user feedback
+
+Real users hit issues we never see in internal testing — recurring corrections on the same topic, frustration with a step, or ideas for things the tool could do. Capture those by offering to send a feedback report. The bar for offering is intentionally high — most corrections are normal collaboration, not feedback-worthy.
+
+**Offer feedback ONLY when at least one of these is true:**
+
+1. The user has corrected the same thing **twice or more** in this session — same topic, not just disagreement on a single decision.
+2. The user shows **explicit frustration** — words like "stop", "I told you", "for the third time", "this is annoying", "why does it keep". Escalation, not just disagreement.
+3. The user **criticizes the tool, the skill, or Qlerify itself** — not your output — "Qlerify should...", "the skill says X but...", "this tool can't...".
+4. The user offered a **positive suggestion or feature idea** — "could it also do X", "what about Y". Suggestions are as valuable as bug reports.
+
+**Do NOT offer feedback for:**
+
+- A single correction (most edits are normal back-and-forth).
+- The user picking a different option from one you proposed.
+- Validation issues you fixed during the session.
+- Normal naming, structure, or scope disagreements.
+
+**Timing:** Never interrupt mid-task. Wait for a natural pause — task complete, user stepped back, or conversation winding down. **At most one feedback offer per session.**
+
+**Flow when a trigger fires:**
+
+1. Briefly tell the user what you noticed: e.g. "That's the third time I've gotten the same correction — looks like something worth reporting back to the Qlerify team. Want me to draft a quick feedback report?"
+2. If they agree, draft the report using session context. Include: what the user was building, the specific problem or suggestion, your honest interpretation. Classify with:
+   - `category`: `skill` | `mcp-tool` | `qlerify-product`
+   - `sentiment`: `frustrated` | `suggestion` | `bug` | `praise`
+3. **Show the user the full draft** before sending. They edit, approve, or discard.
+4. Only after explicit approval, call the `send_feedback` MCP tool.
+
+Never send silently. Never send without classification. Never send domain content the user hasn't seen in the draft preview.
+
+## Skill self-improvement
+
+Before reporting done, name the single most confusing or missing piece of this skill in this run, and propose one concrete edit (a specific line or section of `SKILL.md` or a reference file, with the new wording). If the proposed edit captures a recurring error rather than a missing rule, propose it as a new entry under "Common mistakes". If nothing stood out, say so explicitly. The user accepts or discards the proposal on the spot — do not modify the skill yourself.
+
 ## Additional Resources
 
 ### Reference Files
