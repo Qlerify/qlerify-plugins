@@ -216,12 +216,12 @@ Inputs: `cartId`, optional relation selectors.
 
 Returns the full Cart plus computed fields:
 
-| Field          | Description                                                   |
-|----------------|---------------------------------------------------------------|
-| total          | Final payable amount (items + shipping + tax − discounts).    |
-| subtotal       | item_subtotal + shipping_subtotal (pre-tax, after discounts). |
-| discount_total | Sum of all adjustment amounts.                                |
-| ...            |                                                               |
+| Field         | Description                                                  |
+|---------------|--------------------------------------------------------------|
+| total         | Final payable amount (items + shipping + tax − discounts).   |
+| subtotal      | itemSubtotal + shippingSubtotal (pre-tax, after discounts).  |
+| discountTotal | Sum of all adjustment amounts.                               |
+| ...           |                                                              |
 
 ### Secondary Queries
 
