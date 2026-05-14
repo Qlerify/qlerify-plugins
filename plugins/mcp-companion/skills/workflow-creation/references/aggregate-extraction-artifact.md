@@ -315,7 +315,7 @@ Before presenting the artifact to the user, run through this checklist:
 - [ ] Every classification (entity / VO) has a stated reason
 - [ ] "Commands explicitly merged or omitted" section exists if any merges happened
 - [ ] No computed/projection-only fields appear in entity attribute tables
-- [ ] External references list is exhaustive — every ID-typed field points somewhere
+- [ ] External references list is exhaustive — every external-reference or `{entity}Id` field that is not the entity's own identifier points somewhere
 - [ ] Out-of-scope orchestration is named, even if not modeled
 - [ ] Invariants are stated as enforceable rules, not vague principles
 - [ ] Tests are in Given/When/Then form, grouped by command
