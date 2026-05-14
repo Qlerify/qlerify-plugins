@@ -250,12 +250,22 @@ Use `create_entities` to create the schemas. It is a bulk tool: each call accept
 create_entities(workflowId: "wf-1", entities: [
   {
     name: "Order",
+    description: "Aggregate root representing a customer purchase and tracking its fulfilment lifecycle from placement to delivery.",
     boundedContext: "Order Management",
     fields: [{ name: "id", description: "Entity ID", isRequired: true }],
     aggregateRootFor: ["#/domainEvents/OrderPlaced", "#/domainEvents/OrderCancelled"]
   },
-  { name: "Order Item", boundedContext: "Order Management", fields: [{ name: "id", description: "Entity ID", isRequired: true }] },
-  { name: "Address", boundedContext: "Order Management" }
+  {
+    name: "Order Item",
+    description: "Line item within an order capturing the product, quantity, and price at time of purchase.",
+    boundedContext: "Order Management",
+    fields: [{ name: "id", description: "Entity ID", isRequired: true }]
+  },
+  {
+    name: "Address",
+    description: "Value object describing a physical postal location; immutable and replaced as a whole.",
+    boundedContext: "Order Management"
+  }
 ])
 -> Order, Order Item are entities ($ref under #/schemas/entities/...)
 -> Address is a value object ($ref under #/schemas/valueObjects/...)
