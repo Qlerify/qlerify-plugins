@@ -70,7 +70,7 @@ create_entities(workflowId: "wf-1", entities: [
   {
     name: "Order",
     boundedContext: "Order Management",
-    fields: [{ name: "id", description: "Unique identifier for the order", isRequired: true }],
+    fields: [{ name: "id", description: "Entity ID", isRequired: true }],
     aggregateRootFor: [
       "#/domainEvents/ItemAddedToOrder",
       "#/domainEvents/OrderPlaced",

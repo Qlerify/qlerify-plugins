@@ -251,10 +251,10 @@ create_entities(workflowId: "wf-1", entities: [
   {
     name: "Order",
     boundedContext: "Order Management",
-    fields: [{ name: "id", isRequired: true }],
+    fields: [{ name: "id", description: "Entity ID", isRequired: true }],
     aggregateRootFor: ["#/domainEvents/OrderPlaced", "#/domainEvents/OrderCancelled"]
   },
-  { name: "Order Item", boundedContext: "Order Management", fields: [{ name: "id", isRequired: true }] },
+  { name: "Order Item", boundedContext: "Order Management", fields: [{ name: "id", description: "Entity ID", isRequired: true }] },
   { name: "Address", boundedContext: "Order Management" }
 ])
 -> Order, Order Item are entities ($ref under #/schemas/entities/...)
