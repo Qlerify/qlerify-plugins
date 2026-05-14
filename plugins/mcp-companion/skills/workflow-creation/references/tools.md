@@ -163,14 +163,15 @@ existing workflow. For building a new workflow with many events, use `create_dom
 
 ### update_domain_event
 
-Modify an existing domain event — change its name, lane, color, aggregate root, or acceptance criteria.
+Modify an existing domain event — change its name, lane, color, condition label, group, aggregate root, or acceptance criteria.
 
 - `workflowId`, `projectId` — Identifies the workflow
 - `domainEvent` — `$ref` path to the event (e.g., `#/domainEvents/OrderPlaced`)
 - `description` — New event name (optional)
 - `lane` — Lane name to move event to (optional)
 - `color` — New color (optional)
-- `conditionLabel` — Branch label for events following a gateway (optional)
+- `conditionLabel` — Branch label for events following a gateway, or empty string to clear (optional)
+- `group` — Group name to assign this event to, or empty string to remove from its current group (optional). Only set on the first event of a new group — subsequent events inherit via the parent chain.
 - `aggregateRoot` — `$ref` path to entity, or empty string to remove (optional)
 - `acceptanceCriteria` — Array of GWT strings, replaces all existing (optional)
 
@@ -409,22 +410,25 @@ Attach a card to an event. Only needed for card types not managed by dedicated t
 - `workflowId`, `projectId` — Identifies the workflow
 - `domainEvent` — `$ref` path to the event (e.g., `#/domainEvents/OrderPlaced`)
 - `cardTypeId` — The card type (from `list_card_types`)
-- `description` — Card content/description
+- `description` — Card content/description (supports HTML)
 
 ### update_card
 
-Modify a card's content.
+Modify a card — change its content or card type. Cards are identified by their event and current text.
 
 - `workflowId`, `projectId` — Identifies the workflow
-- `cardId` — Identifies the card
-- `description` — Updated content
+- `domainEvent` — `$ref` path to the event the card is on
+- `currentDescription` — The card's existing description, used to locate it
+- `description` — New content (optional, supports HTML)
+- `cardTypeId` — Change the card type (optional)
 
 ### delete_card
 
-Remove a card from an event.
+Remove a card from an event. Cards are identified by their event and text.
 
 - `workflowId`, `projectId` — Identifies the workflow
-- `cardId` — Identifies the card
+- `domainEvent` — `$ref` path to the event the card is on
+- `description` — The card's description, used to locate it
 
 ---
 
@@ -472,6 +476,8 @@ Check the workflow's domain model for structural issues. Returns a list of probl
 that don't match their aggregate root entity, missing relationships, and naming mismatches.
 
 - `workflowId`, `projectId` — Identifies the workflow
+- `boundedContext` — Optional. Restrict validation to a single bounded context. If omitted, validates all bounded contexts plus global/unassigned elements.
+- `scope` — Optional. Filter issues by type: `"all"` (default), `"entities"`, `"commands"`, or `"readModels"`.
 
 Run this after creating all entities, commands, read models, and domain event schemas to catch field mismatches. **MAJOR** issues should be
 fixed. **MINOR** `FIELD_NOT_IN_ENTITY` issues on read model filter fields are often expected — cross-entity query
