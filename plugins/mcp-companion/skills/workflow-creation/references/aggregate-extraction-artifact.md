@@ -225,9 +225,9 @@ Returns the full Cart plus computed fields:
 
 ### Secondary Queries
 
-| Query             | Purpose                                |
-|-------------------|----------------------------------------|
-| ListCarts(filter) | Admin listing / customer cart history. |
+| Query      | Purpose                                |
+|------------|----------------------------------------|
+| List Carts | Admin listing / customer cart history. |
 ```
 
 When a field is clearly projection-only (totals, counts, derived flags), list it
