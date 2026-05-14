@@ -67,13 +67,22 @@ afterward to verify the actual `$ref` key before referencing it in subsequent ca
 Follow these steps in order. Each step depends on the previous one. For an existing or
 legacy codebase, start at Phase 0; otherwise skip Phase 0 and start at Phase 1.
 
-### Phase 0: Extract aggregate from codebase (reverse-engineering only)
+### Phase 0: Plan the aggregate model (reverse-engineering only)
 
 **Skip this phase entirely for greenfield workflow creation.** Run it only when the
-source is an existing or legacy codebase. Output feeds directly into Phase 1+ — do
-NOT pause for user review or produce a separate review document; corrections happen
-at the end via Phase 4, which validates the workflow structurally (Step 9) and then
-reconciles it against the source code (Step 10).
+source is an existing or legacy codebase.
+
+This phase produces a **standalone markdown planning artifact** that captures the
+aggregate model derived from the code. **Phase 1+ does not start until the user has
+reviewed and approved the artifact.** Reconciliation against the source code still
+happens at the end via Phase 4 Step 10 as a belt-and-suspenders safety net.
+
+The artifact is a transient working document: it makes the interpretation of the
+code reviewable as prose before any Qlerify state is committed. Boundary calls
+(entity vs VO, in-scope vs out, which methods are real commands) are recorded with
+their rationale so the user can push back cheaply. Once Phase 1+ has built the
+workflow, Qlerify becomes the source of truth; the artifact does not need to be
+maintained going forward.
 
 If the user has not specified **which** aggregate or **which** codebase, ask before
 scanning. You need both:
@@ -124,22 +133,32 @@ Model only the `{AGGREGATE_NAME}` aggregate boundary. Cross-aggregate orchestrat
 
 Model the aggregate as a **domain/type model**, not a persistence model. Avoid database terms like foreign keys, join tables, and cascade deletes unless they are needed to explain a business rule.
 
-**Step 0.4 — Feed Phase 0 output into the rest of the creation sequence**
+**Step 0.4 — Write the planning artifact**
 
-Use the extracted information directly to drive Phase 1+. Do not produce a separate
-markdown review document for the user. The mapping is:
+Write the extracted model to `.qlerify/aggregates/{aggregate-name-kebab-case}.md`
+(create the `.qlerify/aggregates/` directory if it does not exist). See
+`references/aggregate-extraction-artifact.md` for the template and section-by-section
+guidance.
 
-| Extracted concept                         | Goes into                                                    |
-|---------------------------------------------------|------------------------------------------------------|
-| Domain events                                     | Phase 2 Step 2 (`create_domain_events`)              |
-| Aggregate root, related entities, VOs             | Phase 3 Step 4 (`create_entities`)                   |
-| Commands                                          | Phase 3 Step 5 (`create_commands`)                   |
-| Read models / queries                             | Phase 3 Step 6 (`create_read_models`)                |
-| Attributes, attribute level invariants.           | Phase 3 Step 8 (`update_entities`)                   |
-| Tests (Given/When/Then), command level invariants | `acceptanceCriteria` on events in Phase 2 Step 2     |
-| Invariants                                        | Verified in Phase 4 (`validate_domain_model`)        |
-| External references (IDs to other BCs)            | Category 2 ID-only refs in commands (Phase 3 Step 5) |
-| Bounded context grouping                          | Phase 3 Step 3 (`create_bounded_context`)            |
+Sections scale with content — omit sections that don't apply (e.g., no related
+entities). For `Read Models / Queries`, keep the section if the template requires
+it; only omit projection-specific fields when there are no read-model projections.
+Do not invent content to fill empty sections.
+
+**Step 0.5 — User review and approval gate**
+
+Present the artifact to the user and explicitly ask for approval before proceeding
+to Phase 1. Expected types of feedback:
+
+- Classification disputes (this should be an entity, not a VO, because…)
+- Boundary disputes (this command belongs to a different aggregate)
+- Missing or incorrect invariants
+- Tests that should be acceptance criteria but aren't listed
+- Commands that should be merged or split
+
+Apply approved corrections to the artifact file, then ask again. Repeat until the
+user explicitly approves. **Do NOT call any Qlerify MCP tools (Phase 1+) until the
+user has approved the artifact.**
 
 **Extraction guidelines**
 
@@ -149,7 +168,21 @@ markdown review document for the user. The mapping is:
 - **Prefer domain types over DB types.** If the code uses `varchar`, write `string`; if it uses `@relation`, write `Order.items: LineItem[]`.
 - **Keep external aggregates opaque.** A `userId` field is enough; do not pull in `User` internals unless modeling a User aggregate.
 
-After completing Phase 0, proceed directly to Phase 1.
+**After artifact approval, the mapping into Phase 1+ is:**
+
+| Artifact section                                  | Goes into                                                    |
+|---------------------------------------------------|--------------------------------------------------------------|
+| Domain events                                     | Phase 2 Step 2 (`create_domain_events`)                      |
+| Aggregate root, related entities, VOs             | Phase 3 Step 4 (`create_entities`)                           |
+| Commands                                          | Phase 3 Step 5 (`create_commands`)                           |
+| Read models / queries                             | Phase 3 Step 6 (`create_read_models`)                        |
+| Attributes, attribute-level invariants            | Phase 3 Step 8 (`update_entities`)                           |
+| Tests (Given/When/Then), command-level invariants | `acceptanceCriteria` on events in Phase 2 Step 2             |
+| Invariants                                        | Verified in Phase 4 (`validate_domain_model`)                |
+| External references (IDs to other BCs)            | Category 2 ID-only refs in commands (Phase 3 Step 5)         |
+| Bounded context (from title metadata)             | Phase 3 Step 3 (`create_bounded_context`)                    |
+
+After completing Phase 0 and securing user approval of the artifact, proceed to Phase 1.
 
 ### Phase 1: Foundation
 
@@ -493,6 +526,7 @@ with `relatedEntity`.
 Consult these for detailed rules when creating specific element types:
 
 - **`references/system-prompt.md`** — DDD/event modeling expert context, naming conventions, character limits, quality checks
+- **`references/aggregate-extraction-artifact.md`** — Phase 0 planning artifact: template, section-by-section guidance, file location, quality checks before user approval
 - **`references/event-generation.md`** — Event naming rules, role conventions, chronology, gateway patterns
 - **`references/command-generation.md`** — The 4 command field categories, naming rules, 3-level nesting guidelines
 - **`references/read-model-generation.md`** — Read model field design, filter vs display fields, cardinality rules
