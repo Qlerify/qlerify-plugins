@@ -112,6 +112,7 @@ Search for the aggregate and its entry points:
 Extract the following, scoped to the `{AGGREGATE_NAME}` boundary. Cross-aggregate
 orchestration lives **outside** — note that it exists, but do not model it.
 
+- **Aggregate hierarchy** — a short tree showing the aggregate root, related entities, and VOs, with each node marked as root / entity / VO.
 - **Aggregate root entity** — top-level entity through which all mutations enter. Identified by ownership of children (it holds the collections) and by being the entry point that services call into.
 - **Related entities** — children with their **own identity** and individual lifecycle (add / update / remove).
 - **Value objects** — children that are **replaced wholesale** (set-replacement semantics), with no independent lifecycle. They may still have technical IDs in the implementation — treat them as VOs anyway if the domain semantics are set-replacement.
@@ -121,7 +122,7 @@ orchestration lives **outside** — note that it exists, but do not model it.
   - For value objects, usually only one command is needed to set the value; clearing or removal can be modeled as setting a blank or empty value.
   - Note which fields are create-only — required on create but not available on update.
 - **Domain events** — one event per command, forming **1:1 pairs**. Aim for **8–20 events** per aggregate. Too many → hard for stakeholders to review on an event storming board. Too few → system becomes hard to reason about.
-- **Read models / queries** — queries needed by the client. Can contain **computed or derived fields** (totals, counts) that exist on API responses but not on entity models. When a field is clearly projection-only, prefer listing it on the read model instead of also on entity/VO attribute tables.
+- **Read models / queries** — queries needed by the client. Can contain **computed or derived fields** (totals, counts) that exist on API responses but not on entity models. When a field is clearly projection-only, prefer listing it on the read model instead of also on entity/VO attribute tables. Add a short description for any calculated field whose derivation isn't obvious from its name.
 - **Attributes** — **all** fields for every entity and VO: name, type, required/optional, defaults, notes. Prefer domain/type definitions over database schema. Describe relationships in type form (e.g. `Order.items: LineItem[]`), not database form. Omit internal back-reference fields like `parent_id` or FK fields unless they are domain-significant. Capture a short description for each entity and each attribute.
 - **Invariants** — business rules: required fields, non-negative amounts, set-replacement semantics, snapshot patterns, computed-only fields. Invariants will map to GTWs on commands, command attribute rules and entity attribute rules later in the process.
 - **Tests** — for each aggregate command, extract tests that validate the command's behavior **at the aggregate boundary**, in business language. If only service-level tests exist, extract only the part that proves aggregate behavior; ignore external orchestration. Example: "Given no Order exists, When the caller creates an Order with a valid customer id, Then an Order is returned with an assigned id." These map to `acceptanceCriteria` on events in Phase 2 Step 2.
