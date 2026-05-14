@@ -157,11 +157,11 @@ After generating, run the full suite (Phase 5).
 
 ### 4.8 — Frontend
 
-Aim for demo-quality polish — a UI you'd be willing to show a stakeholder, not a debug console. Drive layout from the model:
+Build a polished, demo-ready frontend with an **explicit action surface**: every command is reachable from a primary button or equivalent affordance in the view it belongs to, state changes are visible, and operational feedback (in-flight, success, error) is lightweight but present — without slipping back into debug-console territory. Drive layout from the model:
 
 - **Navigation by lane (role), not aggregate.** Landing page is the role's task list / inbox, built from the read models that role can see.
 - **Read models** become real list and detail views; `isFilter: true` fields are filters/search, not raw query-string boxes.
-- **Commands** become forms with labels, inline validation from attribute invariants and GWT preconditions, and meaningful error/success states. Events surface as toasts or status updates.
+- **Commands** surface as primary action buttons in the relevant view (not buried in a menu) and open forms with labels, inline validation from attribute invariants and GWT preconditions, and clear success/error states. Events surface as toasts or visible state changes.
 - **Pick UI affordances that match the domain.** A `Cart` aggregate gets a product grid with images and add-to-cart buttons; an `Order` aggregate gets a status timeline; a `Subscription` aggregate gets plan-picker cards. Avoid debug-console tells: no JSON dumps, no raw IDs in URLs, no "click to test command" buttons.
 - **Seed the backing store with beautifully crafted, domain-appropriate data — not the model's `exampleData` verbatim.** For a cart, invent a small catalog of plausible products (real-sounding names, sensible prices, images from a placeholder service like `picsum.photos` or `placehold.co`). For an order history, generate believable past orders across statuses. For subscriptions, named tiers with realistic pricing. The model's `exampleData` is the floor, not the ceiling, and it never belongs as pre-filled form values — that reads as a demo.
 
