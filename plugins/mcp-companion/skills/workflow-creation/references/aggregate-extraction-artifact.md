@@ -91,17 +91,17 @@ A tree diagram showing the aggregate root, its related entities, and its value
 objects. Mark each node as **(aggregate root)**, **(Related Entity)**, or
 **(Value Object)**. Indicate which collections are set-replaced vs add/update/remove.
 
-```markdown
+````markdown
 ## 1. Aggregate Hierarchy
 
-\`\`\`
+```
 Cart (aggregate root)
-├── billingAddress            : Address                         (Value Object)
+├── billingAddress            : Address                        (Value Object)
 ├── lineItems[]               : Line Item                      (Related Entity)
 │   ├── adjustments[]         : Line Item Adjustment           (Value Object — set-replaced)
 │   └── taxLines[]            : Line Item Tax Line             (Value Object — set-replaced)
 └── creditLines[]             : Credit Line                    (Related Entity)
-\`\`\`
+```
 
 **Why these classifications:**
 - `Line Item` has independent add/update/remove commands and its own identity in the
@@ -110,7 +110,7 @@ Cart (aggregate root)
   atomically. Their IDs are technical. They are **Value Objects**.
 - `Address` exists at most once on the cart and is replaced wholesale by
   `Set Billing Address` — **Value Object**, despite having a DB id.
-```
+````
 
 The "Why these classifications" block is the most important content in the entire
 artifact. State the **reason** for each non-obvious classification — lifecycle
@@ -133,12 +133,12 @@ and pricing artefacts until it is either abandoned or converted to an order.
 
 | Attribute     | Type              | Req                    | Default | Notes                                    |
 |---------------|-------------------|------------------------|---------|------------------------------------------|
-| id           | string            | yes (system-generated) | —       | Prefix `cart_`. Create-only.             |
-| currencyCode | string (ISO-4217) | yes                    | —       | Normalised to lower-case. Create-only.   |
-| customerId   | string \| null    | no                     | null    | External reference → Customer aggregate. |
-| email        | string \| null    | no                     | null    | Email of the buyer.                      |
-| lineItems    | LineItem[]        | no                     | []      | Owned collection, see §4.                |
-| ...          |                   |                        |         |                                          |
+| id            | string            | yes (system-generated) | —       | Prefix `cart_`. Create-only.             |
+| currencyCode  | string (ISO-4217) | yes                    | —       | Normalised to lower-case. Create-only.   |
+| customerId    | string \| null    | no                     | null    | External reference → Customer aggregate. |
+| email         | string \| null    | no                     | null    | Email of the buyer.                      |
+| lineItems     | LineItem[]        | no                     | []      | Owned collection, see §4.                |
+| ...           |                   |                        |         |                                          |
 ```
 
 Note rollup/computed fields as **projections** in the read-model section, NOT here.
@@ -295,7 +295,7 @@ Extracted from `{path to integration tests}`. Rephrased in business language.
 - Given no cart exists, When the caller creates a cart with currency code EUR,
   Then a cart is returned with an assigned id and currency code EUR.
 - Given no cart exists, When the caller creates a cart without a currency code,
-  Then the command is rejected with a required-field error on currency_code.
+  Then the command is rejected with a required-field error on currencyCode.
 
 ### Add Line Item
 - Given a cart exists, When the caller adds a line item with quantity 1 and unit
