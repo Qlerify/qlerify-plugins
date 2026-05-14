@@ -97,14 +97,14 @@ objects. Mark each node as **(aggregate root)**, **(Related Entity)**, or
 \`\`\`
 Cart (aggregate root)
 ├── billingAddress            : Address                         (Value Object)
-├── lineItems[]               : LineItem                        (Related Entity)
-│   ├── adjustments[]         : LineItemAdjustment              (Value Object — set-replaced)
-│   └── taxLines[]            : LineItemTaxLine                 (Value Object — set-replaced)
-└── creditLines[]             : CreditLine                      (Related Entity)
+├── lineItems[]               : Line Item                      (Related Entity)
+│   ├── adjustments[]         : Line Item Adjustment           (Value Object — set-replaced)
+│   └── taxLines[]            : Line Item Tax Line             (Value Object — set-replaced)
+└── creditLines[]             : Credit Line                    (Related Entity)
 \`\`\`
 
 **Why these classifications:**
-- `LineItem` has independent add/update/remove commands and its own identity in the
+- `Line Item` has independent add/update/remove commands and its own identity in the
   business vocabulary — it's a **Related Entity**.
 - Adjustments are exposed through `set…` commands that replace the full collection
   atomically. Their IDs are technical. They are **Value Objects**.
