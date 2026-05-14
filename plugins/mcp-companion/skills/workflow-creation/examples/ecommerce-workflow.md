@@ -80,7 +80,7 @@ create_entities(workflowId: "wf-1", entities: [
       "#/domainEvents/OrderShipped"
     ]
   },
-  { name: "Order Item", boundedContext: "Order Management", fields: [] }
+  { name: "Order Item", description: "Immutable line item representing a single product, quantity, and unit price within an order", boundedContext: "Order Management", fields: [] }
 ])
 -> Order is an entity ($ref under #/schemas/entities/Order)
 -> Order Item is a value object ($ref under #/schemas/valueObjects/OrderItem)
