@@ -141,7 +141,9 @@ Write the extracted model to `.qlerify/aggregates/{aggregate-name-kebab-case}.md
 guidance.
 
 Sections scale with content — omit sections that don't apply (e.g., no related
-entities, no read-model projections). Do not invent content to fill empty sections.
+entities). For `Read Models / Queries`, keep the section if the template requires
+it; only omit projection-specific fields when there are no read-model projections.
+Do not invent content to fill empty sections.
 
 **Step 0.5 — User review and approval gate**
 
