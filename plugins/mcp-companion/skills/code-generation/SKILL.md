@@ -37,6 +37,8 @@ This skill produces a working, tested application. The model lives in version co
 
 If the workflow hasn't been downloaded locally yet, invoke the `download` skill — it bypasses MCP processing and is much faster for large specs. Otherwise call `get_workflow` once and cache the result.
 
+Save the spec at `<output-dir>/.qlerify/workflow.json` (output dir is chosen in Phase 2) so the model travels with the code.
+
 Read the `$schema` URL from the spec (e.g. `https://app.qlerify.com/schemas/domain-model/v1.json`) and fetch it if you need to verify field types, allowed values, or relationship structure. Treat it as authoritative for what the model can express.
 
 ## Phase 1: Pre-flight model scan
@@ -62,10 +64,11 @@ Before generating any code, scan the model for issues that will produce broken o
 
 ## Phase 2: Choose the platform
 
-1. **Inspect the working directory first.** If a project already exists (`package.json`, `pyproject.toml`, `go.mod`, `Cargo.toml`, `pom.xml`, etc.), match the existing stack — framework, ORM, test runner, package manager. Do not introduce a parallel stack alongside it.
-2. **Greenfield directory.** Ask the user once with a single recommended default — not a menu. Recommended default:
-   - **Node.js + TypeScript + Fastify + Prisma + PostgreSQL + Vitest**
-   - Why: TypeScript types map cleanly to attribute types, Prisma migrations align with entity changes, Fastify gives a clean command-handler shape, Vitest matches the GWT → test pattern with minimal ceremony.
+1. **Inspect the working directory.** Three cases:
+   - **Prior codegen target** (`.qlerify/codegen.json` present) — generate in place; match the recorded stack.
+   - **Existing project, no anchor** (`package.json`, `go.mod`, etc.) — almost always legacy. Ask once: extend in place (rare, same-stack only) or generate into a sibling directory (default — `../{workflowName}-new`). With the sibling option, the model file and `.qlerify/codegen.json` go there too.
+   - **Empty directory** — generate in place.
+2. **Greenfield stack.** Default the runtime to **Node.js + TypeScript** (types map cleanly to attribute types). Pick framework, ORM, database, and test runner yourself based on what fits the model's shape. State the full stack in one line; don't offer a menu.
 3. **User-specified stack.** Honor it exactly, including older or unconventional choices.
 
 Record the chosen stack in `.qlerify/codegen.json` (created if absent) so subsequent generation runs stay consistent.
@@ -152,11 +155,16 @@ Place tests structurally: one test file per aggregate, one `describe` per comman
 
 After generating, run the full suite (Phase 5).
 
-### 4.8 — Test frontend
+### 4.8 — Frontend
 
-For the default stack, generate a simple static frontend that exercises every command and read model — one page per aggregate, pre-filled with example data from the model (`exampleData` arrays and GWT inputs) so the user can submit a working request on first load. Keep it static (no build step, no framework) unless the chosen stack already has a frontend convention.
+Generate a first-cut UI shaped like the final app, not a debug console. Drive layout from the model:
 
-For non-default stacks, ask once whether to include a test frontend — the user may already have one or prefer a separate UI tool (Postman, Bruno, Insomnia).
+- **Navigation by lane (role), not aggregate.** Landing page is the role's task list / inbox, built from the read models that role can see.
+- **Read models** become real list and detail views; `isFilter: true` fields are filters/search, not raw query-string boxes.
+- **Commands** become forms with labels, inline validation from attribute invariants and GWT preconditions, and meaningful error/success states. Events surface as toasts or status updates.
+- **Use `exampleData` as seed data** in the backing store, not as pre-filled form values — pre-filled forms read as a demo.
+
+Apply a lightweight styling baseline (Tailwind + minimal components, or Pico.css if avoiding a build step) — unstyled HTML is most of what makes a generated UI feel like a test tool. For non-default stacks, ask once whether to include a frontend; the user may already have one or prefer a separate API client.
 
 ## Phase 5: Test-and-iterate loop
 
@@ -176,10 +184,11 @@ Write `.qlerify/codegen.json` with:
 - `workflowId` and `workflowName`
 - `modelHash` — content hash of the canonical JSON form of the spec, so a future run can compute a diff
 - `stack` — the platform choices from Phase 2
+- `aggregates` — names generated so far (merge with any prior list), so a later run knows what's done and what's pending
 - `persistenceDecisions` — anything from Phase 3 that isn't directly derivable from the model (e.g., "VO `Address` stored inline on `Order`", "VO `LineItem.discount` stored as separate table with synthetic id")
 - `generatedAt` — ISO timestamp
 
-This anchor lets a future invocation of this skill compute a model delta and apply it as a targeted patch instead of regenerating from scratch. Code-side drift (developer-added fields, renamed handlers, etc.) flows back into the model through the `sync` skill — this skill is the model → code direction; `sync` is the code → model direction.
+This anchor lets a future invocation add a new aggregate or apply a model delta to existing ones as a targeted patch, instead of regenerating from scratch. Code-side drift (developer-added fields, renamed handlers, etc.) flows back through the `sync` skill — this skill is model → code; `sync` is code → model.
 
 ## Anchoring generated code to the model
 
