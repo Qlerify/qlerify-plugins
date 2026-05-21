@@ -27,7 +27,7 @@ This skill pairs with two others: `workflow-creation` builds the model (and reve
 
 ## Core principles
 
-- **The model and the code are peers, not master/replica.** Neither is automatically authoritative. Sync's job is to surface the difference and apply the safe direction, asking on anything ambiguous or destructive.
+- **During reconciliation, the model and the code are peers — not master/replica.** This is scoped to drift detection: sync does not assume one side wins just because it is the model or the code; its job is to surface the difference, work out which side moved, and apply the safe direction (asking on anything ambiguous or destructive). This does not contradict `code-generation`, where the model *is* authoritative for producing code — that's a different action. Authority depends on what's being done: sync writes code→model drift itself, and hands model→code drift back to `code-generation`, which treats the model as the source of truth.
 - **Drift direction is decided by the anchor, not by guessing.** The `modelHash` recorded at the last sync/generation is the pivot. Without it, sync can see *that* code and model differ but not *which* side moved — so it must ask rather than assume.
 - **Persistence is not drift.** The model gives types, ownership, and dependencies — never storage. A VO stored as its own table, an embedded subdocument, an optimistic-locking `version` column, or an FK index is an implementation choice, not a missing/extra domain element. Read `persistenceDecisions` from the anchor and do not flag them.
 - **Deletions are always user-gated.** Removing an element from one side because the other side lacks it has high false-positive risk (feature flags, work-in-progress, deliberately model-only elements). Never delete without explicit confirmation.
@@ -41,19 +41,38 @@ Sync is precise only when it knows the model state as of the last reconciliation
 - `modelHash` — content hash of the canonical spec at last sync/generation (the drift pivot)
 - `stack`, `aggregates` — platform and progress, used by `code-generation`
 - `persistenceDecisions` — non-derivable storage choices to ignore as drift
-- `generatedAt` / `syncedAt` — timestamps
+- `generatedAt` — ISO timestamp written by `code-generation`
+- `syncedAt` — ISO timestamp written/updated by `sync` on each reconciliation (absent until the first sync)
 
 **Sync maintains this anchor.** If a project has a model but no anchor (hand-written or model-first code that was never generated), sync writes one on its first successful run so every later sync becomes precise. From then on the project is "anchored" regardless of whether `code-generation` ever ran.
+
+## Computing the model hash
+
+`modelHash` is the drift pivot, so **sync and code-generation must compute it identically** — if they diverge, every sync falsely reports "model moved." Until an authoritative `model_hash` MCP tool exists, both skills use this exact recipe:
+
+1. Take the `specification` object returned by `get_workflow`.
+2. Remove cosmetic and illustrative fields wherever they occur, at any depth: `color`, `group`, `follows`, and any layout/coordinate/svg fields. Stripping these means board-only edits (recolor, regroup, drag-reorder events) do not read as model drift. What remains is the domain-semantic model: entities, value objects, commands, read models, domain event schemas, bounded contexts, roles, aggregate-root links, and acceptance criteria.
+3. Serialize as compact JSON with every object's keys sorted recursively and no insignificant whitespace.
+4. `modelHash` is the SHA-256 hex digest of that string.
+
+Reference implementation (bash + jq, run on the `specification` JSON):
+
+```
+jq -cS 'walk(if type == "object" then del(.color, .group, .follows) else . end)' \
+  | shasum -a 256 | cut -d" " -f1
+```
+
+The scope is **domain semantics only** — two models that differ only in board cosmetics or event ordering must produce the same hash. Follow this definition exactly; a future `model_hash` MCP tool would make it authoritative and remove the hand-rolled step.
 
 ## Phase 0: Establish the baseline
 
 1. **Find the anchor.** Look for `.qlerify/codegen.json` (and the cached spec at `.qlerify/workflow.json`).
-2. **Acquire the current model.** If a large spec hasn't been downloaded yet, invoke the `download` skill (much faster than MCP for big specs); otherwise call `get_workflow` once and cache it. Read the `$schema` URL and fetch it if you need to confirm field types, allowed values, or relationship structure.
+2. **Acquire the current model.** If a large spec hasn't been downloaded yet, invoke the `download` skill (much faster than MCP for big specs); otherwise call `get_workflow` once and cache it. The field types, values, and relationships you need are already in the spec payload itself — read them from there (and from the cached `.qlerify/workflow.json`) rather than fetching the `$schema` URL.
 3. **Resolve the workflow.**
     - **Anchored:** use `workflowId` from the anchor.
     - **Unanchored:** call `list_workflows`, match by project/name, or ask the user. For a brownfield codebase with unclear aggregate boundaries, isolate one aggregate at a time first — defer to `workflow-creation` Phase 0 for the extraction.
 4. **Determine the mode.**
-    - **Anchored:** recompute the model hash of the current canonical spec and compare to `modelHash`. If they differ, the **model moved** since last sync — that side's drift is known up front.
+    - **Anchored:** recompute the model hash of the current spec (see [Computing the model hash](#computing-the-model-hash)) and compare to `modelHash`. If they differ, the **model moved** since last sync — that side's drift is known up front.
     - **Unanchored:** there is no prior hash. Sync can only diff *current code ↔ current model* structurally and cannot tell which side moved — so it must ask the user to adjudicate direction per conflict, then write an anchor at the end.
 
 ## Phase 1: Scan the code domain model
@@ -83,6 +102,8 @@ Build a reconciliation diff per category (entities, value objects, commands, rea
 
 In **anchored** mode, the hash comparison from Phase 0 tells you whether the model moved; combine that with the code scan to attribute each difference to the correct side automatically. In **unanchored** mode, present each difference and let the user say which side is right.
 
+**Renames are ambiguous — never auto-apply them.** Entities, commands, and fields are keyed by name, so a rename (`note` → `customerNote`) looks structurally identical to a delete of `note` plus an add of `customerNote`. Before treating a name as deleted on one side and a new name as added on the other, check whether they are actually the same element renamed: correlate against the **anchored baseline** (the element that existed at last sync) and compare shape — same type/dataType, same `relatedEntity`/`cardinality`, same position among siblings, same surrounding fields. If they plausibly match, it is a rename, not a delete+add — flag it as a conflict (or a one-sided rename) and **ask the user** rather than deleting one name and creating the other, which would drop data and history. When there is no baseline (unanchored) the correlation is weaker, so lean even harder on asking.
+
 ## Phase 3: Apply code → model changes
 
 Write code-side drift into Qlerify with the MCP tools, following the model's own authoring rules.
@@ -110,7 +131,7 @@ When the model has elements the code lacks (or the hash shows the model moved), 
 ## Phase 5: Validate, anchor, and report
 
 1. Run `validate_domain_model` on the affected bounded context(s). Treat it as a judgment loop, not a one-shot: fix genuine structural problems, leave legitimate domain patterns (e.g. a read-model filter field that isn't on the entity) as-is. Re-run until every remaining issue is consciously accepted.
-2. **Update the anchor.** Recompute the canonical model hash and write it back to `.qlerify/codegen.json` as `modelHash`, with a fresh `syncedAt`. Create the anchor here if the project was unanchored, recording `workflowId`, `workflowName`, and the hash so the next sync is precise. Preserve `stack`, `aggregates`, and `persistenceDecisions` if present.
+2. **Update the anchor.** Recompute the model hash (see [Computing the model hash](#computing-the-model-hash)) and write it back to `.qlerify/codegen.json` as `modelHash`, with a fresh `syncedAt`. Create the anchor here if the project was unanchored, recording `workflowId`, `workflowName`, and the hash so the next sync is precise. Preserve `stack`, `aggregates`, and `persistenceDecisions` if present.
 3. **Report** a summary:
     - Code → model: entities/VOs/commands/read models/schemas and fields created, updated, or (with confirmation) deleted
     - Model → code: deltas detected and handed off to code-generation

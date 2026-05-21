@@ -65,9 +65,9 @@ Before generating any code, scan the model for issues that will produce broken o
 ## Phase 2: Choose the platform
 
 1. **Inspect the working directory.** Three cases:
-   - **Prior codegen target** (`.qlerify/codegen.json` present) — generate in place; match the recorded stack.
-   - **Existing project, no anchor** (`package.json`, `go.mod`, etc.) — almost always legacy. Ask once: extend in place (rare, same-stack only) or generate into a sibling directory (default — `../{workflowName}-new`). With the sibling option, the model file and `.qlerify/codegen.json` go there too.
-   - **Empty directory** — generate in place.
+    - **Prior codegen target** (`.qlerify/codegen.json` present) — generate in place; match the recorded stack.
+    - **Existing project, no anchor** (`package.json`, `go.mod`, etc.) — almost always legacy. Ask once: extend in place (rare, same-stack only) or generate into a sibling directory (default — `../{workflowName}-new`). With the sibling option, the model file and `.qlerify/codegen.json` go there too.
+    - **Empty directory** — generate in place.
 2. **Greenfield stack.** Default the runtime to **Node.js + TypeScript** (types map cleanly to attribute types). Pick framework, ORM, database, and test runner yourself based on what fits the model's shape. State the full stack in one line; don't offer a menu.
 3. **User-specified stack.** Honor it exactly, including older or unconventional choices.
 
@@ -107,11 +107,12 @@ Translate entities and value objects into the persistence layer using the Phase 
 Generate one module per aggregate (typically: one folder per bounded context, one module per aggregate root inside it).
 
 Each module contains:
+
 - Entity and value object types matching model attributes (TypeScript types, Python dataclasses, Java records — stack-appropriate)
 - **Consolidated invariant guards** — for each command, merge attribute-level invariants + command-level invariants + GWT preconditions into a single guard function. Order:
-  1. Attribute constraints (type, required, min/max, allowed values, regex)
-  2. Command-level invariants from the model
-  3. GWT preconditions (the Given and pre-When state checks)
+    1. Attribute constraints (type, required, min/max, allowed values, regex)
+    2. Command-level invariants from the model
+    3. GWT preconditions (the Given and pre-When state checks)
 - Aggregate root class/factory that exposes one method per command, each running its guard before mutating state
 
 A command's argument structure mirrors the aggregate's nested entity/VO structure (as enforced by `workflow-creation` Phase 3 Step 5). The generated handler should accept that exact shape — don't flatten or rename.
@@ -173,9 +174,9 @@ Apply a polished styling baseline — Tailwind + small components, or Pico.css w
 2. For each failing test, attempt one fix and re-run.
 3. **Iterate up to 3 times per failing test.** Stop looping on the same failure.
 4. If a test still fails after 3 attempts, **stop and ask the user.** Likely causes:
-   - The GWT contradicts an attribute invariant (model is inconsistent)
-   - The Given clause assumes context not derivable from prior commands
-   - A model-level ambiguity that needs human judgment
+    - The GWT contradicts an attribute invariant (model is inconsistent)
+    - The Given clause assumes context not derivable from prior commands
+    - A model-level ambiguity that needs human judgment
 5. **Never weaken a test to make it pass.** Don't relax assertions, don't `.skip()`, don't change inputs to match the implementation. A failing test means either the code is wrong or the model is wrong — both warrant escalation, not silencing.
 
 ## Phase 6: Anchor for future sync
@@ -183,13 +184,32 @@ Apply a polished styling baseline — Tailwind + small components, or Pico.css w
 Write `.qlerify/codegen.json` with:
 
 - `workflowId` and `workflowName`
-- `modelHash` — content hash of the canonical JSON form of the spec, so a future run can compute a diff
+- `modelHash` — **required.** Compute it with the exact recipe in [Computing the model hash](#computing-the-model-hash) below. The `sync` skill compares against this value to decide whether the model drifted, so it must be present and computed identically — omitting it or using an ad-hoc hash breaks anchored drift detection.
 - `stack` — the platform choices from Phase 2
 - `aggregates` — names generated so far (merge with any prior list), so a later run knows what's done and what's pending
 - `persistenceDecisions` — anything from Phase 3 that isn't directly derivable from the model (e.g., "VO `Address` stored inline on `Order`", "VO `LineItem.discount` stored as separate table with synthetic id")
 - `generatedAt` — ISO timestamp
+- `syncedAt` — ISO timestamp written/updated by the `sync` skill on each reconciliation. This skill does not write it; it's listed here so the shared anchor schema is complete.
 
 This anchor lets a future invocation add a new aggregate or apply a model delta to existing ones as a targeted patch, instead of regenerating from scratch. The `sync` skill reconciles in both directions and shares this anchor: it reads `modelHash` to detect which side drifted, applies code-side drift (developer-added fields, renamed handlers, etc.) into the model itself, and hands model-side drift back to this skill to apply to the code.
+
+## Computing the model hash
+
+`modelHash` is the drift pivot, so **sync and code-generation must compute it identically** — if they diverge, every sync falsely reports "model moved." Until an authoritative `model_hash` MCP tool exists, both skills use this exact recipe:
+
+1. Take the `specification` object returned by `get_workflow`.
+2. Remove cosmetic and illustrative fields wherever they occur, at any depth: `color`, `group`, `follows`, and any layout/coordinate/svg fields. Stripping these means board-only edits (recolor, regroup, drag-reorder events) do not read as model drift. What remains is the domain-semantic model: entities, value objects, commands, read models, domain event schemas, bounded contexts, roles, aggregate-root links, and acceptance criteria.
+3. Serialize as compact JSON with every object's keys sorted recursively and no insignificant whitespace.
+4. `modelHash` is the SHA-256 hex digest of that string.
+
+Reference implementation (bash + jq, run on the `specification` JSON):
+
+```
+jq -cS 'walk(if type == "object" then del(.color, .group, .follows) else . end)' \
+  | shasum -a 256 | cut -d" " -f1
+```
+
+The scope is **domain semantics only** — two models that differ only in board cosmetics or event ordering must produce the same hash. Follow this definition exactly; a future `model_hash` MCP tool would make it authoritative and remove the hand-rolled step.
 
 ## Anchoring generated code to the model
 
