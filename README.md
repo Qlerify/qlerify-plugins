@@ -116,8 +116,9 @@ and `sync` (which keeps model and code aligned over time).
 
 #### `sync`
 
-Syncs your codebase's domain model with Qlerify. Detects entities, commands, and read models in your code and ensures
-they match your Qlerify workflow.
+Keeps your codebase and its Qlerify workflow in agreement, in both directions. Detects drift on either side and routes
+each direction: code-ahead changes are written into Qlerify directly, while model-ahead changes are detected and handed
+off to `code-generation` to apply to the code.
 
 **Triggers:**
 
@@ -125,12 +126,15 @@ they match your Qlerify workflow.
 - "update Qlerify"
 - "sync entities"
 - After implementing features that change domain objects
+- After editing the model on the Qlerify board and needing the code to catch up
 
 **What it does:**
 
-1. Scans your codebase for domain objects (entities, commands, read models)
-2. Compares with Qlerify workflow
-3. Creates/updates/deletes to keep them in sync
+1. Establishes a baseline using the `.qlerify/codegen.json` anchor (`modelHash`) to tell which side drifted; writes an anchor on first run if there isn't one
+2. Scans the codebase for domain objects (entities, value objects, commands, read models, invariants)
+3. Classifies each difference as code-ahead, model-ahead, or a conflict
+4. Applies code-ahead changes to Qlerify (deletions confirmed first); hands model-ahead changes to `code-generation`
+5. Validates the model and updates the anchor
 
 #### `download`
 

@@ -15,7 +15,7 @@ allowed-tools: Read, Write, Edit, Glob, Grep, Bash, WebFetch, mcp__plugin_mcp-co
 
 Generate production-ready code from a Qlerify workflow. The model is the source of truth — entities, value objects, commands, read models, domain events, bounded contexts, invariants on attributes, and Given-When-Then acceptance criteria on events all map to code on a chosen tech stack.
 
-This skill produces a working, tested application. The model lives in version control alongside the code, and future changes flow in both directions: re-running this skill applies model-side changes to the code; the `sync` skill applies code-side drift back into the model.
+This skill produces a working, tested application. The model lives in version control alongside the code, and future changes flow in both directions: re-running this skill applies model-side changes to the code; the `sync` skill reconciles code and model both ways, applying code-side drift into the model directly and delegating model→code changes back to this skill.
 
 ## Core principles
 
@@ -189,7 +189,7 @@ Write `.qlerify/codegen.json` with:
 - `persistenceDecisions` — anything from Phase 3 that isn't directly derivable from the model (e.g., "VO `Address` stored inline on `Order`", "VO `LineItem.discount` stored as separate table with synthetic id")
 - `generatedAt` — ISO timestamp
 
-This anchor lets a future invocation add a new aggregate or apply a model delta to existing ones as a targeted patch, instead of regenerating from scratch. Code-side drift (developer-added fields, renamed handlers, etc.) flows back through the `sync` skill — this skill is model → code; `sync` is code → model.
+This anchor lets a future invocation add a new aggregate or apply a model delta to existing ones as a targeted patch, instead of regenerating from scratch. The `sync` skill reconciles in both directions and shares this anchor: it reads `modelHash` to detect which side drifted, applies code-side drift (developer-added fields, renamed handlers, etc.) into the model itself, and hands model-side drift back to this skill to apply to the code.
 
 ## Anchoring generated code to the model
 
@@ -224,6 +224,6 @@ The skill is done when:
 ## What this skill does NOT do
 
 - **Reverse-engineering** code into a model — that's `workflow-creation` Phase 0
-- **Code-drift sync** back into the model — that's the `sync` skill
+- **Code-drift sync** back into the model — that's the `sync` skill (which also detects model→code drift and calls back into this skill for it)
 - **Event Sourcing infrastructure** — only generate domain event *schemas* if they exist in the model (the model includes them only for Event Sourcing workflows; `workflow-creation` Step 7 is opt-in). For default state-based applications, the in-process bus from 4.6 is sufficient.
 - **Deployment, CI/CD, infrastructure-as-code** — out of scope. The code itself is production-grade; deploying it, wiring CI, and provisioning infrastructure are separate concerns.
