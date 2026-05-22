@@ -51,7 +51,7 @@ Sync is precise only when it knows the model state as of the last reconciliation
 `modelHash` is the drift pivot, so **sync and code-generation must compute it identically** — if they diverge, every sync falsely reports "model moved." Until an authoritative `model_hash` MCP tool exists, both skills use this exact recipe:
 
 1. Take the `specification` object returned by `get_workflow`.
-2. Remove cosmetic and illustrative fields wherever they occur, at any depth: `color`, `group`, `follows`, and any layout/coordinate/svg fields. Stripping these means board-only edits (recolor, regroup, drag-reorder events) do not read as model drift. What remains is the domain-semantic model: entities, value objects, commands, read models, domain event schemas, bounded contexts, roles, aggregate-root links, and acceptance criteria.
+2. Remove cosmetic and illustrative fields wherever they occur, at any depth: exactly `color`, `group`, and `follows`. Stripping these means board-only edits (recolor, regroup, drag-reorder events) do not read as model drift. What remains is the domain-semantic model: entities, value objects, commands, read models, domain event schemas, bounded contexts, roles, aggregate-root links, and acceptance criteria.
 3. Serialize as compact JSON with every object's keys sorted recursively and no insignificant whitespace.
 4. `modelHash` is the SHA-256 hex digest of that string.
 
