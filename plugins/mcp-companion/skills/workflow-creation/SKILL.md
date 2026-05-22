@@ -206,6 +206,7 @@ Each entry needs:
 - `lane` — The role/actor the event belongs to (e.g., "Customer", "Automation"). Auto-created on the fly the first time an unfamiliar name is referenced, so you typically don't need `create_lane` when building a workflow from scratch. Pass exactly the same name (case-sensitive) across events that share a lane.
 - `follows` — `"start"` for flow entry points, the bare description of an event created earlier in this same array, or a `$ref` path to an event that already exists in the workflow
 - `type` — Either `domainEvent` (regular event) or `decision` (decision diamond)
+- `parallel` — Optional. Set `true` to add a concurrent branch beside an existing follower of the same `follows` instead of inserting between them (see **Branching: parallel vs decision** below)
 
 **Common lane patterns:**
 
@@ -482,6 +483,7 @@ update_domain_event(domainEvent: "#/domainEvents/OrderPlaced", color: "blue")
 - **Lanes cannot be deleted if they contain events** — Move or delete events first
 - **Domain events require a lane** — Every event must be assigned to an actor
 - **Chain events via follows** — Use `"start"` for root events. In `create_domain_events`, `follows` may also be the bare description of an earlier event in the same batch; when referencing an already-existing event, use its `$ref` path.
+- **An event can have multiple children** — To branch two events off the same parent, point them at the same `follows` and set `parallel: true` on the second (and any later) one. Without `parallel`, the later event is inserted between the parent and its existing follower (linearized) instead. See **Branching: parallel vs decision** below.
 - **Bounded contexts must exist before referencing them** — Create BCs before assigning entities to them
 
 ## `relatedEntity` Usage Summary
@@ -521,10 +523,19 @@ with `relatedEntity`.
 - Lanes: Customer, Admin, Automation
 - Flow: Customer/Admin actions trigger events, Automation handles cross-service coordination via decision gateways
 
+## Branching: parallel vs decision
+
+When the flow splits after an event, pick the construct that matches the business meaning:
+
+- **Decision (`type: "decision"`)** — conditional / exclusive (XOR). Exactly one branch is taken based on a condition. Label the branches with `conditionLabel`. Example: payment succeeds *or* fails.
+- **Parallel branches (`parallel: true`)** — concurrent (AND). All branches happen, with no condition between them. Example: after "Order Placed", both "Inventory Reserved" and "Confirmation Email Sent" occur.
+
+To build parallel branches, give each branch the same `follows` and set `parallel: true` on every branch after the first. The first branch creates the parent's initial follower; each subsequent `parallel: true` event is added beside it rather than inserted between. Omitting `parallel` linearizes the events into a single chain.
+
 ## Tips for Well-Structured Workflows
 
 - **Start with events, not entities.** Map the business process flow first, then identify what data each step needs.
-- **Use decision gateways sparingly.** Only for genuine branching logic, not optional steps.
+- **Use decision gateways sparingly.** Only for genuine conditional (either-or) branching, not optional steps. For concurrent flows where multiple events happen after the same event, use parallel branches instead (see **Branching: parallel vs decision**).
 - **Name events as past-tense occurrences.** "Order Created", not "Create Order" — the command name carries the imperative.
 - **Avoid special characters in event names.** Use only alphanumeric characters and spaces. No `?`, `!`, `&`, `#`.
 - **Include realistic example data.** 3 values per field helps stakeholders understand the model.
@@ -538,7 +549,7 @@ Consult these for detailed rules when creating specific element types:
 
 - **`references/system-prompt.md`** — DDD/event modeling expert context, naming conventions, character limits, quality checks
 - **`references/aggregate-extraction-artifact.md`** — Phase 0 planning artifact: template, section-by-section guidance, file location, quality checks before user approval
-- **`references/event-generation.md`** — Event naming rules, role conventions, chronology, gateway patterns
+- **`references/event-generation.md`** — Event naming rules, role conventions, chronology, gateway and parallel-branch patterns
 - **`references/command-generation.md`** — The 4 command field categories, naming rules, 3-level nesting guidelines
 - **`references/read-model-generation.md`** — Read model field design, filter vs display fields, cardinality rules
 - **`references/domain-event-generation.md`** — Domain event payload rules, identifier/timestamp conventions

@@ -142,6 +142,7 @@ entry and call again with only the remaining ones.
   - `type` — `'domainEvent'` or `'decision'`
   - `lane` — Role/actor name. Auto-created if unfamiliar; pass the same name across events that share a lane.
   - `follows` — One of: `"start"`, a `$ref` path to an existing event, OR (bulk-only) the bare description of an event created earlier in the same array (e.g. `"follows": "Order Placed"`).
+  - `parallel` — Optional. Same as `create_domain_event` below. To model concurrent branches, give each branch the same `follows` and set `parallel: true` on every branch after the first; otherwise a second entry pointing at the same parent is inserted between it and its existing follower.
   - `group`, `color`, `aggregateRoot`, `acceptanceCriteria` — Optional, same as `create_domain_event` below.
 
 ### create_domain_event
@@ -153,7 +154,8 @@ existing workflow. For building a new workflow with many events, use `create_dom
 - `description` — The event name (use past-tense: "Order Created", not "Create Order"). **Avoid special characters** (`?`, `!`, `&`, `#`, `/`) — they break `$ref` path resolution. Hyphens are removed and the next letter capitalized in `$ref` keys (e.g., "Check-in" → `CheckIn`).
 - `type` — Either `'domainEvent'` (regular event) or `'decision'`
 - `lane` — Name of the role/actor this event belongs to (required). Auto-created on the fly if no lane with that name exists; pass the exact same name across events that share a lane (matching is case-sensitive). See "Lane Tools" above for naming rules.
-- `follows` — A `$ref` path to the preceding event (e.g., `#/domainEvents/OrderPlaced`), or `"start"` for flow entry points. The new event is inserted after the parent in the flow sequence.
+- `follows` — A `$ref` path to the preceding event (e.g., `#/domainEvents/OrderPlaced`), or `"start"` for flow entry points. The new event is connected after the parent. If the parent already has a follower, the new event is **inserted between** them by default (the existing follower is reparented under the new event); set `parallel: true` to add it as a concurrent branch beside the existing follower instead.
+- `parallel` — Optional. When `true`, and the parent already has one or more followers, the new event is added as a concurrent (AND) branch alongside them rather than inserted between. Use for parallel flows where multiple events genuinely happen after the same event with no condition. For conditional/exclusive (either-or) branching, use a `decision` instead. No effect when the parent is a decision or has no followers yet.
 - `group` — Optional. Sets a group boundary starting at this event. Only set on the **first** event of a new group. Do not set group on subsequent events in the same group.
 - `aggregateRoot` — Optional. `$ref` path to an entity (e.g., `#/schemas/entities/Order`). Links an entity as aggregate root for the command triggering this event. **Every command / event should have one** — if the entity doesn't exist yet, set it later via `update_domain_event` after creating entities.
 - `acceptanceCriteria` — Optional. Array of Given-When-Then acceptance criteria strings.
