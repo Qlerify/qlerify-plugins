@@ -75,8 +75,8 @@ Order Placed → Payment Outcome (gateway)
 Two or more events that happen after the same event with no decision between them. Give each branch the same `follows`, and set `parallel: true` on every branch after the first — otherwise a second event pointing at the same parent is inserted *between* the parent and its existing follower instead of beside it.
 
 ```
-Order Placed → Inventory Reserved       (follows: "Order Placed")
-Order Placed → Confirmation Email Sent   (follows: "Order Placed", parallel: true)
+Order Placed → Inventory Reserved        (follows: "#/domainEvents/OrderPlaced")
+Order Placed → Confirmation Email Sent   (follows: "#/domainEvents/OrderPlaced", parallel: true)
 ```
 
 Use a decision when only one path is taken based on a condition; use parallel branches when all of them happen.

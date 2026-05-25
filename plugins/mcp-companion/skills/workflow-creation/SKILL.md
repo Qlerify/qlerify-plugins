@@ -483,7 +483,7 @@ update_domain_event(domainEvent: "#/domainEvents/OrderPlaced", color: "blue")
 - **Lanes cannot be deleted if they contain events** — Move or delete events first
 - **Domain events require a lane** — Every event must be assigned to an actor
 - **Chain events via follows** — Use `"start"` for root events. In `create_domain_events`, `follows` may also be the bare description of an earlier event in the same batch; when referencing an already-existing event, use its `$ref` path.
-- **An event can have multiple children** — To branch two events off the same parent, point them at the same `follows` and set `parallel: true` on the second (and any later) one. Without `parallel`, the later event is inserted between the parent and its existing follower (linearized) instead. See **Branching: parallel vs decision** below.
+- **An event can have multiple children** — To branch two events off the same non-decision parent, point them at the same `follows` and set `parallel: true` on the second (and any later) one. Without `parallel`, the later event is inserted between the parent and its existing follower (linearized) instead. For a `decision`, do not use `parallel`; create multiple followers with `conditionLabel` instead. See **Branching: parallel vs decision** below.
 - **Bounded contexts must exist before referencing them** — Create BCs before assigning entities to them
 
 ## `relatedEntity` Usage Summary
