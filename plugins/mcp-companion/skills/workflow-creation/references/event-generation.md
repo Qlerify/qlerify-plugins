@@ -72,7 +72,7 @@ Order Placed → Payment Outcome (gateway)
 
 **Parallel branches (concurrent / no condition):**
 
-Two or more events that happen after the same event with no decision between them. Give each branch the same `follows`, and set `parallel: true` on every branch after the first — otherwise a second event pointing at the same parent is inserted *between* the parent and its existing follower instead of beside it.
+Two or more events that happen after the same event with no decision between them. Give each branch the same `follows`, and set `parallel: true` on every branch after the first — otherwise a subsequent event pointing at the same parent is inserted *between* the parent and its existing follower(s), reparenting all of them under the new event, instead of beside them.
 
 ```
 Order Placed → Inventory Reserved        (follows: "#/domainEvents/OrderPlaced")

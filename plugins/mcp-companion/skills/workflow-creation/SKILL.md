@@ -206,7 +206,7 @@ Each entry needs:
 - `lane` — The role/actor the event belongs to (e.g., "Customer", "Automation"). Auto-created on the fly the first time an unfamiliar name is referenced, so you typically don't need `create_lane` when building a workflow from scratch. Pass exactly the same name (case-sensitive) across events that share a lane.
 - `follows` — `"start"` for flow entry points, the bare description of an event created earlier in this same array, or a `$ref` path to an event that already exists in the workflow
 - `type` — Either `domainEvent` (regular event) or `decision` (decision diamond)
-- `parallel` — Optional. Set `true` to add a concurrent branch beside an existing follower of the same `follows` instead of inserting between them (see **Branching: parallel vs decision** below)
+- `parallel` — Optional. Set `true` to add a concurrent branch beside existing follower(s) of the same `follows` instead of inserting between them (see **Branching: parallel vs decision** below)
 
 **Common lane patterns:**
 
@@ -483,7 +483,7 @@ update_domain_event(domainEvent: "#/domainEvents/OrderPlaced", color: "blue")
 - **Lanes cannot be deleted if they contain events** — Move or delete events first
 - **Domain events require a lane** — Every event must be assigned to an actor
 - **Chain events via follows** — Use `"start"` for root events. In `create_domain_events`, `follows` may also be the bare description of an earlier event in the same batch; when referencing an already-existing event, use its `$ref` path.
-- **An event can have multiple children** — To branch two events off the same non-decision parent, point them at the same `follows` and set `parallel: true` on the second (and any later) one. Without `parallel`, the later event is inserted between the parent and its existing follower (linearized) instead. For a `decision`, do not use `parallel`; create multiple followers with `conditionLabel` instead. See **Branching: parallel vs decision** below.
+- **An event can have multiple children** — To branch two events off the same non-decision parent, point them at the same `follows` and set `parallel: true` on the second (and any later) one. Without `parallel`, the later event is inserted between the parent and its existing follower(s) — reparenting all of them under it (linearized) — instead. For a `decision`, do not use `parallel`; create multiple followers with `conditionLabel` instead. See **Branching: parallel vs decision** below.
 - **Bounded contexts must exist before referencing them** — Create BCs before assigning entities to them
 
 ## `relatedEntity` Usage Summary
