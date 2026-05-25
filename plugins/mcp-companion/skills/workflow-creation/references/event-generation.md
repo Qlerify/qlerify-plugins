@@ -51,7 +51,7 @@ Events are arranged chronologically — left-to-right on the timeline:
 
 Events must follow a natural business-chronological sequence:
 
-- If events are parallel or unordered, list them in the most natural business sequence
+- If events are unordered, list them in the most natural business sequence
 - Make reasonable assumptions when the order is ambiguous
 
 ## Common Patterns

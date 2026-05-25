@@ -36,7 +36,7 @@ Terminology note: when referring to the attributes of entities, the terms **fiel
    - Domain Event: max 40 characters
    - Field names: max 30 characters
 
-6. **Chronology**: domain events are listed in timeline order. If events are parallel, use the most natural business-chronological sequence.
+6. **Chronology**: domain events are listed in timeline order. If events have no inherent order, use the most natural business-chronological sequence.
 
 7. **Assumptions**: if input is ambiguous, make reasonable, business-plausible assumptions and proceed.
 

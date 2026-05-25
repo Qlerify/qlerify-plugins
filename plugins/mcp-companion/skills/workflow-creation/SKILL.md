@@ -525,7 +525,7 @@ with `relatedEntity`.
 
 ## Branching: parallel vs decision
 
-When the flow splits after an event, pick the construct that matches the business meaning:
+**Default to a single linear chain.** Most timelines are told as one sequence even when steps are technically concurrent or optional — modelers linearize for readability, and so should you. Branching is the exception, not a co-equal option, and `parallel` in particular is rarely the right call. When the flow genuinely does split, pick the construct that matches the business meaning:
 
 - **Decision (`type: "decision"`)** — conditional / exclusive (XOR). Exactly one branch is taken based on a condition. Label the branches with `conditionLabel`. Example: payment succeeds *or* fails.
 - **Parallel branches (`parallel: true`)** — concurrent (AND). All branches happen, with no condition between them. Example: after "Order Placed", both "Inventory Reserved" and "Confirmation Email Sent" occur.
@@ -535,7 +535,7 @@ To build parallel branches, give each branch the same `follows` and set `paralle
 ## Tips for Well-Structured Workflows
 
 - **Start with events, not entities.** Map the business process flow first, then identify what data each step needs.
-- **Use decision gateways sparingly.** Only for genuine conditional (either-or) branching, not optional steps. For concurrent flows where multiple events happen after the same event, use parallel branches instead (see **Branching: parallel vs decision**).
+- **Default to a linear chain; use decisions and parallel branches sparingly.** Decisions are only for genuine conditional (either-or) branching; parallel branches only for events genuinely triggered at the same time by the same predecessor. Unordered or optional steps should still be sequenced, not branched (see **Branching: parallel vs decision**).
 - **Name events as past-tense occurrences.** "Order Created", not "Create Order" — the command name carries the imperative.
 - **Avoid special characters in event names.** Use only alphanumeric characters and spaces. No `?`, `!`, `&`, `#`.
 - **Include realistic example data.** 3 values per field helps stakeholders understand the model.
