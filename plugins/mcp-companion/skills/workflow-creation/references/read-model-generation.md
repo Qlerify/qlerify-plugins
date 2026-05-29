@@ -56,7 +56,7 @@ When a query has a field that contains a nested structure of data from a differe
 
 ## Nesting Depth
 
-Nesting is limited to ONE level deep. Inside an already-nested field (e.g., `items`, `cartItems`, `shippingAddress`), sub-fields must NOT themselves contain a `fields` array. If a sub-field represents a related entity or collection (e.g., `adjustments`, `taxLines`), include it by name and `cardinality` only — do NOT specify its `fields`.
+Nesting can go up to three levels deep total: a top-level field referencing a related entity or value object (e.g., `cartItem`, `shippingAddress`), its sub-fields, and — when a sub-field itself references a related entity or collection worth displaying (e.g., `cartItem` → `adjustment`, `orderItem` → `product`) — that sub-field may in turn set `relatedEntity` and carry its own `fields` array. Do not nest deeper than three levels: third-level sub-fields may still carry the usual per-field properties (e.g. `description`, `computed`) but must not include another `fields` array (no fourth level). Set `cardinality` on every nested related-entity field: `"one-to-many"` for a collection (e.g., `cartItem` for a list of cart items), `"one-to-one"` for a single object (e.g., `shippingAddress`). When a field is only an id reference to another entity (usually in another bounded context), name it `{entityName}Id` in camelCase (e.g., `customerId`, `productId`) with no nested fields.
 
 ## Important Rules
 
@@ -64,7 +64,7 @@ Nesting is limited to ONE level deep. Inside an already-nested field (e.g., `ite
 - Set `isFilter: true` for query/search parameters. But keep the number of filters down to what is needed to avoid slow queries or heavy indexing.
 - Set `relatedEntity` for fields with nested entities / VOs
 - Set `cardinality` on the read model itself: `"one-to-one"` for get queries (single-record), `"one-to-many"` for list queries. Default to `"one-to-many"` if unclear
-- Set `cardinality` on fields with nested structures: `"one-to-many"` (e.g., `cartItems`), `"one-to-one"` for single objects (e.g., `shippingAddress`)
+- Set `cardinality` on fields with nested structures: `"one-to-many"` (e.g., `cartItem` for a list of cart items), `"one-to-one"` for single objects (e.g., `shippingAddress`)
 - Every query has an entity or VO as entry point. Set this via the `entity` parameter
 - The queried entity is often an entity created or updated earlier in the workflow, but can also belong to an external bounded context. Prefer matching an entity already present in the workflow; if the read model clearly suggests a different entity, use that name
 - Read model fields should preferably match the attributes of the queried entity / VO
@@ -104,6 +104,18 @@ The read model shows the actor the data they need BEFORE executing the command:
         {
           "name": "unitPrice",
           "description": "Price per unit at the time the item was added."
+        },
+        {
+          "name": "adjustment",
+          "relatedEntity": "#/schemas/entities/Adjustment",
+          "cardinality": "one-to-one",
+          "fields": [
+            { "name": "amount" },
+            {
+              "name": "code",
+              "description": "Promotion or discount code applied to this line item."
+            }
+          ]
         }
       ]
     },
