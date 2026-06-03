@@ -44,14 +44,14 @@ Events are arranged chronologically — left-to-right on the timeline:
 
 - Use `follows: "start"` for the first event(s) in the flow
 - Use `follows: "#/domainEvents/PreviousEvent"` to chain subsequent events
-- Use `type: "decision"` for decision points (branching logic)
-- Use `conditionLabel` on branches from a gateway to label the condition
+- Use `type: "decision"` for conditional/exclusive (either-or) branching, and `conditionLabel` on branches from a gateway to label the condition
+- Use `parallel: true` for concurrent (AND) branching — two or more events that follow the **same** event with no condition between them
 
 ## Chronology
 
 Events must follow a natural business-chronological sequence:
 
-- If events are parallel or unordered, list them in the most natural business sequence
+- If events are unordered, list them in the most natural business sequence
 - Make reasonable assumptions when the order is ambiguous
 
 ## Common Patterns
@@ -62,13 +62,24 @@ Events must follow a natural business-chronological sequence:
 start → Item Added to Cart → Order Placed → Payment Processed → Order Shipped
 ```
 
-**Decision gateway:**
+**Decision gateway (conditional / either-or):**
 
 ```
 Order Placed → Payment Outcome (gateway)
   → Payment Confirmed (conditionLabel: "Success")
   → Payment Failed (conditionLabel: "Failed")
 ```
+
+**Parallel branches (concurrent / no condition):**
+
+Two or more events that happen after the same event with no decision between them. Give each branch the same `follows`, and set `parallel: true` on every branch after the first — otherwise a subsequent event pointing at the same parent is inserted *between* the parent and its existing follower(s), reparenting all of them under the new event, instead of beside them.
+
+```
+Order Placed → Inventory Reserved        (follows: "#/domainEvents/OrderPlaced")
+Order Placed → Confirmation Email Sent   (follows: "#/domainEvents/OrderPlaced", parallel: true)
+```
+
+Use a decision when only one path is taken based on a condition; use parallel branches when all of them happen.
 
 **Multiple starting points:**
 
