@@ -16,6 +16,15 @@ Browse all workflows accessible to the current API key. Returns workflow names, 
 project IDs. Supports pagination for accounts with many workflows. Use this as the starting
 point to find the right workflow before doing anything else.
 
+### create_project
+
+Create a top-level project — the container that owns workflows. Only `name` is required; a default
+organisation is auto-created if the user has none. Returns the new project ID and a URL — share the
+URL with the user as a clickable link. Use this when the user has no project yet (a fresh account,
+or `list_workflows` returns none), then pass the new project ID to `create_workflow`.
+
+- `name` — The project name (e.g., "Acme E-Commerce", "Internal Tools")
+
 ### create_workflow
 
 Create a brand-new empty workflow inside a project. Provide a descriptive name — this appears
