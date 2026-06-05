@@ -195,6 +195,22 @@ deleted event's parent, preserving the flow.
 - `workflowId`, `projectId` — Identifies the workflow
 - `domainEvent` — `$ref` path to the event
 
+### add_connection
+
+Add an arrow from one existing event/decision to another **without moving either**. The target
+gains the source as an *additional* incoming parent; its existing main parent — and therefore its
+position and group — stays put. Use it for fan-in joins (a state or decision reached from several
+predecessors) and for secondary parents that `create_domain_event` can't express (it only sets a
+single `follows`). Build the primary spine with `create_domain_event(s)`; use this only for the
+extra incoming edges.
+
+- `workflowId`, `projectId` — Identifies the workflow
+- `from` — `$ref` path to the SOURCE the arrow starts from (event or decision)
+- `to` — `$ref` path to the TARGET the arrow points to; it gains `from` as an extra parent
+- `conditionLabel` — Optional branch label shown when `from` is a decision (e.g. "Yes" / "No")
+
+Errors if the connection already exists or `from` and `to` are the same. Does not create events — both must already exist.
+
 ---
 
 ## Entity Tools
