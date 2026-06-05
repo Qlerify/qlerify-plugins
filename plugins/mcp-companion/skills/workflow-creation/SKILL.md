@@ -190,7 +190,9 @@ After completing Phase 0 and securing user approval of the artifact, proceed to 
 **Step 1 — Identify or create the workflow**
 
 For an existing workflow, call `list_workflows` to find it, then `get_workflow` to understand
-its current state. For a new workflow, call `create_workflow` with a descriptive name.
+its current state. For a new workflow, call `create_workflow` with a descriptive name —
+`create_workflow` needs a `projectId`, so if the user has no project yet (a fresh account, or
+`list_workflows` returns none), call `create_project` first and use the returned `projectId`.
 
 ### Phase 2: Event Flow
 
