@@ -9,8 +9,10 @@ model in `references/layout-and-ui.md`.
 Most aggregates are a simple lifecycle and a single linear event chain is the right model. Reach
 for a state machine **only** when all of these hold:
 
-- an explicit **status/state field** (an enum) with several values (≈4 or more), **and**
-- transitions are **guarded by that status** — a command is only valid from certain states, **and**
+- a notion of **state** — a mode that decides which operations are legal next — that the aggregate
+  moves through, with several distinct states (≈4 or more). Most often a **status enum**, but state
+  has many encodings (see **Where the state lives** below), **and**
+- operations are **guarded by that state** — a command is only valid from certain states, **and**
 - at least one of: a **cycle** (reopen / revisit returns to an earlier state), **multiple terminal
   states**, or a **guard-fork** (one command lands in different states depending on input).
 
@@ -21,25 +23,82 @@ The tell-tale sign: a plain chain of the lifecycle events (`Drafted → Register
 reads as one *sequence* when those are really *alternative branches*. That mismatch is the signal
 you need a state machine, not a chain.
 
+## Where the state lives
+
+"State" is whatever determines which operations are legal next — **not** necessarily a status field.
+A status enum is the commonest and easiest encoding, so look for it first, but if there isn't one (or
+it doesn't tell the whole story) check for these before concluding "not a state machine":
+
+1. **A status / state enum field** — explicit and easiest (`Receipt.status`).
+2. **Lifecycle timestamps / milestone fields** — state = which nullable fields are set
+   (`paidAt`, `shippedAt`, `cancelledAt` ⇒ Pending / Paid / Shipped / Cancelled). No enum at all.
+3. **Existence of a related entity or child** — state = presence/absence of a relationship (a Cart
+   with an Order is "checked out"; a Subscription with an open billing period is "active").
+4. **A combination of booleans** — the state is the *tuple* of flags (`isProposal`, `booked`,
+   `expensePaid` layer sub-states on top of a status).
+5. **The latest row of a status-history / event-log entity** — state = the `type` of the most recent
+   entry (Receipt's `ReceiptEvent.type` carries `Approved` / `Denied` even though no code ever sets
+   `status = Approved`).
+6. **(Event-sourced) the fold of events** — there is no stored state field; state is derived by
+   replaying events.
+
+Two consequences:
+
+- **The state-bearer need not be the aggregate root.** The meaningful lifecycle may live on a child
+  entity (e.g. per-line fulfilment status) or a different aggregate — model the state machine of
+  whatever actually carries it.
+- **A single status enum often under-counts the real state space.** When flags or relationships also
+  gate behaviour, the true state is the *combination* — fold those sub-states in rather than trusting
+  the enum alone.
+
+Whatever the encoding, derive the **state set** from it; the transition table, altitude call, and
+layout below are the same once you have the states.
+
+## Altitude — what the diagram is the truth of
+
+A state machine can be drawn at two altitudes, and they only diverge when the code is thin:
+
+- **Service altitude (code-faithful)** — model exactly what *this* codebase's mutation surface does.
+  Transitions with no in-repo writer (other services, UI-only, business convention) are recorded and
+  flagged but **not drawn**. Lean and exact; can look thin when the code is a passthrough.
+- **Business-lifecycle altitude** — model the aggregate's full life as a domain expert recognises it,
+  using the status enum as the skeleton. Draw **all** states and the business-known transitions
+  (e.g. approve / deny / reopen), each speculative edge visibly **marked as an assumption**. Richer;
+  deliberately crosses the aggregate/code boundary into other systems and tribal knowledge.
+
+**First check whether the code actually guards the transitions.** Many aggregates have a status enum
+but a *generic setter* (`entity.status = whatever-the-caller-passed`) with no rules — the real state
+machine lives in the UI, another service, or convention, not this code. That is a **partial** state
+machine: a few transitions may be guarded (e.g. link requires `Proposal`) while the rest are
+unenforced. When the code *is* genuinely guarded, the two altitudes coincide — no choice to make.
+When it's a passthrough, they diverge sharply, so **stop and ask the user which altitude they want**
+before drawing, and say plainly that the code-faithful diagram will be thinner than the lifecycle
+they picture. The altitude decides what is *drawn* vs *declared* and how many columns appear.
+
 ## The state-transition map (gate artifact)
 
 Before any MCP writes, produce `.qlerify/aggregates/{name}-state-machine.md` and get user approval
 (alongside / extending the Phase 0 aggregate artifact). It contains:
 
-1. **States** — every enum value, each marked **entry** / **intermediate** / **terminal**.
-2. **Transition table** — one row per transition:
+1. **States — the full enum.** List **every** status enum value as a state (even ones no code reads
+   or writes), each marked **entry** / **intermediate** / **terminal**. Never silently drop an enum
+   value — a state the code is silent about is exactly the one a reviewer will miss.
+2. **Transition table** — one row per transition, each carrying an **evidence** level so nothing is
+   lost and the altitude call is informed:
 
-   | fromState | trigger (command / event) | toState | guard |
-   |-----------|---------------------------|---------|-------|
+   | fromState | trigger (command / event) | toState | guard | evidence |
+   |-----------|---------------------------|---------|-------|----------|
 
-3. **Marks** — note which transitions are **cycles** (back to an earlier state), **guard-forks**
-   (same trigger → different `toState` by input), or **self-loops** (no status change).
-4. **Flags** (these are NOT drawn as edges — see Guardrails):
-   - `cross-instance` — the transition spawns or consumes a **different** aggregate row
-     (e.g. Unlink creates a new Proposal receipt).
-   - `external` — the trigger lives outside this codebase / aggregate (mark it upstream).
-   - `unverified` — the state exists but **no code in this repo performs the transition**
-     (a modeling assumption).
+   `evidence` is one of: **code** (a method in this repo performs it — note whether it is actually
+   guarded or a blind setter), **external** (another service/system performs it, e.g. a booking
+   agent), or **business** (the domain expert knows it happens but no in-scope code implements it — a
+   recorded assumption). **Include the `external` / `business` transitions you know about even when
+   the code is silent** — record-then-decide beats dropping them.
+3. **Marks** — tag each transition as a **cycle** (back to an earlier state), **guard-fork** (same
+   trigger → different `toState` by input), **self-loop** (no status change), or **cross-instance**
+   (spawns/consumes a *different* aggregate row, e.g. Unlink creates a new Proposal receipt).
+4. **State of guarding** — state plainly whether the code enforces the transitions or is a generic
+   setter, and which specific transitions are actually guarded. This drives the altitude call above.
 
 A mermaid `stateDiagram-v2` is a good companion, but the **table is the source of truth**.
 
@@ -47,8 +106,11 @@ A mermaid `stateDiagram-v2` is a good companion, but the **table is the source o
 
 Lay the machine out left-to-right as a **DAG**:
 
-1. **Column = postcondition state.** Place each event in the column of the state it lands in. The
-   column becomes a Qlerify **group** named after the state.
+1. **Column = postcondition state, one column per distinct state.** Place each event in the column of
+   the state it lands in; the column becomes a Qlerify **group** named after that state. Give **each
+   state its own column** — do **not** merge unrelated states that merely sit at the same depth into a
+   shared column (e.g. `Supplement / Matched`); that produces confusing labels. Merge two states only
+   when they are genuinely the same behavioral phase.
 2. **Order columns by longest-path-from-entry.** Entry states leftmost, terminal states rightmost.
 3. **Cut cycles into a DAG.** Reverse the minimal set of back-edges (reopen, unlink, re-supplement)
    and render them as **forward** flow into a **reappearing** column — never a loop-back arrow. A
@@ -66,16 +128,21 @@ Lay the machine out left-to-right as a **DAG**:
 
 ## Guardrails — draw the spine, declare the rest
 
-The on-canvas machine is a happy-path **validation lens** ("show me my state machine on your
-timeline"), not a complete transition graph. Keep it clean:
+At **service altitude** the on-canvas machine is a happy-path **validation lens** ("show me my state
+machine on your timeline"), not a complete transition graph. Keep it clean:
 
 - **N-to-1 (delete-from-anywhere)** → one terminal column reached from the spine, plus a GWT that
   enumerates the eligible source states — **not** an edge from every state. Heuristic: if a
   transition's source is a *set* of states rather than one, it's a rule, not a line.
-- **`cross-instance` / `external` / `unverified`** transitions → GWTs, notes, or an explicit
-  "assumption" marker — never drawn edges.
+- **`external` / `business` / `cross-instance`** transitions → GWTs, notes, or an explicit
+  "assumption" marker — not drawn edges.
 - Everything you can't draw cleanly lives in `acceptanceCriteria` (Phase 2 / 3), which still feed
   code-gen and tests — so the unhappy paths aren't lost, just not cluttering the picture.
+
+At **business-lifecycle altitude** you instead *draw* the `external` and `business` transitions too —
+as their own columns, reappearing columns, and fan-ins (`add_connection`) — with every speculative
+edge visibly marked as an assumption. The N-to-1 delete rule still holds (one terminal column + a
+GWT) at either altitude.
 
 ## Building it with MCP
 
@@ -104,4 +171,7 @@ States: `Draft` (entry) · `Proposal` · `Matched` · `Registered` · `Pending` 
 - **N-to-1:** `Delete` from almost every state → a single `DELETED` terminal column + a GWT
   "Given a receipt in any non-Approved state, When it is removed, Then it is Deleted".
 - **cross-instance:** `Unlink` spawns a *new* `Proposal` row → flag and note, not an edge.
-- **unverified:** `Approve` / `Deny` have no writer in this repo → mark as an assumption.
+- **business / external:** `Approve` / `Deny` (and the `Denied → Reopen → Draft` cycle) have no writer
+  in this repo — they're set by a separate booking service. At **service altitude** they live in GWTs
+  marked `external` / `business`; at **business-lifecycle altitude** they become their own drawn
+  `Approved` / `Denied` / reappearing-`Draft` columns, each marked as an assumption.

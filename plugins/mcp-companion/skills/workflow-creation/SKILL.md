@@ -67,10 +67,10 @@ afterward to verify the actual `$ref` key before referencing it in subsequent ca
 Follow these steps in order. Each step depends on the previous one. For an existing or
 legacy codebase, start at Phase 0; otherwise skip Phase 0 and start at Phase 1.
 
-If the aggregate is a **state machine** — an explicit status enum that *guards* transitions, with
-cycles, multiple terminal states, or guard-forks — insert **Phase S** (between Phase 0 and Phase 1)
-to map the states first. It changes how Phase 2 builds the flow and makes Phase 5 groups structural.
-For an ordinary aggregate, skip Phase S entirely.
+If the aggregate is a **state machine** — a state that *guards* transitions (a status enum or another
+encoding; see Phase S), with cycles, multiple terminal states, or guard-forks — insert **Phase S**
+(between Phase 0 and Phase 1) to map the states first. It changes how Phase 2 builds the flow and
+makes Phase 5 groups structural. For an ordinary aggregate, skip Phase S entirely.
 
 ### Phase 0: Plan the aggregate model (reverse-engineering only)
 
@@ -194,10 +194,12 @@ Phase S first if the aggregate is a state machine.
 ### Phase S: Map the state machine (state-machine aggregates only)
 
 **Skip this phase for ordinary aggregates.** Run it only when the aggregate is a genuine **state
-machine**: an explicit status/state enum (≈4+ values) whose value *guards* which commands are
-allowed, **plus** at least one of — a cycle (reopen / revisit), multiple terminal states, or a
-guard-fork (one command landing in different states by input). One or two of these alone is not
-enough; keep those as a normal linear flow.
+machine**: a notion of state (≈4+ distinct states) whose value *guards* which commands are allowed,
+**plus** at least one of — a cycle (reopen / revisit), multiple terminal states, or a guard-fork (one
+command landing in different states by input). The state is most often a status enum, but it can be
+lifecycle timestamps, a child entity's existence, a flag combination, or a status-history log — and
+may live on a child rather than the root (see `references/state-machine-generation.md` → "Where the
+state lives"). One or two of these alone is not enough; keep those as a normal linear flow.
 
 Why it matters: for a real state machine the default linear event chain is not just thin, it is
 **misleading** — `Drafted → Registered → … → Removed` reads as one sequence when those are
@@ -209,31 +211,43 @@ transitions, or — for greenfield — after the user has described the lifecycl
 detection is borderline, ask the user whether to map states onto the timeline or keep a linear flow.
 
 **Step S.1 — Write the state-transition map (gate artifact).** Produce
-`.qlerify/aggregates/{aggregate-name-kebab-case}-state-machine.md`: the list of states (entry /
-intermediate / terminal), a transition table (`fromState | trigger | toState | guard`), and marks
-for cycles, guard-forks, and self-loops, plus flags for `cross-instance`, `external`, and
-`unverified` transitions. See `references/state-machine-generation.md` for the template, the
-detection heuristic, and the full layout algorithm.
+`.qlerify/aggregates/{aggregate-name-kebab-case}-state-machine.md`: **every** status enum value as a
+state (entry / intermediate / terminal — never drop one, even if no code touches it), and a
+transition table (`fromState | trigger | toState | guard | evidence`) where `evidence` is `code` /
+`external` / `business`. Record the `external` / `business` transitions you know about **even when the
+code is silent**. Mark cycles, guard-forks, self-loops, and cross-instance transitions, and state
+plainly whether the code actually guards its transitions or is a generic setter. See
+`references/state-machine-generation.md` for the template and the full layout algorithm.
 
-**Step S.2 — User review and approval gate.** Present it alongside the Phase 0 aggregate artifact
-and get explicit approval. Expect pushback on fidelity ("that's not what the code does"), scope, and
-which transitions are real versus assumed. Apply corrections; **do not call any MCP tools until the
-map is approved.**
+**Step S.2 — Decide the altitude.** A state machine can be drawn at two altitudes: **service** (only
+what this codebase implements; `external` / `business` transitions declared in GWTs, not drawn) or
+**business-lifecycle** (the full lifecycle from the status enum + domain knowledge — all states drawn,
+speculative edges marked as assumptions). If the code genuinely guards its transitions the two
+coincide. If the code is a **passthrough setter** (status set without rules), they diverge — **ask the
+user which one they want**, and warn that the code-faithful diagram will be thinner than the lifecycle
+they picture.
+
+**Step S.3 — User review and approval gate.** Present the map and the chosen altitude alongside the
+Phase 0 aggregate artifact and get explicit approval. Expect pushback on fidelity ("that's not what
+the code does"), scope, and which transitions are real versus assumed. Apply corrections; **do not
+call any MCP tools until the map is approved.**
 
 **How the approved map drives the build:**
 
-- **Phase 2 (events):** build a single linear `follows` spine where **column = postcondition
-  state**; guard-forks become `decision`s with `conditionLabel`; alternate entries into
-  mid-lifecycle states are `follows: "start"` events in that column.
-- **Phase 5 (groups):** the state columns become Qlerify **groups** — here groups are **structural
-  and required**, not the cosmetic default. Create them in left→right state order; a reappearing
-  state (a cut cycle) gets a distinct name (`DRAFT` / `DRAFT 2`).
+- **Phase 2 (events):** build a single linear `follows` spine where **column = postcondition state**,
+  one column per distinct state (don't merge unrelated states); guard-forks become `decision`s with
+  `conditionLabel`; alternate entries into mid-lifecycle states are `follows: "start"` events in that
+  column.
+- **Phase 5 (groups):** the state columns become Qlerify **groups** — structural and required here,
+  not the cosmetic default. Create them in left→right state order; a reappearing state (a cut cycle)
+  gets a distinct name (`DRAFT` / `DRAFT 2`).
 - **Fan-ins** (a state reached from several predecessors; a decision with several parents) are wired
   with `add_connection`.
-- **Guardrail — clean DAG, completeness in GWTs:** draw only the happy path + high-value branches.
-  Push delete-from-anywhere (N-to-1), `cross-instance`, `external`, and `unverified` transitions into
-  `acceptanceCriteria` and notes — never as drawn edges. The on-canvas machine is a validation lens,
-  not a complete transition graph.
+- **Guardrail — what's drawn depends on the altitude.** At **service** altitude draw only the happy
+  path + high-value branches and push delete-from-anywhere (N-to-1), `external`, `business`, and
+  `cross-instance` transitions into `acceptanceCriteria` and notes. At **business-lifecycle** altitude
+  draw those `external` / `business` states and transitions too, each marked as an assumption. The
+  N-to-1 delete rule (one terminal column + a GWT) holds either way.
 
 ### Phase 1: Foundation
 
