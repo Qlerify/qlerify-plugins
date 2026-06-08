@@ -211,6 +211,16 @@ extra incoming edges.
 
 Errors if the connection already exists or `from` and `to` are the same. Does not create events — both must already exist.
 
+### remove_connection
+
+Remove an arrow between two existing events/decisions — the inverse of `add_connection`. The source is dropped from the target's incoming parents (and that branch's condition label is cleared), applying the same diagram rules as the UI: if the target is left with no parent it becomes a starting point; if its main parent was removed the next parent takes over (the target may shift); groups/positions are reconciled.
+
+- `workflowId`, `projectId` — Identifies the workflow
+- `from` — `$ref` path to the SOURCE the arrow starts from
+- `to` — `$ref` path to the TARGET the arrow points to; it loses `from` as a parent
+
+Errors if no such connection exists. To delete an event entirely (not just one incoming edge), use `delete_domain_event`.
+
 ---
 
 ## Entity Tools
