@@ -18,9 +18,10 @@ point to find the right workflow before doing anything else.
 
 ### create_project
 
-Create a top-level project — the container that owns workflows. Only `name` is required; a default
-organisation is auto-created if the user has none. Returns the new project ID and a URL — share the
-URL with the user as a clickable link. Use this when the user has no project yet (a fresh account,
+Create a top-level project — the container that owns workflows. Only `name` is required.
+Returns the new project ID and a URL — show the **full URL as plain text on its own line**
+(not wrapped in Markdown like `[text](url)`) so the terminal auto-links it, and it
+can be clicked/copied. Use this when the user has no project yet (a fresh account,
 or `list_workflows` returns none), then pass the new project ID to `create_workflow`.
 
 - `name` — The project name (e.g., "Acme E-Commerce", "Internal Tools")
@@ -30,7 +31,9 @@ or `list_workflows` returns none), then pass the new project ID to `create_workf
 Create a brand-new empty workflow inside a project. Provide a descriptive name — this appears
 in the UI and helps users find the workflow later. Returns the new workflow ID.
 
-After creation, share the workflow URL with the user using this pattern:
+After creation, give the user the workflow's **full URL as plain text on its own line** so the terminal
+auto-links it (clickable + copyable). Do **not** hide it behind link text like `[Open workflow](url)` —
+that renders as non-actionable blue text in a console. Use this pattern:
 `https://app.qlerify.com/workflow/{projectId}/{workflowId}`
 
 - `projectId` — The project to create the workflow in
@@ -153,7 +156,7 @@ entry and call again with only the remaining ones.
   - `lane` — Role/actor name. Auto-created if unfamiliar; pass the same name across events that share a lane.
   - `follows` — One of: `"start"`, a `$ref` path to an existing event, OR (bulk-only) the bare description of an event created earlier in the same array (e.g. `"follows": "Order Placed"`).
   - `parallel` — Optional. Same as `create_domain_event` below. To model concurrent branches off the same non-`decision` parent, give each branch the same `follows` and set `parallel: true` on every branch after the first; otherwise a second entry pointing at the same parent is inserted between the parent and its existing follower(s) — all of the parent's current followers are reparented under the new event. No effect when the parent is a `decision` (decisions branch by default) or has no follower yet.
-  - `group`, `color`, `aggregateRoot`, `acceptanceCriteria` — Optional, same as `create_domain_event` below.
+  - `group`, `color`, `aggregateRoot`, `acceptanceCriteria`, `conditionLabel` — Optional, same as `create_domain_event` below. Set `conditionLabel` on a branch whose `follows` is a decision to label it inline (no separate `update_domain_event` pass needed).
 
 ### create_domain_event
 
@@ -169,6 +172,7 @@ existing workflow. For building a new workflow with many events, use `create_dom
 - `group` — Optional. Sets a group boundary starting at this event. Only set on the **first** event of a new group. Do not set group on subsequent events in the same group.
 - `aggregateRoot` — Optional. `$ref` path to an entity (e.g., `#/schemas/entities/Order`). Links an entity as aggregate root for the command triggering this event. **Every command / event should have one** — if the entity doesn't exist yet, set it later via `update_domain_event` after creating entities.
 - `acceptanceCriteria` — Optional. Array of Given-When-Then acceptance criteria strings.
+- `conditionLabel` — Optional. Branch label shown on the arrow when this event `follows` a **decision** (e.g. "Yes", "No", "Approve"). Labels a guard-fork branch at creation; ignored if the parent isn't a decision. (Can also be set later via `update_domain_event`.)
 - `color` — Optional. Visual color: peach, yellow, green, teal, blue, lavender, pink, gray
 
 **Note:** Decisions may not appear in the `get_workflow` domainEvents section. Call `get_workflow` to discover their actual `$ref` paths if needed.
