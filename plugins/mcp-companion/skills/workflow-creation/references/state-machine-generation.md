@@ -31,11 +31,11 @@ it doesn't tell the whole story) check for these before concluding "not a state 
 
 1. **A status / state enum field** — explicit and easiest (`Receipt.status`).
 2. **Lifecycle timestamps / milestone fields** — state = which nullable fields are set
-   (`paidAt`, `shippedAt`, `cancelledAt` ⇒ Pending / Paid / Shipped / Cancelled). No enum at all.
+   (`paidAt`, `shippedAt`, `cancelledAt` ⇒ Pending / Paid / Shipped / Canceled). No enum at all.
 3. **Existence of a related entity or child** — state = presence/absence of a relationship (a Cart
    with an Order is "checked out"; a Subscription with an open billing period is "active").
 4. **A combination of booleans** — the state is the *tuple* of flags (`isProposal`, `booked`,
-   `expensePaid` layer sub-states on top of a status).
+   `expensePaid` layer substates on top of a status).
 5. **The latest row of a status-history / event-log entity** — state = the `type` of the most recent
    entry (Receipt's `ReceiptEvent.type` carries `Approved` / `Denied` even though no code ever sets
    `status = Approved`).
@@ -48,7 +48,7 @@ Two consequences:
   entity (e.g. per-line fulfilment status) or a different aggregate — model the state machine of
   whatever actually carries it.
 - **A single status enum often under-counts the real state space.** When flags or relationships also
-  gate behaviour, the true state is the *combination* — fold those sub-states in rather than trusting
+  gate behavior, the true state is the *combination* — fold those substates in rather than trusting
   the enum alone.
 
 Whatever the encoding, derive the **state set** from it; the transition table, altitude call, and
@@ -116,7 +116,7 @@ Lay the machine out left-to-right as a **DAG**:
    and render them as **forward** flow into a **reappearing** column — never a loop-back arrow. A
    reappearing state needs a distinct group name (`DRAFT` / `DRAFT 2`) because group names are unique.
 4. **Self-loops stay in-column.** No-status-change events (edit, upload image) chain rightward
-   inside the same column; never draw them as arrows.
+   inside the same column; don't model them as loop-back transitions.
 5. **One linear `follows` spine drives x-position** — each event is parent + 1 slot. Keep it a
    single chain; do **not** use `parallel` (it scrambles the slot math).
 6. **Guard-fork = one event per landing column**, behind a `decision` (Register → Registered /
