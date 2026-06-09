@@ -74,10 +74,11 @@ When `create_domain_event` references an unfamiliar lane name, the lane is auto-
 
 ### create_lane
 
-Seed an empty lane before any events reference it. Usually unnecessary since `create_domain_event` auto-creates lanes. Duplicate names are not blocked but create a separate lane each time — check `get_workflow` first.
+Seed an empty lane before any events reference it. Usually unnecessary since `create_domain_event` auto-creates lanes. Duplicate names are not blocked but create a separate lane each time — check `get_workflow` first. By default the lane is appended at the bottom; pass `position` to insert it at a specific vertical slot.
 
 - `workflowId`, `projectId` — Identifies the workflow
 - `name` — The lane name. See "Naming rules" above.
+- `position` — Optional. 0-based vertical slot for the new lane (`0` = topmost; "first"/"top" → `0`, "second" → `1`). Omit to append at the bottom.
 
 ### update_lane
 
