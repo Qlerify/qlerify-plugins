@@ -68,8 +68,8 @@ Follow these steps in order. Each step depends on the previous one. For an exist
 legacy codebase, start at Phase 0; otherwise skip Phase 0 and start at Phase 1.
 
 If the aggregate is a **state machine** — a state that *guards* transitions (a status enum or another
-encoding; see Phase S), with cycles, multiple terminal states, or guard-forks — insert **Phase S**
-(between Phase 0 and Phase 1) to map the states first. It changes how Phase 2 builds the flow and
+encoding; see Phase S), with cycles, multiple terminal states, or guard-forks — run **Phase S** to
+map the states first (after Phase 0 if you ran it; otherwise directly before Phase 1). It changes how Phase 2 builds the flow and
 makes Phase 5 groups structural. For an ordinary aggregate, skip Phase S entirely.
 
 ### Phase 0: Plan the aggregate model (reverse-engineering only)
@@ -518,7 +518,7 @@ These steps are cosmetic and can be skipped if not needed.
 
 > **Do NOT create groups as part of a default workflow generation.** Skip this step entirely unless the user explicitly asks for them — e.g., "group the events into phases", "add groups for the checkout/fulfillment stages", "organize events into stages". A newly generated workflow should have zero groups by default.
 >
-> **Exception — state-machine workflows (Phase S):** when the aggregate was mapped as a state machine, the state columns **are** the groups and creating them is **required**, not cosmetic. Create one group per state in left→right state order; reappearing states (cut cycles) get distinct names (`DRAFT` / `DRAFT 2`). See `references/state-machine-generation.md`.
+> **Exception — state-machine workflows (Phase S):** when the aggregate was mapped as a state machine, the state columns **are** the groups and creating them is **required**, not cosmetic — i.e. this whole step (Phase 5 / Step 11) is **not** optional for Phase S workflows. Create one group per state in left→right state order; reappearing states (cut cycles) get distinct names (`DRAFT` / `DRAFT 2`). See `references/state-machine-generation.md`.
 
 Groups split the workflow into phases seen on the diagram with labels spread out horizontally from left to right at the top of the diagram and vertical dividers splitting the flow into phases. When the user asks for them:
 
