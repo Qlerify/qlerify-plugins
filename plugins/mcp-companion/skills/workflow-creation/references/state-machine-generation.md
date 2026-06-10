@@ -58,31 +58,33 @@ layout below are the same once you have the states.
 
 A state machine can be drawn at two altitudes, and they only diverge when the code is thin:
 
-- **Service altitude (code-faithful)** — model exactly what *this* codebase's mutation surface does.
-  Transitions with no in-repo writer (other services, UI-only, business convention) are recorded and
-  flagged but **not drawn**. Lean and exact; can look thin when the code is a passthrough.
-- **Business-lifecycle altitude** — model the aggregate's full life as a domain expert recognises it,
-  using the status enum as the skeleton. Draw **all** states and the business-known transitions
-  (e.g. approve / deny / reopen), each speculative edge visibly **marked as an assumption**. Richer;
-  deliberately crosses the aggregate/code boundary into other systems and tribal knowledge.
+- **Service altitude (code-faithful) — the default; recommend this.** Model exactly what *this*
+  codebase's mutation surface does. Transitions with no in-repo writer (other services, UI-only,
+  business convention) are recorded and flagged but **not drawn**. Lean and exact; can look thin when
+  the code is a passthrough.
+- **Business-lifecycle altitude** — model the aggregate's full life as a domain expert recognizes it,
+  using the state set as the skeleton. Draw **all** states and the business-known transitions,
+  each speculative edge visibly **marked as an assumption**. Richer; deliberately crosses
+  the aggregate/code boundary into other systems and tribal knowledge.
 
 **First check whether the code actually guards the transitions.** Many aggregates have a status enum
 but a *generic setter* (`entity.status = whatever-the-caller-passed`) with no rules — the real state
 machine lives in the UI, another service, or convention, not this code. That is a **partial** state
 machine: a few transitions may be guarded (e.g. link requires `Proposal`) while the rest are
 unenforced. When the code *is* genuinely guarded, the two altitudes coincide — no choice to make.
-When it's a passthrough, they diverge sharply, so **stop and ask the user which altitude they want**
-before drawing, and say plainly that the code-faithful diagram will be thinner than the lifecycle
-they picture. The altitude decides what is *drawn* vs *declared* and how many columns appear.
+When it's a passthrough, they diverge sharply, so **ask the user which altitude they want — and
+recommend the code-faithful service altitude.** If it looks thin, prefer widening the analysis (e.g.
+pull in the frontend or the owning service) over switching to speculation. The altitude decides what
+is *drawn* vs *declared* and how many columns appear.
 
 ## The state-transition map (gate artifact)
 
 Before any MCP writes, produce `.qlerify/aggregates/{name}-state-machine.md` and get user approval
 (alongside / extending the Phase 0 aggregate artifact). It contains:
 
-1. **States — the full enum.** List **every** status enum value as a state (even ones no code reads
-   or writes), each marked **entry** / **intermediate** / **terminal**. Never silently drop an enum
-   value — a state the code is silent about is exactly the one a reviewer will miss.
+1. **States — the full set.** List **every** state (even ones no code reads
+   or writes), each marked **entry** / **intermediate** / **terminal**. Never silently drop one — a
+   state the code is silent about is exactly the one a reviewer will miss.
 2. **Transition table** — one row per transition, each carrying an **evidence** level so nothing is
    lost and the altitude call is informed:
 
@@ -146,11 +148,14 @@ GWT) at either altitude.
 
 ## Building it with MCP
 
-- Create the spine with `create_domain_events` (a single `follows` chain) — see
-  `references/event-generation.md`.
-- Create the state **groups** with `create_group` in left→right state order, then assign each
-  column's first event with `update_domain_event(group:)`. Group order is creation order and is
-  immutable, so create them in timeline order.
+- **Create the state groups first, before the event spine:** call `create_group` once per state in
+  left→right state order (group order is creation order and is immutable, so create them in state
+  order). Creating the columns up front means each event is born into its column — there is no later
+  `update_domain_event(group:)` re-assignment pass that shifts the diagram and exposes collisions.
+- Build the spine with `create_domain_events` (a single `follows` chain), setting `group: "<state>"`
+  on the **first event of each column**; later events inherit their group along the chain, and each
+  column's position is derived from where its events land, so the boundaries line up automatically.
+  See `references/event-generation.md`.
 - Create guard-forks as `decision` events with `conditionLabel` branches.
 - Wire multi-parent **fan-ins** (a state reached from several predecessors; a single decision with
   several parents) with `add_connection(from, to, conditionLabel?)` — it appends a parent without
