@@ -60,9 +60,9 @@ or separate branches — is what keeps the arrows readable.
 Optional vertical bands that split the canvas into labeled phases (e.g. "Order Placement",
 "Fulfillment") via draggable dividers, with a header label across the top. A new group appears at the
 far right; its divider is dragged left to size it and cannot cross into another group. Groups are
-purely visual — they carry no domain meaning. Don't add them unless the user asks (see Phase 5),
-except in state-machine workflows (Phase S) where groups are required to represent state columns
-(see `references/state-machine-generation.md`).
+usually just visual aids with no domain meaning — don't add them unless the user asks (see Phase 5).
+The exception is state-machine workflows (Phase S), where groups are structural and represent state
+columns (see `references/state-machine-generation.md`).
 
 ## The tabs — where the model lives
 

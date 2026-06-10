@@ -288,6 +288,8 @@ Each entry needs:
 Optional parameters:
 
 - `acceptanceCriteria` — Array of Given-When-Then acceptance criteria strings. If the input contains test scenarios, behavior specs, or sentences in "Given X, When Y, Then Z" form, attach the relevant ones to each event here — don't leave them as background documentation.
+- `conditionLabel` — Branch label shown when this event's `follows` is a **decision** (e.g. "Yes", "No"); labels a guard-fork branch inline. Ignored if the parent isn't a decision.
+- `group` — The state column the event belongs to. **State machines only** — set it on each column's first event (see the note below and Phase S); leave it unset on ordinary workflows.
 
 Build the flow left-to-right, creating events in the order they occur in the business process. For how `follows`, `parallel`, and decisions render spatially on the canvas, see `references/layout-and-ui.md`. If the aggregate was flagged as a state machine in **Phase S**, build the flow as the state spine instead (column = postcondition state, guard-forks as decisions, alternate entries as `follows: "start"`) — see `references/state-machine-generation.md`. Do NOT set `aggregateRoot` yet — entities don't exist at this point.
 On an ordinary workflow do NOT set `group` here — groups there are an optional Phase 5 polish. **Exception — state machines (Phase S):** the state columns were already created as groups up front (see Phase S), so here you DO set `group: "<state>"` on the first event of each state column so each event is born into its column; see `references/state-machine-generation.md`.

@@ -79,7 +79,7 @@ is *drawn* vs *declared* and how many columns appear.
 
 ## The state-transition map (gate artifact)
 
-Before any MCP writes, produce `.qlerify/aggregates/{name}-state-machine.md` and get user approval
+Before any MCP writes, produce `.qlerify/aggregates/{aggregate-name-kebab-case}-state-machine.md` and get user approval
 (alongside / extending the Phase 0 aggregate artifact). It contains:
 
 1. **States — the full set.** List **every** state (even ones no code reads
