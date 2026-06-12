@@ -67,6 +67,12 @@ afterward to verify the actual `$ref` key before referencing it in subsequent ca
 Follow these steps in order. Each step depends on the previous one. For an existing or
 legacy codebase, start at Phase 0; otherwise skip Phase 0 and start at Phase 1.
 
+If the aggregate is a **state machine** — a state that *guards* transitions (a status enum or another
+encoding; see Phase S), with cycles, multiple terminal states, or guard-forks — run **Phase S** to
+map the states first (after Phase 0 if you ran it; otherwise directly before Phase 1). It changes how Phase 2 builds the flow and
+makes the state columns (Qlerify groups) structural — created **up front, before the event spine**, so
+events are born into their column instead of being re-assigned later. For an ordinary aggregate, skip Phase S entirely.
+
 ### Phase 0: Plan the aggregate model (reverse-engineering only)
 
 **Skip this phase entirely for greenfield workflow creation.** Run it only when the
@@ -183,7 +189,70 @@ user has approved the artifact.**
 | External references (IDs to other BCs)            | Category 2 ID-only refs in commands (Phase 3 Step 5)         |
 | Bounded context (from title metadata)             | Phase 3 Step 3 (`create_bounded_context`)                    |
 
-After completing Phase 0 and securing user approval of the artifact, proceed to Phase 1.
+After completing Phase 0 and securing user approval of the artifact, proceed to Phase 1 — or to
+Phase S first if the aggregate is a state machine.
+
+### Phase S: Map the state machine (state-machine aggregates only)
+
+**Skip this phase for ordinary aggregates.** Run it only when the aggregate is a genuine **state
+machine**: a notion of state (≈4+ distinct states) whose value *guards* which commands are allowed,
+**plus** at least one of — a cycle (reopen / revisit), multiple terminal states, or a guard-fork (one
+command landing in different states by input). The state is most often a status enum, but it can be
+lifecycle timestamps, a child entity's existence, a flag combination, or a status-history log — and
+may live on a child rather than the root (see `references/state-machine-generation.md` → "Where the
+state lives"). One or two of these alone is not enough; keep those as a normal linear flow.
+
+Why it matters: for a real state machine the default linear event chain is not just thin, it is
+**misleading** — `Drafted → Registered → … → Removed` reads as one sequence when those are
+*alternative* lifecycle branches. This phase maps the lifecycle so Phase 2 and Phase 5 can lay it
+out faithfully.
+
+**When it runs:** after Phase 0 (reverse-engineering) using the extracted status enum and guarded
+transitions, or — for greenfield — after the user has described the lifecycle. Before Phase 1. If
+detection is borderline, ask the user whether to map states onto the timeline or keep a linear flow.
+
+**Step S.1 — Write the state-transition map (gate artifact).** Produce
+`.qlerify/aggregates/{aggregate-name-kebab-case}-state-machine.md`: **every** state (entry /
+intermediate / terminal — never drop one, even if no code touches it), and a
+transition table (`fromState | trigger | toState | guard | evidence`) where `evidence` is `code` /
+`external` / `business`. Record the `external` / `business` transitions you know about **even when the
+code is silent**. Mark cycles, guard-forks, self-loops, and cross-instance transitions, and state
+plainly whether the code actually guards its transitions or is a generic setter. See
+`references/state-machine-generation.md` for the template and the full layout algorithm.
+
+**Step S.2 — Decide the altitude.** A state machine can be drawn at two altitudes: **service** (only
+what this codebase implements; `external` / `business` transitions declared in GWTs, not drawn) or
+**business-lifecycle** (the full lifecycle from domain knowledge — all states drawn,
+speculative edges marked as assumptions). If the code genuinely guards its transitions the two
+coincide. If the code is a **passthrough setter** (status set without rules), they diverge — **ask the
+user which one they want, and recommend the code-faithful service altitude**; if it looks thin, prefer
+widening the analysis (e.g. include the frontend) over speculating.
+
+**Step S.3 — User review and approval gate.** Present the map and the chosen altitude alongside the
+Phase 0 aggregate artifact and get explicit approval. Expect pushback on fidelity ("that's not what
+the code does"), scope, and which transitions are real versus assumed. Apply corrections; **do not
+call any MCP tools until the map is approved.**
+
+**How the approved map drives the build:**
+
+- **Groups first (before the spine):** the state columns become Qlerify **groups** — structural and
+  required here, not the cosmetic default. Create one group per state with `create_group` in
+  left→right state order, **right after the workflow exists and before the event spine**; a reappearing
+  state (a cut cycle) gets a distinct name (`DRAFT` / `DRAFT 2`). Creating the columns up front lets
+  every event be born into its column, so there is no later re-assignment pass shifting the diagram —
+  which is what made it messy.
+- **Phase 2 (events):** build a single linear `follows` spine where **column = postcondition state**,
+  one column per distinct state (don't merge unrelated states); set `group: "<state>"` on the **first
+  event of each column** so it lands in the right group (later events inherit it along the chain).
+  Guard-forks become `decision`s with `conditionLabel`; alternate entries into mid-lifecycle states are
+  `follows: "start"` events in that column.
+- **Fan-ins** (a state reached from several predecessors; a decision with several parents) are wired
+  with `add_connection`.
+- **Guardrail — what's drawn depends on the altitude.** At **service** altitude draw only the happy
+  path + high-value branches and push delete-from-anywhere (N-to-1), `external`, `business`, and
+  `cross-instance` transitions into `acceptanceCriteria` and notes. At **business-lifecycle** altitude
+  draw those `external` / `business` states and transitions too, each marked as an assumption. The
+  N-to-1 delete rule (one terminal column + a GWT) holds either way.
 
 ### Phase 1: Foundation
 
@@ -219,9 +288,11 @@ Each entry needs:
 Optional parameters:
 
 - `acceptanceCriteria` — Array of Given-When-Then acceptance criteria strings. If the input contains test scenarios, behavior specs, or sentences in "Given X, When Y, Then Z" form, attach the relevant ones to each event here — don't leave them as background documentation.
+- `conditionLabel` — Branch label shown when this event's `follows` is a **decision** (e.g. "Yes", "No"); labels a guard-fork branch inline. Ignored if the parent isn't a decision.
+- `group` — The state column the event belongs to. **State machines only** — set it on each column's first event (see the note below and Phase S); leave it unset on ordinary workflows.
 
-Build the flow left-to-right, creating events in the order they occur in the business process. Do NOT set `aggregateRoot` yet — entities don't exist at this point.
-Do NOT set `group` either — groups are a cosmetic polish step handled later (Phase 5) and only if the user explicitly asks for them.
+Build the flow left-to-right, creating events in the order they occur in the business process. For how `follows`, `parallel`, and decisions render spatially on the canvas, see `references/layout-and-ui.md`. If the aggregate was flagged as a state machine in **Phase S**, build the flow as the state spine instead (column = postcondition state, guard-forks as decisions, alternate entries as `follows: "start"`) — see `references/state-machine-generation.md`. Do NOT set `aggregateRoot` yet — entities don't exist at this point.
+On an ordinary workflow do NOT set `group` here — groups there are an optional Phase 5 polish. **Exception — state machines (Phase S):** the state columns were already created as groups up front (see Phase S), so here you DO set `group: "<state>"` on the first event of each state column so each event is born into its column; see `references/state-machine-generation.md`.
 
 ### Phase 3: Domain Model
 
@@ -453,6 +524,8 @@ These steps are cosmetic and can be skipped if not needed.
 **Step 11 — Create groups (optional, only on explicit user request)**
 
 > **Do NOT create groups as part of a default workflow generation.** Skip this step entirely unless the user explicitly asks for them — e.g., "group the events into phases", "add groups for the checkout/fulfillment stages", "organize events into stages". A newly generated workflow should have zero groups by default.
+>
+> **Exception — state-machine workflows (Phase S):** when the aggregate was mapped as a state machine, the state columns **are** the groups, but they are created **up front** — before the event spine — and each column-leading event sets `group` at creation (see Phase S). So for Phase S workflows this step is **already done by the time you reach Phase 5**; do not re-create the groups here. Just verify the columns match the state map. See `references/state-machine-generation.md`.
 
 Groups split the workflow into phases seen on the diagram with labels spread out horizontally from left to right at the top of the diagram and vertical dividers splitting the flow into phases. When the user asks for them:
 
@@ -550,8 +623,10 @@ To build parallel branches, give each branch the same `follows` and set `paralle
 Consult these for detailed rules when creating specific element types:
 
 - **`references/system-prompt.md`** — DDD/event modeling expert context, naming conventions, character limits, quality checks
+- **`references/layout-and-ui.md`** — How the diagram is laid out (lane/event/decision/connection/group positioning) and how the rest of the Qlerify UI is organized (the seven tabs, sidebar) — read this to build well-arranged diagrams and answer questions about the UI
 - **`references/aggregate-extraction-artifact.md`** — Phase 0 planning artifact: template, section-by-section guidance, file location, quality checks before user approval
 - **`references/event-generation.md`** — Event naming rules, role conventions, chronology, gateway and parallel-branch patterns
+- **`references/state-machine-generation.md`** — Detecting state-machine aggregates and laying the lifecycle out on the timeline (states as columns/groups, DAG cycle-cutting, guard-forks, fan-ins, completeness-in-GWTs guardrails) — used by Phase S
 - **`references/command-generation.md`** — The 4 command field categories, naming rules, 3-level nesting guidelines
 - **`references/read-model-generation.md`** — Read model field design, filter vs display fields, cardinality rules
 - **`references/domain-event-generation.md`** — Domain event payload rules, identifier/timestamp conventions
