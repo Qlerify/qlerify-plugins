@@ -53,7 +53,7 @@ full structure. Fetch this URL to understand field types, allowed values, and re
 Each domain event and decision also carries a **`position: [col, row]`** — its cell in the diagram's
 global grid (`col` = column left→right, `row` = row top→bottom; the top-left node is `[0, 0]`, the one
 directly below it `[0, 1]`). `lane` and `group` say which band/column an element belongs to
-semantically; `position` is its absolute placement. Read it to see how the diagram actually laid out —
+semantically; `position` is its absolute placement. Read it to see how the diagram is actually laid out —
 relative order, what sits in which column, whether two nodes share a cell — instead of inferring
 layout from `follows` alone.
 
