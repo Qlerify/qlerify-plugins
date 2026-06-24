@@ -9,7 +9,7 @@ Generate all entities and value objects involved in the execution of all command
 **Entities** have their own identity and lifecycle. They are referenced by ID from other entities.
 
 - MUST have `id` as the first field
-- MUST mark `id` with `isRequired: true`
+- MUST mark `id` with `isRequired: true` and `isKey: true` (it is the entity's primary key)
 - Examples: Customer, Order, Product, Cart
 
 **Value Objects** are defined only by their attributes — no `id` field.
@@ -110,6 +110,19 @@ Mark fields essential for the entity to exist in a **valid initial state** with 
 
 Fields populated only during specific lifecycle transitions (expire, cancel, archive, complete) should NOT be required, even if required in those commands. Example: `expiryReason` is required on an "Expire Cart" command but optional on the Cart entity because it doesn't exist at creation time.
 
+## Keys (Primary Key)
+
+Mark the field(s) that uniquely identify an entity with `isKey: true`.
+
+- For most entities this is the single `id` field — set both `isRequired: true` and `isKey: true` on it.
+- When identity is a combination of fields, mark **each** member with `isKey: true` to form a **composite key** (e.g. an `OrderLineItem` keyed by `orderId` + `productId`).
+- Key fields must also be `isRequired: true` — a key must always have a value, so marking a field as a key implies it is required.
+- **Value objects** have no identity — never mark a key on a value object's fields.
+
+```json
+{ "name": "id", "dataType": "string", "description": "Unique identifier of the order", "exampleData": ["ord-001", "ord-002", "ord-003"], "isRequired": true, "isKey": true }
+```
+
 ## Example Data
 
 **Every field MUST include `exampleData`** with 3 realistic example values. This applies to ALL fields, including fields with `relatedEntity`.
@@ -153,7 +166,7 @@ Every field must include a `description`: a single concise sentence (ideally und
   "description": "Aggregate root that represents a customer purchase and tracks its fulfilment lifecycle from placement to delivery.",
   "boundedContext": "Order Management",
   "fields": [
-    { "name": "id", "dataType": "string", "description": "Unique identifier of the order", "exampleData": ["ord-001", "ord-002", "ord-003"], "isRequired": true },
+    { "name": "id", "dataType": "string", "description": "Unique identifier of the order", "exampleData": ["ord-001", "ord-002", "ord-003"], "isRequired": true, "isKey": true },
     { "name": "customerId", "dataType": "string", "description": "Customer who placed the order", "exampleData": ["cust-10", "cust-22", "cust-07"], "isRequired": true },
     { "name": "status", "dataType": "string", "description": "Current fulfillment status of the order", "exampleData": ["pending", "confirmed", "shipped"], "isRequired": true },
     { "name": "totalAmount", "dataType": "number", "description": "Total amount to be paid including all items, taxes, and shipping", "exampleData": ["59.99", "124.50", "9.99"], "isRequired": true },
