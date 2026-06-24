@@ -20,7 +20,7 @@ This skill produces a working, tested application. The model lives in version co
 ## Core principles
 
 - **The model is normative; the diagram is illustrative.** Event ordering on the board shows one valid sequence — actual systems may interleave events in any order. Invariants on attributes, commands, and GWTs gate state changes, not the visual sequence. Generate command handlers that enforce invariants and emit events; do not generate rigid state machines that hard-code the diagram sequence.
-- **Invariants are scattered.** Collect them from three sources before generating any handler: command-level GWTs, attribute properties (type, required, min/max, allowed values), and prose descriptions on attributes. Missing any of the three produces silently incorrect code.
+- **Invariants are scattered.** Collect them from three sources before generating any handler: command-level GWTs, attribute properties (type, required, key, min/max, allowed values), and prose descriptions on attributes. Missing any of the three produces silently incorrect code.
 - **Persistence is an implementation detail.** The model gives types, ownership, and dependencies. It does not prescribe storage. This skill chooses how aggregates, owned entities, and value objects map onto the chosen engine — relational, document, key-value, or otherwise.
 
 ## Operating mode
@@ -78,6 +78,7 @@ Record the chosen stack in `.qlerify/codegen.json` (created if absent) so subseq
 The model gives types, ownership, and dependencies — never storage. The agent chooses how to persist, guided by these principles:
 
 - **Aggregate = consistency boundary.** Whatever the storage primitive is (table row, document, partition), one command commits one aggregate atomically. Cross-aggregate effects propagate via domain events, not joined transactions.
+- **The declared `key` is the primary key.** An attribute's `key` flag marks the field(s) that uniquely identify the entity — use them as the storage primary key and the lookup identity, not whatever happens to be named `id`. When multiple attributes are flagged, they form a **composite key**: generate a composite primary key / compound unique constraint and key the aggregate lookup on the full tuple. If no attribute is flagged, fall back to the conventional `id` field.
 - **Owned entities and value objects belong with their root.** Embed where the storage model supports it (document subdocs, JSON columns); otherwise link with whatever the engine uses for relationships, and propagate deletion of the root to its children.
 - **Value objects have no domain identity, but may carry a stable ID at system boundaries** when there's a real need — picking from a UI list, deduplication, audit logging. Set-replacement semantics still hold (the whole VO is overwritten on update, not patched field-by-field). Don't add IDs to VOs just because the storage engine wants them — only when something outside the aggregate needs to reference the VO.
 - **External references stay opaque.** A `*Id` field pointing at another bounded context's aggregate carries no integrity constraint and no cascade across that boundary.
@@ -110,7 +111,7 @@ Each module contains:
 
 - Entity and value object types matching model attributes (TypeScript types, Python dataclasses, Java records — stack-appropriate)
 - **Consolidated invariant guards** — for each command, merge attribute-level invariants + command-level invariants + GWT preconditions into a single guard function. Order:
-    1. Attribute constraints (type, required, min/max, allowed values, regex)
+    1. Attribute constraints (type, required, key, min/max, allowed values, regex) — `key` field(s) must be present and unique; for a composite key the combination must be unique
     2. Command-level invariants from the model
     3. GWT preconditions (the Given and pre-When state checks)
 - Aggregate root class/factory that exposes one method per command, each running its guard before mutating state
@@ -122,7 +123,7 @@ A command's argument structure mirrors the aggregate's nested entity/VO structur
 One handler per command, mounted at an HTTP endpoint (or RPC method, per stack). Each handler:
 
 1. Authorizes — only the role on the command's lane may invoke it; reject otherwise
-2. Loads the aggregate by ID (full load by default — see "advanced" below)
+2. Loads the aggregate by its declared `key` — the full tuple for a composite key, falling back to `id` when no key is flagged (full load by default — see "advanced" below)
 3. Calls the aggregate method, which runs invariant guards and mutates state
 4. Persists the aggregate with the stack's concurrency control (optimistic version bump, conditional write, or equivalent)
 5. Emits the corresponding domain event on the in-process bus

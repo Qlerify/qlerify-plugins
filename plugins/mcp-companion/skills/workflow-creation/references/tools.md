@@ -254,6 +254,7 @@ Define one or more domain entities or value objects in a single atomic workflow 
     - `dataType` — One of: `string`, `number`, `boolean`, `object`
     - `exampleData` — Array of 3 realistic example values
     - `isRequired` — Whether the field is mandatory (true/false)
+    - `isKey` — Whether the field is part of the entity's primary key (true/false). The `id` field is usually the key; mark multiple fields to form a composite key. Omit for value objects.
     - `relatedEntity` — `$ref` path to another entity (e.g., `#/schemas/entities/OrderItem`)
     - `cardinality` — `"one-to-one"` or `"one-to-many"` for fields with `relatedEntity`
 
