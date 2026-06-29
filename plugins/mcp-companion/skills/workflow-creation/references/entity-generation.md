@@ -18,6 +18,18 @@ Generate all entities and value objects involved in the execution of all command
 - Derive from nested structures in commands without a lifecycle and persistent identity
 - Examples: Money, Address, Adjustment
 
+## Bounded Contexts
+
+Group the entities and value objects into one or more bounded contexts, following Domain-Driven Design, and assign each one to a bounded context via a top-level `boundedContext` property (the human-readable context name, e.g. `"Order Management"`).
+
+- A bounded context is a cohesive boundary around the aggregates that change together and share a single, consistent domain language.
+- Identify bounded contexts by transactional consistency boundaries and aggregate cohesion: aggregate roots updated together by the same commands and referencing each other directly belong in the same context; aggregates from clearly different subdomains (e.g. ordering vs. catalog vs. customer management vs. payments) belong in separate contexts.
+- Assign EVERY entity and value object to exactly one bounded context. Place a value object in the same context as the aggregate root that owns it.
+- Use a small number of meaningful bounded contexts; do NOT create a separate context per entity. Prefer fewer, broader contexts when in doubt. A single bounded context is acceptable when all aggregates clearly belong to one subdomain.
+- Bounded context names must be human-readable, at most 40 characters, and used consistently: every entity in the same context must use the EXACT same `boundedContext` name string (same spelling and casing).
+- The bounded-context grouping determines which references are cross-context: when an entity references another entity placed in a DIFFERENT bounded context, apply the cross-context referencing rule below (flat `{entityName}Id` string instead of a nested `relatedEntity`).
+- A bounded context must already exist before an entity can be assigned to it — create it first with `create_bounded_context` (see SKILL.md, Phase 3 → Step 3), then pass the matching name as the entity's `boundedContext`. Assigning an entity to an unknown bounded context name is rejected with a "not found" error.
+
 ## Critical Rules
 
 ### Explicit Field Inclusion
