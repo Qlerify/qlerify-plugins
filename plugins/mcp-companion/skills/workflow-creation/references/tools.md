@@ -48,8 +48,8 @@ a `$ref` path for use with other tools. This is the **primary tool for viewing e
 there are no separate list tools for lanes, groups, events, entities, commands, or read models.
 
 Schemas are **split by bounded context**: the top-level `schemas` object holds only the *primary*
-context's schemas. Schemas in other contexts — and every entity or value object with **no** bounded
-context — live under `externalBoundedContexts.<Name>.schemas`, with unassigned ones grouped under
+context's schemas. Schemas in other contexts live under `externalBoundedContexts.<Name>.schemas`.
+Entities or value objects with **no** bounded context are grouped under
 `externalBoundedContexts.Unassigned.schemas` (e.g. an entity created without a `boundedContext` lands
 in `externalBoundedContexts.Unassigned.schemas.entities.<Name>`). So an entity is **not** always under
 top-level `schemas.entities` — before concluding one is missing or empty, look in both the top-level
