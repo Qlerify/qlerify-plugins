@@ -203,7 +203,7 @@ existing workflow. For building a new workflow with many events, use `create_dom
 
 ### update_domain_event
 
-Modify an existing domain event — change its name, lane, color, condition label, group, aggregate root, or acceptance criteria.
+Modify an existing domain event — change its name, lane, color, condition label, group, shape (event↔decision), aggregate root, or acceptance criteria.
 
 - `workflowId`, `projectId` — Identifies the workflow
 - `domainEvent` — `$ref` path to the event (e.g., `#/domainEvents/OrderPlaced`)
@@ -212,6 +212,7 @@ Modify an existing domain event — change its name, lane, color, condition labe
 - `color` — New color (optional)
 - `conditionLabel` — Branch label for events following a gateway, or empty string to clear (optional)
 - `group` — Group name to assign this event to, or empty string to remove from its current group (optional). Only set on the first event of a new group — subsequent events inherit via the parent chain. No need to assign when the workflow has only one group (events auto-show under it).
+- `type` — Change the shape: `"domainEvent"` (a box) or `"decision"` (a diamond). Omit to leave unchanged. Converting a decision to an event clears its followers' branch condition labels (optional).
 - `aggregateRoot` — `$ref` path to entity, or empty string to remove (optional)
 - `acceptanceCriteria` — Array of GWT strings, replaces all existing (optional)
 
