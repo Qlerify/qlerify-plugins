@@ -80,6 +80,21 @@ The diagram shows only the flow; the domain model attached to each event lives i
   (user stories, given-when-thens, …) attached to events.
 - **History (tab 7):** version log; any of the last 50 versions can be restored.
 
+### Bounded contexts (the top-level grouping in the Domain Model)
+
+Bounded contexts are the **highest level of grouping**. In the Domain Model each one is drawn as a
+full-width band (a "target box") that its slices sit inside; slices belonging to no context are shown
+below the contexts. You never place things into a context directly — you assign an **entity** to a
+bounded context, and it *brings along* everything anchored to it: the commands that use it as
+aggregate root, and through those commands their roles, read models, and resulting domain events.
+So assigning `Customer` to a `CRM` context pulls the Customer commands, their `Customer Created` /
+`Customer Updated` events, and the read models built from them into `CRM`. A read model that reads an
+entity owned by *another* context still appears inside the context but is flagged as fetching
+cross-context data. Each context header also toggles between the default model view and a **Push Spec**
+view, where the model can be validated and its OpenAPI spec pushed to GitHub. (Create and assign
+contexts with the bounded-context tools and the entity's `boundedContext` field — see
+`references/tools.md`.)
+
 ## What an event carries
 
 Beyond its name and lane, an event can hold one command, one or more read models, one aggregate

@@ -47,6 +47,16 @@ organized by type (entities, commands, queries, domainEvents, valueObjects). Eac
 a `$ref` path for use with other tools. This is the **primary tool for viewing existing data** —
 there are no separate list tools for lanes, groups, events, entities, commands, or read models.
 
+Schemas are **split by bounded context**: the top-level `schemas` object holds only the *primary*
+context's schemas. Schemas in other contexts live under `externalBoundedContexts.<Name>.schemas`.
+Entities or value objects with **no** bounded context are grouped under
+`externalBoundedContexts.Unassigned.schemas` (e.g. an entity created without a `boundedContext` lands
+in `externalBoundedContexts.Unassigned.schemas.entities.<Name>`). So an entity is **not** always under
+top-level `schemas.entities` — before concluding one is missing or empty, look in both the top-level
+`schemas` and every `externalBoundedContexts.*.schemas` block. You can still pass the
+`#/schemas/entities/<Name>` path to other tools; refs resolve by name regardless of which context the
+element sits in.
+
 The returned specification includes a `$schema` URL pointing to a JSON Schema that describes the
 full structure. Fetch this URL to understand field types, allowed values, and relationships.
 
@@ -112,6 +122,10 @@ Remove a lane. The lane must be empty — move or delete its events first.
 Groups are the vertical columns in the BPMN diagram. Each group represents a phase, stage,
 or logical section of the business process. Use `get_workflow` to see existing groups.
 
+**When a workflow has only one group, all events are automatically shown under it without being
+assigned** — so don't assign events to the only group (e.g. via `update_domain_event`'s `group`).
+Group assignment only starts to matter once there are two or more groups.
+
 ### create_group
 
 Add a new phase/stage column to the workflow. Groups are positioned automatically — just
@@ -130,7 +144,10 @@ Rename an existing group.
 
 ### delete_group
 
-Remove a group. The group must be empty — move or delete all events in it first.
+Remove a group. It does **not** need to be empty — deleting it removes the divider and keeps its
+events, which fold into the neighbouring group (the previous group expands; if the first group is
+deleted, the next one becomes the first). To move events into a different existing group instead of
+dropping the boundary, use `update_domain_event`'s `group` parameter.
 
 - `workflowId`, `projectId` — Identifies the workflow
 - `group` — Group name to delete
@@ -186,7 +203,7 @@ existing workflow. For building a new workflow with many events, use `create_dom
 
 ### update_domain_event
 
-Modify an existing domain event — change its name, lane, color, condition label, group, aggregate root, or acceptance criteria.
+Modify an existing domain event — change its name, lane, color, condition label, group, shape (event↔decision), aggregate root, or acceptance criteria.
 
 - `workflowId`, `projectId` — Identifies the workflow
 - `domainEvent` — `$ref` path to the event (e.g., `#/domainEvents/OrderPlaced`)
@@ -194,7 +211,8 @@ Modify an existing domain event — change its name, lane, color, condition labe
 - `lane` — Lane name to move event to (optional)
 - `color` — New color (optional)
 - `conditionLabel` — Branch label for events following a gateway, or empty string to clear (optional)
-- `group` — Group name to assign this event to, or empty string to remove from its current group (optional). Only set on the first event of a new group — subsequent events inherit via the parent chain.
+- `group` — Group name to assign this event to, or empty string to remove from its current group (optional). Only set on the first event of a new group — subsequent events inherit via the parent chain. No need to assign when the workflow has only one group (events auto-show under it).
+- `type` — Change the shape: `"domainEvent"` (a box) or `"decision"` (a diamond). Omit to leave unchanged. Converting a decision to an event clears its followers' branch condition labels (optional).
 - `aggregateRoot` — `$ref` path to entity, or empty string to remove (optional)
 - `acceptanceCriteria` — Array of GWT strings, replaces all existing (optional)
 
@@ -485,14 +503,14 @@ Remove a card from an event. Cards are identified by their event and text.
 ## Bounded Context Tools
 
 Bounded contexts are logical boundaries within a domain model. They represent
-separate areas of the domain that could potentially be separate microservices. Creating a
-bounded context auto-assigns any unassigned entities to it.
+separate areas of the domain that could potentially be separate microservices.
 
 ### create_bounded_context
 
-Create a new bounded context. Any existing entities without a bounded context are automatically
-assigned to the new one. **Create bounded contexts before entities** so you can assign entities
-during creation.
+Create a new bounded context. Creating it does **not** move any entities into it on its own —
+assign entities by setting their `boundedContext` field via `create_entities` or `update_entities`
+(only entities, not value objects, can be assigned). **Create the bounded context first** so it
+exists when you reference it while assigning entities.
 
 - `workflowId`, `projectId` — Identifies the workflow
 - `name` — Context name (e.g., "Order Management", "Hotel Booking")
