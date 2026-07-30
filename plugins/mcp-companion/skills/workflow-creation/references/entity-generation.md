@@ -56,7 +56,7 @@ Attributes the user explicitly asks for and clearly ties to a specific entity in
 ### Step-by-Step Derivation
 
 1. Identify the input data/arguments for each command
-2. Determine which entity acts as the aggregate root and its associated entities/value objects
+2. For each command, determine which entity acts as its aggregate root and its associated entities/value objects
 3. Extract all unique fields from these commands and include them on the appropriate entity/value object
 
 ### Handling Nested Command Fields

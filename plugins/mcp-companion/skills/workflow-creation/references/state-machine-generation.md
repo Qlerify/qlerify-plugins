@@ -23,6 +23,17 @@ The tell-tale sign: a plain chain of the lifecycle events (`Drafted → Register
 reads as one *sequence* when those are really *alternative branches*. That mismatch is the signal
 you need a state machine, not a chain.
 
+## Scope — one machine per workflow, not one aggregate per workflow
+
+A state-machine workflow organizes the timeline around a **single** machine: its states supply the
+group columns, and groups form one horizontal axis, so only one aggregate's state set can be the
+columns. That is a layout choice, not a one-aggregate-per-workflow rule — events rooted on
+collaborating aggregates may sit on the same spine (each event still has exactly one aggregate
+root). Place such an event in the column of the state it lands the machine in (see rule 1 below).
+If **two** aggregates each pass the detection test, model one workflow per machine, or center the
+workflow on the dominant machine and declare the other's transitions in GWTs (see "draw the spine,
+declare the rest").
+
 ## Where the state lives
 
 "State" is whatever determines which operations are legal next — **not** necessarily a status field.
@@ -109,7 +120,9 @@ A mermaid `stateDiagram-v2` is a good companion, but the **table is the source o
 Lay the machine out left-to-right as a **DAG**:
 
 1. **Column = postcondition state, one column per distinct state.** Place each event in the column of
-   the state it lands in; the column becomes a Qlerify **group** named after that state. Give **each
+   the state it lands the machine in (this holds for events rooted on a collaborating aggregate too —
+   a Payment-rooted "Payment Received" that moves an Order machine to Paid goes in the `PAID` column);
+   the column becomes a Qlerify **group** named after that state. Give **each
    state its own column** — do **not** merge unrelated states that merely sit at the same depth into a
    shared column (e.g. `Supplement / Matched`); that produces confusing labels. Merge two states only
    when they are genuinely the same behavioral phase.

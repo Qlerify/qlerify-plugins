@@ -67,11 +67,11 @@ afterward to verify the actual `$ref` key before referencing it in subsequent ca
 Follow these steps in order. Each step depends on the previous one. For an existing or
 legacy codebase, start at Phase 0; otherwise skip Phase 0 and start at Phase 1.
 
-If the aggregate is a **state machine** — a state that *guards* transitions (a status enum or another
+If the workflow centers on an aggregate that is a **state machine** — a state that *guards* transitions (a status enum or another
 encoding; see Phase S), with cycles, multiple terminal states, or guard-forks — run **Phase S** to
 map the states first (after Phase 0 if you ran it; otherwise directly before Phase 1). It changes how Phase 2 builds the flow and
 makes the state columns (Qlerify groups) structural — created **up front, before the event spine**, so
-events are born into their column instead of being re-assigned later. For an ordinary aggregate, skip Phase S entirely.
+events are born into their column instead of being re-assigned later. If the workflow doesn't center on such an aggregate, skip Phase S entirely.
 
 ### Phase 0: Plan the aggregate model (reverse-engineering only)
 
@@ -96,7 +96,9 @@ scanning. You need both:
 - `{AGGREGATE_NAME}` — the aggregate to extract (e.g., `Order`, `Subscription`, `Cart`)
 - `{CODEBASE_NAME}` — the repo, service, or module to extract it from
 
-Recommend: one DDD aggregate at a time, one Qlerify workflow per aggregate.
+Recommend: one DDD aggregate at a time, one Qlerify workflow per aggregate. This is
+a recommendation, not a rule — if the user prefers extracting several aggregates into
+one workflow, run the extraction and artifact approval once per aggregate.
 
 **Step 0.1 — Isolate the aggregate from the service layer**
 
@@ -194,13 +196,15 @@ Phase S first if the aggregate is a state machine.
 
 ### Phase S: Map the state machine (state-machine aggregates only)
 
-**Skip this phase for ordinary aggregates.** Run it only when the aggregate is a genuine **state
+**Skip this phase for ordinary aggregates.** Run it only when the workflow centers on an aggregate that is a genuine **state
 machine**: a notion of state (≈4+ distinct states) whose value *guards* which commands are allowed,
 **plus** at least one of — a cycle (reopen / revisit), multiple terminal states, or a guard-fork (one
 command landing in different states by input). The state is most often a status enum, but it can be
 lifecycle timestamps, a child entity's existence, a flag combination, or a status-history log — and
 may live on a child rather than the root (see `references/state-machine-generation.md` → "Where the
-state lives"). One or two of these alone is not enough; keep those as a normal linear flow.
+state lives"). One or two of these alone is not enough; keep those as a normal linear flow. Phase S
+centers the workflow on **one** machine's lifecycle, but events rooted on other, collaborating
+aggregates may still appear on the same timeline (see "Scope" in `references/state-machine-generation.md`).
 
 Why it matters: for a real state machine the default linear event chain is not just thin, it is
 **misleading** — `Drafted → Registered → … → Removed` reads as one sequence when those are
@@ -291,7 +295,7 @@ Optional parameters:
 - `conditionLabel` — Branch label shown when this event's `follows` is a **decision** (e.g. "Yes", "No"); labels a guard-fork branch inline. Ignored if the parent isn't a decision.
 - `group` — The state column the event belongs to. **State machines only** — set it on each column's first event (see the note below and Phase S); leave it unset on ordinary workflows.
 
-Build the flow left-to-right, creating events in the order they occur in the business process. For how `follows`, `parallel`, and decisions render spatially on the canvas, see `references/layout-and-ui.md`. If the aggregate was flagged as a state machine in **Phase S**, build the flow as the state spine instead (column = postcondition state, guard-forks as decisions, alternate entries as `follows: "start"`) — see `references/state-machine-generation.md`. Do NOT set `aggregateRoot` yet — entities don't exist at this point.
+Build the flow left-to-right, creating events in the order they occur in the business process. For how `follows`, `parallel`, and decisions render spatially on the canvas, see `references/layout-and-ui.md`. If an aggregate was flagged as a state machine in **Phase S**, build the flow as the state spine instead (column = postcondition state, guard-forks as decisions, alternate entries as `follows: "start"`) — see `references/state-machine-generation.md`. Do NOT set `aggregateRoot` yet — entities don't exist at this point.
 On an ordinary workflow do NOT set `group` here — groups there are an optional Phase 5 polish. **Exception — state machines (Phase S):** the state columns were already created as groups up front (see Phase S), so here you DO set `group: "<state>"` on the first event of each state column so each event is born into its column; see `references/state-machine-generation.md`.
 
 ### Phase 3: Domain Model
@@ -525,7 +529,7 @@ These steps are cosmetic and can be skipped if not needed.
 
 > **Do NOT create groups as part of a default workflow generation.** Skip this step entirely unless the user explicitly asks for them — e.g., "group the events into phases", "add groups for the checkout/fulfillment stages", "organize events into stages". A newly generated workflow should have zero groups by default.
 >
-> **Exception — state-machine workflows (Phase S):** when the aggregate was mapped as a state machine, the state columns **are** the groups, but they are created **up front** — before the event spine — and each column-leading event sets `group` at creation (see Phase S). So for Phase S workflows this step is **already done by the time you reach Phase 5**; do not re-create the groups here. Just verify the columns match the state map. See `references/state-machine-generation.md`.
+> **Exception — state-machine workflows (Phase S):** when an aggregate was mapped as a state machine, the state columns **are** the groups, but they are created **up front** — before the event spine — and each column-leading event sets `group` at creation (see Phase S). So for Phase S workflows this step is **already done by the time you reach Phase 5**; do not re-create the groups here. Just verify the columns match the state map. See `references/state-machine-generation.md`.
 
 Groups split the workflow into phases seen on the diagram with labels spread out horizontally from left to right at the top of the diagram and vertical dividers splitting the flow into phases. When the user asks for them:
 
