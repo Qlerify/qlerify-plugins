@@ -279,8 +279,8 @@ Cross-aggregate orchestration that is out of scope but exists in the codebase:
 ```
 
 The second block — out-of-scope orchestration — is valuable even though those
-flows won't be modeled. It tells the reviewer "we saw this, we decided it's not
-part of this aggregate."
+flows won't be modeled as part of this aggregate. It tells the reviewer "we saw
+this, we decided it's not part of this aggregate."
 
 ### Section 12: Tests
 
