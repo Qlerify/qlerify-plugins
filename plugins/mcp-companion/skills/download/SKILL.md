@@ -47,13 +47,6 @@ curl -s "$MCP_URL" -H "x-api-key: $API_KEY" -H "Content-Type: application/json" 
   | jq -r '.result.content[0].text | fromjson | .specification' > workflow.json
 ```
 
-### OpenAPI spec → YAML file
-```bash
-curl -s "$MCP_URL" -H "x-api-key: $API_KEY" -H "Content-Type: application/json" \
-  -d '{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"generate_openapi_spec","arguments":{"workflowId":"...","projectId":"...","boundedContext":"..."}}}' \
-  | jq -r '.result.content[0].text' > swagger.yaml
-```
-
 ### Entities from workflow → JSON file
 ```bash
 curl -s "$MCP_URL" -H "x-api-key: $API_KEY" -H "Content-Type: application/json" \
@@ -73,7 +66,7 @@ curl -s "$MCP_URL" -H "x-api-key: $API_KEY" -H "Content-Type: application/json" 
 | Data size          | Method    | Example                                 |
 |--------------------|-----------|-----------------------------------------|
 | Small (< 50 lines) | MCP tool  | `list_workflows`                        |
-| Large (> 50 lines) | curl + jq | `get_workflow`, `generate_openapi_spec` |
+| Large (> 50 lines) | curl + jq | `get_workflow`                          |
 | Any "save to file" | curl + jq | Always, regardless of size              |
 
 ## Finding IDs first

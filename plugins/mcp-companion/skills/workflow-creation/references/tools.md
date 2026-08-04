@@ -70,14 +70,6 @@ layout from `follows` alone.
 - `workflowId`, `projectId` — Identifies the workflow
 - `boundedContext` — Optional. Bounded context name to export. If omitted, uses the first bounded context.
 
-### generate_openapi_spec
-
-Generate an OpenAPI/Swagger YAML specification from the workflow's domain model. Requires at least
-one bounded context with entities. Useful for bootstrapping API implementations from the domain model.
-
-- `workflowId`, `projectId` — Identifies the workflow
-- `boundedContext` — Name of the bounded context to generate the spec for
-
 ---
 
 ## Lane Tools

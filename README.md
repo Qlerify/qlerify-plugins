@@ -167,7 +167,6 @@ standard MCP tools for large data.
 > create a workflow for an e-commerce order process
 > sync my domain model with Qlerify
 > download the Cart Microservice workflow to workflow.json
-> save the swagger spec for my workflow to api.yaml
 > extract the Order aggregate from shop-api and build a workflow
 > generate code from the Cart workflow
 ```
