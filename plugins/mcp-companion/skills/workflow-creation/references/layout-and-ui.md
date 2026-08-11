@@ -104,3 +104,8 @@ root, one domain event schema, and any number of requirement items (given-when-t
 stories, …). None of these are drawn on the box — they live in the tabs and sidebar. Create and link
 them with the matching tools (`create_commands`, `create_read_models`, `create_entities`,
 `create_domain_event_schemas`, `create_card`) — see `references/tools.md`.
+
+Cards can also carry **comments** and file attachments, but those are people-only features: they are
+not part of the workflow specification and there are no tools for them. If you are asked to comment
+on something, say that you cannot rather than substituting a new card or a description edit — users
+add comments themselves via the "open comments" button on a card.
