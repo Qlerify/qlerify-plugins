@@ -268,7 +268,10 @@ Define one or more domain entities or value objects in a single atomic workflow 
     - `relatedEntity` — `$ref` path to another entity (e.g., `#/schemas/entities/OrderItem`)
     - `cardinality` — `"one-to-one"` or `"one-to-many"` for fields with `relatedEntity`
 
-The whole batch is atomic: if any entity fails validation (e.g. duplicate name), none are created.
+The whole batch is atomic: if any entity fails validation, none are created. An entity whose name
+already exists is **not** a failure — it is skipped and named in the result, and the rest of the
+batch is created. Its existing fields are left untouched, so use `update_entities` if you meant to
+change them.
 
 ### update_entities
 
@@ -299,7 +302,7 @@ Commands represent state-changing operations — actions that modify data. They 
 
 ### create_commands
 
-Define one or more commands in a single atomic workflow write. Pass an array of commands, each bound to a domain event; for a single command, pass an array with one element. Commands with their attributes represent the information an actor submits to perform a state-changing action on an aggregate. Each event can have only one command, so each command in the batch must target a different event.
+Define one or more commands in a single atomic workflow write. Pass an array of commands, each bound to a domain event; for a single command, pass an array with one element. Commands with their attributes represent the information an actor submits to perform a state-changing action on an aggregate. Each event can have only one command, so each command in the batch must target a different event. If the event already carries a Command card with no schema linked — the state `validate_domain_model` reports as `NO_SCHEMA` — this links that card rather than refusing; it only errors when the existing card already has a schema, in which case use `update_commands`. `create_read_models` behaves the same way for an unlinked Read Model card.
 
 - `workflowId` — Identifies the workflow
 - `commands` — Array of command definitions, each with:
@@ -542,3 +545,10 @@ that don't match their aggregate root entity, missing relationships, and naming 
 Run this after creating all entities, commands, read models, and domain event schemas to catch field mismatches. **MAJOR** issues should be
 fixed. **MINOR** `FIELD_NOT_IN_ENTITY` issues on read model filter fields are often expected — cross-entity query
 parameters (e.g., `checkInDate` on a Hotel search) don't need to exist on the entity.
+
+Act on the issue's own fields rather than its wording. `NO_SCHEMA` means the card exists with nothing
+linked, so the fix is `create_commands` / `create_read_models`, not an update — there is no schema to
+update. `NO_PARAMETERS` and `MISSING_ENTITY` mean the schema exists but is incomplete, and those
+issues carry a `ref` you should pass straight to `update_commands` / `update_read_models`. Do not
+build a `$ref` from the issue's `name`: that is the card's description, which need not match the name
+of the schema it links to.
