@@ -93,7 +93,7 @@ So assigning `Customer` to a `CRM` context pulls the Customer commands, their `C
 `Customer Updated` events, and the read models built from them into `CRM`. A read model that reads an
 entity owned by *another* context still appears inside the context but is flagged as fetching
 cross-context data. Each context header also toggles between the default model view and a **Push Spec**
-view, where the model can be validated and its OpenAPI spec pushed to GitHub. (Create and assign
+view, where the model can be validated and its spec pushed to GitHub. (Create and assign
 contexts with the bounded-context tools and the entity's `boundedContext` field — see
 `references/tools.md`.)
 
