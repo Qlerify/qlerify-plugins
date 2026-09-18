@@ -185,7 +185,7 @@ existing workflow. For building a new workflow with many events, use `create_dom
 - `lane` — Name of the role/actor this event belongs to (required). Auto-created on the fly if no lane with that name exists; pass the exact same name across events that share a lane (matching is case-sensitive). See "Lane Tools" above for naming rules.
 - `follows` — A `$ref` path to the preceding event (e.g., `#/domainEvents/OrderPlaced`), or `"start"` for flow entry points. The new event is connected after the parent. If the parent is a domain event that already has one or more followers, the new event is **inserted between** the parent and those followers by default (all of them are reparented under the new event); set `parallel: true` to add it as a concurrent branch beside them instead. If the parent is a `decision`, the new event is always added as a new branch (no `parallel` needed).
 - `parallel` — Optional. When `true`, and the parent already has one or more followers, the new event is added as a concurrent (AND) branch alongside them rather than inserted between. Use for parallel flows where multiple events genuinely happen after the same event with no condition. For conditional/exclusive (either-or) branching, use a `decision` instead. No effect when the parent is a decision or has no followers yet.
-- `group` — Optional. Sets a group boundary starting at this event. Only set on the **first** event of a new group. Do not set group on subsequent events in the same group.
+- `group` — Optional. Name of an **existing** group; create it first with `create_group`, or the call fails. Sets a group boundary starting at this event, so only set it on the group's **first** event, not on the ones that follow.
 - `aggregateRoot` — Optional. `$ref` path to an entity (e.g., `#/schemas/entities/Order`). Links an entity as aggregate root for the command triggering this event. **Every command / event should have one** — if the entity doesn't exist yet, set it later via `update_domain_event` after creating entities.
 - `acceptanceCriteria` — Optional. Array of Given-When-Then acceptance criteria strings.
 - `conditionLabel` — Optional. Branch label shown on the arrow when this event `follows` a **decision** (e.g. "Yes", "No", "Approve"). Labels a guard-fork branch at creation; ignored if the parent isn't a decision. (Can also be set later via `update_domain_event`.)
@@ -203,7 +203,7 @@ Modify an existing domain event — change its name, lane, color, condition labe
 - `lane` — Lane name to move event to (optional)
 - `color` — New color (optional)
 - `conditionLabel` — Branch label for events following a gateway, or empty string to clear (optional)
-- `group` — Group name to assign this event to, or empty string to remove from its current group (optional). Only set on the first event of a new group — subsequent events inherit via the parent chain. No need to assign when the workflow has only one group (events auto-show under it).
+- `group` — Name of an **existing** group to assign this event to, or empty string to remove it from its current group (optional). Create the group first with `create_group`, or the call fails. Only set it on the group's first event; the ones that follow inherit via the parent chain. No need to assign when the workflow has only one group (events auto-show under it).
 - `type` — Change the shape: `"domainEvent"` (a box) or `"decision"` (a diamond). Omit to leave unchanged. Converting a decision to an event clears its followers' branch condition labels (optional).
 - `aggregateRoot` — `$ref` path to entity, or empty string to remove (optional)
 - `acceptanceCriteria` — Array of GWT strings, replaces all existing (optional)
@@ -215,6 +215,16 @@ deleted event's parent, preserving the flow.
 
 - `workflowId`, `projectId` — Identifies the workflow
 - `domainEvent` — `$ref` path to the event
+
+## Connection Tools
+
+Arrows between events and decisions that already exist. Build the primary spine with
+`create_domain_event(s)` and use these for the edges it cannot express.
+
+**Decision branches:** an event that branches off a decision is parented by the **decision**, not by
+the event before it. `get_workflow` reports `follows` as the event *preceding* the decision (that is
+the import format), so that pair is not an edge you can add or remove. Use the `#/decisions/...` ref
+named by the event's `conditions[].if` instead.
 
 ### add_connection
 
