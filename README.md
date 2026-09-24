@@ -7,6 +7,8 @@ Gemini CLI, and Cursor.
 
 1. **Qlerify account** with a workflow created
 2. **Qlerify MCP server** configured with your API token (see setup per tool below)
+3. For `qlerify-live-companion`: a **Qlerify Live** organization you administer, and its MCP server configured with a
+   Live token (see below)
 
 ## Installation
 
@@ -37,6 +39,23 @@ Install the plugin:
 
 After installation, skills are available as `/mcp-companion:workflow-creation`, `/mcp-companion:code-generation`, `/mcp-companion:sync`, and `/mcp-companion:download`.
 
+#### Qlerify Live
+
+In Qlerify Live, open **Organization admin**, then the **MCP** tab, create a token and run the command it shows. It
+looks like this, with your Live address and token:
+
+```bash
+claude mcp add --transport http qlerify-live https://YOUR_LIVE_DOMAIN/mcp --header "x-api-key: YOUR_LIVE_TOKEN"
+```
+
+Then install the plugin:
+
+```bash
+/plugin install qlerify-live-companion@qlerify-plugins
+```
+
+The skill is available as `/qlerify-live-companion:connector-building`.
+
 ### Gemini CLI
 
 Install each skill using the `--path` flag:
@@ -46,9 +65,10 @@ gemini skills install https://github.com/qlerify/qlerify-plugins.git --path plug
 gemini skills install https://github.com/qlerify/qlerify-plugins.git --path plugins/mcp-companion/skills/code-generation
 gemini skills install https://github.com/qlerify/qlerify-plugins.git --path plugins/mcp-companion/skills/sync
 gemini skills install https://github.com/qlerify/qlerify-plugins.git --path plugins/mcp-companion/skills/download
+gemini skills install https://github.com/qlerify/qlerify-plugins.git --path plugins/qlerify-live-companion/skills/connector-building
 ```
 
-Configure the Qlerify MCP server in `~/.gemini/settings.json` per
+Configure the Qlerify MCP server (and the Qlerify Live one, for `connector-building`) in `~/.gemini/settings.json` per
 [Gemini CLI docs](https://geminicli.com/docs/cli/mcp/).
 
 ### Cursor
@@ -154,6 +174,36 @@ standard MCP tools for large data.
 2. Pipes to file without AI processing
 3. ~1 second instead of 3-5 minutes for large workflows
 
+### `qlerify-live-companion`
+
+Teaches AI agents how to build the connectors that fill a Qlerify Live workflow through the Qlerify Live MCP server.
+Contains one skill:
+
+#### `connector-building`
+
+Builds, tests and fixes connectors for one table or a whole workflow in one session: the agent writes each
+connector's code itself, tests it in Live's sandbox, ingests the data and checks that the resulting cases and events
+are right. When the data shows the model is wrong, it changes the model in the modeller (with `mcp-companion`) and
+reloads it in Live.
+
+**Triggers:**
+
+- "build the connectors for this workflow"
+- "fill the Order table from our Postgres database"
+- "simulate demo data for all tables"
+- "keep it in sync every hour"
+- "why are the cases wrong / fix this connector"
+- Any request to get data into Qlerify Live
+
+**What it does:**
+
+1. Reads the workflow's model and plans the build order, parents before the tables that link to them
+2. Settles sources, credentials, cadence and actions for all tables at once
+3. Per table: creates the connector, writes and tests its code, saves it, dry-runs and ingests
+4. Checks the cases and events the rows produce, and fixes wrong events with trigger rules
+5. Updates the model in the modeller and reloads it in Live when the data proves it wrong
+6. Sets up schedules, wake-ups and notifications
+
 ## Usage Examples
 
 ```bash
@@ -162,6 +212,7 @@ standard MCP tools for large data.
 /mcp-companion:code-generation
 /mcp-companion:sync
 /mcp-companion:download
+/qlerify-live-companion:connector-building
 
 # Or just ask naturally - skills trigger automatically
 > create a workflow for an e-commerce order process
@@ -169,4 +220,6 @@ standard MCP tools for large data.
 > download the Cart Microservice workflow to workflow.json
 > extract the Order aggregate from shop-api and build a workflow
 > generate code from the Cart workflow
+> build connectors for all tables in the Order Fulfilment workflow in Qlerify Live
+> fill the Customer table in Live with demo data and keep it in sync nightly
 ```

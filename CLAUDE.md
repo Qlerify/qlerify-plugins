@@ -13,7 +13,7 @@ There is **no build system, no dependencies, and no tests**. This is a pure docu
 The repository has two layers:
 
 1. **Marketplace registry** (`.claude-plugin/marketplace.json`) — registers the plugin collection for Claude Code's marketplace system.
-2. **Plugin package** (`plugins/mcp-companion/`) — the actual plugin containing skills, permissions, and metadata.
+2. **Plugin packages** — `plugins/mcp-companion/` (the Qlerify modeller) and `plugins/qlerify-live-companion/` (Qlerify Live connectors), each containing skills and metadata.
 
 ### Plugin Structure
 
@@ -24,7 +24,18 @@ plugins/mcp-companion/
 └── skills/
     ├── sync/SKILL.md            # Bidirectional domain model sync skill
     └── download/SKILL.md        # Fast data export via curl+jq skill
+
+plugins/qlerify-live-companion/
+├── .claude-plugin/plugin.json   # Plugin manifest (name, version, keywords)
+└── skills/
+    └── connector-building/
+        ├── SKILL.md             # Build, test and fix Qlerify Live connectors for a whole workflow
+        └── references/
+            └── connector-rules.md  # The connector rules, adapted from qlerify-live's docs/CONNECTORS.md
 ```
+
+`connector-rules.md` is a copy of the in-app chat's rules in qlerify-live (`docs/CONNECTORS.md`, the part between the
+CHAT markers), rewritten for an outside agent. When those rules change in qlerify-live, update this copy too.
 
 ### Key Design Decisions
 
@@ -37,10 +48,12 @@ plugins/mcp-companion/
 
 **Every releasable change to the plugin requires a version bump — this is easy to forget, so treat it as a required step of the change, not an afterthought.** Any edit that will be published (a skill, a reference doc, a tool description, `settings.json`) counts.
 
-Bump the plugin's version in **both** files, keeping them **identical**:
+Bump the changed plugin's version in **both** files, keeping them **identical**:
 
-- `plugins/mcp-companion/.claude-plugin/plugin.json` → `version`
-- `.claude-plugin/marketplace.json` → the `version` **inside the `mcp-companion` entry** of the `plugins` array. Do **not** touch the marketplace's own top-level `version` (currently `1.0.0`) — that tracks the marketplace itself, not the plugin.
+- `plugins/<plugin>/.claude-plugin/plugin.json` → `version`
+- `.claude-plugin/marketplace.json` → the `version` **inside that plugin's entry** of the `plugins` array. Do **not**
+  touch the marketplace's own top-level `version` (currently `1.0.0`) — that tracks the marketplace itself, not the
+  plugin.
 
 Follow semver: **patch** (`0.4.14 → 0.4.15`) for doc fixes and wording tweaks, **minor** (`0.4.x → 0.5.0`) for new skills, tools, or capabilities. Do the bump in the same commit as the change so a release is never published with a stale version.
 
@@ -50,4 +63,8 @@ The skills operate on DDD concepts from Qlerify workflows: **Entities** (persist
 
 ## Integration
 
-The plugin requires a configured Qlerify MCP server (`https://mcp.qlerify.com`) with API key authentication. The MCP server provides 29+ tools for CRUD operations on workflow elements.
+`mcp-companion` requires a configured Qlerify MCP server (`https://mcp.qlerify.com`) with API key authentication.
+The MCP server provides 29+ tools for CRUD operations on workflow elements.
+
+`qlerify-live-companion` requires the Qlerify Live MCP server (`https://<live-domain>/mcp`), configured under the name
+`qlerify-live` with a token from Live's Organization admin → MCP tab. Its tools come from qlerify-live's `src/mcp/`.
