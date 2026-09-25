@@ -59,7 +59,9 @@ Event names are converted to PascalCase `$ref` keys:
 Use only alphanumeric characters and spaces in event names. If you use hyphens, call `get_workflow`
 afterward to verify the actual `$ref` key before referencing it in subsequent calls.
 
-**Note:** Decisions (`decision`) are visualised as a separate shape on the event storming board taking up the same space as other events, but don't appear in the `get_workflow` domainEvents section. How to find a decision: a domain event is preceded by a decision shape if the domain event has a conditions attribute set. The name of the shape is hidden under the if property ("conditions":[{"after":{"$ref":"#/domainEvents/CustomerCreated"},"if":"Large Customer?","is":"YES"}]). If you need to reference a decision, call `get_workflow`, take the description from the "if" property, PascalCase it (drop spaces and punctuation, capitalize each word), and use it as the $ref segment. For example, a decision described as "Is order paid?" is referenced as #/domainEvents/IsOrderPaid.
+**Note:** Decisions (`decision`) are visualized as a separate shape on the event storming board taking up the same space as other events, but they do NOT appear in the `get_workflow` `domainEvents` section. They have their own top-level `decisions` block, keyed by the `$ref` segment to use: `"decisions":{"IsOrderPaid":{"description":"Is order paid?",...}}` is referenced as `#/decisions/IsOrderPaid`. **Never `#/domainEvents/IsOrderPaid`** — event refs skip gateways, so that form resolves to nothing and every tool taking it errors with "not found".
+
+A domain event that branches off a decision carries a `conditions` attribute naming it: `"conditions":[{"after":{"$ref":"#/domainEvents/CustomerCreated"},"if":"Large Customer?","is":"YES"}]`. Read two things from it. `if` is the decision's description, whose PascalCase form is its key in the `decisions` block. `after` is the event BEFORE the decision, which is also what the event's own `follows` reports. That event is NOT the parent: the **decision** is. So to add or remove that branch, pass `#/decisions/<Key>`, never the event named in `follows`.
 
 
 ## Creation Sequence
