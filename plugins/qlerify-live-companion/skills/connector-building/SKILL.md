@@ -73,9 +73,9 @@ re-run rules). Follow it: it is the contract the platform runs your code against
   write and test code yourself: it is slower and it bills the organisation.
 
 The rules that matter most in the code: authenticate only from `ctx.credentials`, and keep secrets out of the code,
-log lines and returned rows (a tool result containing a stored credential value is withheld); return every field the
-source has, not just the model's; give each row a stable `id` taken from the source's natural key; honour
-`ctx.limit`, where null means everything. The brief has the rest.
+log lines and returned rows (a stored credential value in a tool result shows as `[credential <field> hidden]`);
+return every field the source has, not just the model's; give each row a stable `id` taken from the source's natural
+key; honour `ctx.limit`, where null means everything. The brief has the rest.
 
 ## When to ask
 
@@ -101,15 +101,17 @@ A connector is done when the cases are right.
 
 - `list_table_rows`: the rows are there, the fields are filled, the values look like the source.
 - `list_cases`: one case per row of the workflow's root table, with how far each has come. `count` is the total, and
-  the list comes in pages; `nextOffset` fetches the next one.
+  the list comes in pages; `nextOffset` fetches the next one. Pass `summary: true` to get only each case's id and
+  progress; `get_case_details` takes it too and leaves out source records and event payloads.
+- `find_case` also matches rows of other tables and returns the case they belong to, naming the row in `matchedVia`.
 - Child rows should sit inside their parent's case: open a few cases with `get_case_details` and check that the child
   events are there and belong to that parent. A child whose linking field does not match a parent id exactly joins
   no parent's case, and nothing reports it.
 - `get_case_details` on a few cases: the events that fired should match each row's state. An order that is only
   placed must not have a "shipped" event.
 - When events fire that a row's state does not justify, or two sibling events need telling apart, compile trigger
-  rules with `build_trigger_rules`, check each with `preview_trigger_rule`, then run `rebuild_events`. Ingesting
-  again only adds events; it never removes wrong ones.
+  rules with `build_trigger_rules`, check each with `preview_trigger_rule` and read its code with
+  `view_trigger_rules`, then run `rebuild_events`. Ingesting again only adds events; it never removes wrong ones.
 - When rows landed wrong (wrong ids, a child linked to the wrong parent), fix the code, `clear_table`, and ingest
   again. Ingesting again alone leaves the wrong rows in place.
 - When an ingest reports rows as updated on every run although nothing changed at the source, the stored value
@@ -140,7 +142,8 @@ hide that. Tell the user what you found, and once they agree:
 
 - "did not finish within 240s and may still complete": the work may still be running. Check `get_connector_history`
   or `list_table_rows` before running it again, or it may happen twice.
-- A result withheld because it contains a credential value: remove whatever logs or returns the secret.
+- `[credential <field> hidden]` in a result: a stored credential's value was there. Never write the placeholder into
+  code: read the value from `ctx.credentials.<field>`, and stop logging or returning it.
 - "no connector": use the `adapterId` that `create_connector` returned. The optional `id` you pass it is only a short
   name.
 

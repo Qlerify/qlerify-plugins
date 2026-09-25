@@ -151,7 +151,7 @@ that need telling apart, or when your checks show events a row's state does not 
 1. Restate each event with its condition.
 2. `build_trigger_rules` with the whole family of related events in one call, so sibling conditions stay consistent.
 3. `preview_trigger_rule` for each event: read the evidence per row and check how many rows fire against what was
-   meant.
+   meant. `view_trigger_rules` shows the code each rule runs.
 4. If a preview is wrong or reports an error, call `build_trigger_rules` again for that event with an `errorReport`
    saying exactly what fired that should not have, or the other way round.
 5. Only then ingest, or run `rebuild_events` when rows are already in.
@@ -159,7 +159,9 @@ that need telling apart, or when your checks show events a row's state does not 
 The conditions belong to the events, and the model's Given/When/Then is their permanent home; the rule is compiled
 from them. Do not filter events inside the fetch code instead, and do not create rules nobody asked for. A rule can
 also name the row's own date column that best dates its event (a "referred date" for a "Motion Referred" step),
-which gives a more precise time than the general created or last-modified dates.
+which gives a more precise time than the general created or last-modified dates. A rule whose date is worked out
+rather than read (the earlier of two dates, say) should return `businessAtEstimated: true`, so the date shows as
+estimated; check for it with `view_trigger_rules`.
 
 ## 8. Reading other tables and the event log
 
