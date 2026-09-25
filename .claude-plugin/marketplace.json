@@ -35,6 +35,29 @@
         "mcp",
         "qlerify"
       ]
+    },
+    {
+      "name": "qlerify-live-companion",
+      "description": "Teaches AI agents how to build, test and fix the connectors that fill a Qlerify Live workflow, one table or the whole workflow at once, through the Qlerify Live MCP server",
+      "version": "0.1.0",
+      "author": {
+        "name": "Qlerify",
+        "email": "support@qlerify.com"
+      },
+      "source": "./plugins/qlerify-live-companion",
+      "category": "development",
+      "homepage": "https://qlerify.com",
+      "keywords": [
+        "qlerify",
+        "qlerify-live",
+        "connectors",
+        "data-integration",
+        "ingestion",
+        "etl",
+        "digital-twin",
+        "event-sourcing",
+        "mcp"
+      ]
     }
   ]
 }
