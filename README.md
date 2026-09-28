@@ -7,8 +7,8 @@ Gemini CLI, and Cursor.
 
 1. **Qlerify account** with a workflow created
 2. **Qlerify MCP server** configured with your API token (see setup per tool below)
-3. For `qlerify-live-companion`: a **Qlerify Live** organization you administer, and its MCP server configured with a
-   Live token (see below)
+3. For the `connector-building` skill: a **Qlerify Live** organization you administer, and its MCP server configured
+   with a Live token (see below)
 
 ## Installation
 
@@ -34,38 +34,32 @@ Install the plugin:
 
 ```bash
 /plugin marketplace add qlerify/qlerify-plugins
-/plugin install mcp-companion@qlerify-plugins
+/plugin install qlerify@qlerify-plugins
 ```
 
-After installation, skills are available as `/mcp-companion:workflow-creation`, `/mcp-companion:code-generation`, `/mcp-companion:sync`, and `/mcp-companion:download`.
+After installation, skills are available as `/qlerify:workflow-creation`, `/qlerify:code-generation`,
+`/qlerify:sync`, `/qlerify:download` and `/qlerify:connector-building`.
 
 #### Qlerify Live
 
-In Qlerify Live, open **Organization admin**, then the **MCP** tab, create a token and run the command it shows. It
-looks like this, with your Live address and token:
+The `connector-building` skill also needs the Qlerify Live MCP server. In Qlerify Live, open **Organization admin**,
+then the **MCP** tab, create a token and run the command it shows. It looks like this, with your Live address and
+token:
 
 ```bash
 claude mcp add --transport http qlerify-live https://YOUR_LIVE_DOMAIN/mcp --header "x-api-key: YOUR_LIVE_TOKEN"
 ```
-
-Then install the plugin:
-
-```bash
-/plugin install qlerify-live-companion@qlerify-plugins
-```
-
-The skill is available as `/qlerify-live-companion:connector-building`.
 
 ### Gemini CLI
 
 Install each skill using the `--path` flag:
 
 ```bash
-gemini skills install https://github.com/qlerify/qlerify-plugins.git --path plugins/mcp-companion/skills/workflow-creation
-gemini skills install https://github.com/qlerify/qlerify-plugins.git --path plugins/mcp-companion/skills/code-generation
-gemini skills install https://github.com/qlerify/qlerify-plugins.git --path plugins/mcp-companion/skills/sync
-gemini skills install https://github.com/qlerify/qlerify-plugins.git --path plugins/mcp-companion/skills/download
-gemini skills install https://github.com/qlerify/qlerify-plugins.git --path plugins/qlerify-live-companion/skills/connector-building
+gemini skills install https://github.com/qlerify/qlerify-plugins.git --path plugins/qlerify/skills/workflow-creation
+gemini skills install https://github.com/qlerify/qlerify-plugins.git --path plugins/qlerify/skills/code-generation
+gemini skills install https://github.com/qlerify/qlerify-plugins.git --path plugins/qlerify/skills/sync
+gemini skills install https://github.com/qlerify/qlerify-plugins.git --path plugins/qlerify/skills/download
+gemini skills install https://github.com/qlerify/qlerify-plugins.git --path plugins/qlerify/skills/connector-building
 ```
 
 Configure the Qlerify MCP server (and the Qlerify Live one, for `connector-building`) in `~/.gemini/settings.json` per
@@ -83,9 +77,10 @@ Get your API token from the Qlerify UI.
 
 ## Plugins
 
-### `mcp-companion`
+### `qlerify`
 
-Teaches AI agents how to effectively use Qlerify's MCP server. Contains the following skills:
+Teaches AI agents how to work with Qlerify through its MCP servers: modelling workflows in the Qlerify modeler, and
+building the connectors that fill them in Qlerify Live. Contains the following skills:
 
 #### `workflow-creation`
 
@@ -174,17 +169,12 @@ standard MCP tools for large data.
 2. Pipes to file without AI processing
 3. ~1 second instead of 3-5 minutes for large workflows
 
-### `qlerify-live-companion`
-
-Teaches AI agents how to build the connectors that fill a Qlerify Live workflow through the Qlerify Live MCP server.
-Contains one skill:
-
 #### `connector-building`
 
-Builds, tests and fixes connectors for one table or a whole workflow in one session: the agent writes each
-connector's code itself, tests it in Live's sandbox, ingests the data and checks that the resulting cases and events
-are right. When the data shows the model is wrong, it changes the model in the modeller (with `mcp-companion`) and
-reloads it in Live.
+Builds, tests and fixes the connectors that fill a Qlerify Live workflow, for one table or a whole workflow in one
+session, through the Qlerify Live MCP server: the agent writes each connector's code itself, tests it in Live's
+sandbox, ingests the data and checks that the resulting cases and events are right. When the data shows the model is
+wrong, it changes the model in the modeler (with `workflow-creation`) and reloads it in Live.
 
 **Triggers:**
 
@@ -201,18 +191,24 @@ reloads it in Live.
 2. Settles sources, credentials, cadence and actions for all tables at once
 3. Per table: creates the connector, writes and tests its code, saves it, dry-runs and ingests
 4. Checks the cases and events the rows produce, and fixes wrong events with trigger rules
-5. Updates the model in the modeller and reloads it in Live when the data proves it wrong
+5. Updates the model in the modeler and reloads it in Live when the data proves it wrong
 6. Sets up schedules, wake-ups and notifications
+
+### `mcp-companion`
+
+The earlier plugin with the four modeler skills (`workflow-creation`, `code-generation`, `sync` and `download`). It
+stays available so existing installs keep working, but it gets no further updates. The same skills are in `qlerify`,
+which new setups should install instead.
 
 ## Usage Examples
 
 ```bash
 # Invoke skills directly
-/mcp-companion:workflow-creation
-/mcp-companion:code-generation
-/mcp-companion:sync
-/mcp-companion:download
-/qlerify-live-companion:connector-building
+/qlerify:workflow-creation
+/qlerify:code-generation
+/qlerify:sync
+/qlerify:download
+/qlerify:connector-building
 
 # Or just ask naturally - skills trigger automatically
 > create a workflow for an e-commerce order process

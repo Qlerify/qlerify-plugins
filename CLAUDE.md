@@ -13,26 +13,29 @@ There is **no build system, no dependencies, and no tests**. This is a pure docu
 The repository has two layers:
 
 1. **Marketplace registry** (`.claude-plugin/marketplace.json`) — registers the plugin collection for Claude Code's marketplace system.
-2. **Plugin packages** — `plugins/mcp-companion/` (the Qlerify modeller) and `plugins/qlerify-live-companion/` (Qlerify Live connectors), each containing skills and metadata.
+2. **Plugin packages** — `plugins/qlerify/`, the plugin users install, with every skill: the Qlerify modeler skills
+   and the Qlerify Live connector skill. `plugins/mcp-companion/` is the earlier plugin with the modeler skills only.
 
 ### Plugin Structure
 
 ```
-plugins/mcp-companion/
+plugins/qlerify/
 ├── .claude-plugin/plugin.json   # Plugin manifest (name, version, keywords)
-├── settings.json                # Allowlist-based permission model
 └── skills/
+    ├── workflow-creation/       # Build and validate Qlerify workflows, reverse-engineer code into aggregates
+    ├── code-generation/SKILL.md # Generate code from a Qlerify domain model
     ├── sync/SKILL.md            # Bidirectional domain model sync skill
-    └── download/SKILL.md        # Fast data export via curl+jq skill
-
-plugins/qlerify-live-companion/
-├── .claude-plugin/plugin.json   # Plugin manifest (name, version, keywords)
-└── skills/
+    ├── download/SKILL.md        # Fast data export via curl+jq skill
     └── connector-building/
         ├── SKILL.md             # Build, test and fix Qlerify Live connectors for a whole workflow
         └── references/
             └── connector-rules.md  # The connector rules, adapted from qlerify-live's docs/CONNECTORS.md
+
+plugins/mcp-companion/           # Frozen: the modeler skills as they were before they moved into plugins/qlerify/
 ```
+
+**`mcp-companion` is frozen.** It stays in the marketplace only so existing installs keep working, until it is
+removed. Make every skill change in `plugins/qlerify/` and do not edit or version-bump `plugins/mcp-companion/`.
 
 `connector-rules.md` is a copy of the in-app chat's rules in qlerify-live (`docs/CONNECTORS.md`, the part between the
 CHAT markers), rewritten for an outside agent. When those rules change in qlerify-live, update this copy too.
@@ -63,8 +66,8 @@ The skills operate on DDD concepts from Qlerify workflows: **Entities** (persist
 
 ## Integration
 
-`mcp-companion` requires a configured Qlerify MCP server (`https://mcp.qlerify.com`) with API key authentication.
+The modeler skills require a configured Qlerify MCP server (`https://mcp.qlerify.com`) with API key authentication.
 The MCP server provides 29+ tools for CRUD operations on workflow elements.
 
-`qlerify-live-companion` requires the Qlerify Live MCP server (`https://<live-domain>/mcp`), configured under the name
+`connector-building` requires the Qlerify Live MCP server (`https://<live-domain>/mcp`), configured under the name
 `qlerify-live` with a token from Live's Organization admin → MCP tab. Its tools come from qlerify-live's `src/mcp/`.

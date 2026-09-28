@@ -89,9 +89,14 @@ Keep going without asking for anything the user asked you to do. Stop and ask fi
   on an actuator's table, whose rows are the record of the actions it took, so its next run may take them again (the
   tool refuses that without `confirmActions`); `reload_model` with `rebuild: "full"`; or `reload_model` answering
   `needsConfirmation` because stored values would be lost.
-- **credentials are needed.** Ask for exactly the fields the source needs and never invent them. Store them with
-  `set_connector_credentials` and never repeat them back. When another connector already holds them,
-  `list_connector_credentials` and `copy_connector_credentials` reuse them without anyone typing them again.
+- **credentials are needed.** Never invent them. Work out exactly which fields the source needs and ask for them with
+  `request_connector_credentials`: one field per value, a label in plain words, a hint on where to find it, and
+  `optional: true` for a value the connector code works without. Give the user the `formUrl` it returns: they enter
+  the values in Live's form, so the values never pass through this conversation. Once they say they have saved,
+  check that `list_connector_credentials` shows no `missingFields`. Only if the user prefers to paste values here,
+  store them with `set_connector_credentials`, which replaces everything stored before, and tell them first that
+  pasted values pass through the AI. When another connector already holds them, `list_connector_credentials` and
+  `copy_connector_credentials` reuse them without anyone typing them again.
 - **how a child row links to its parent is unclear.** "Match them up roughly" is not an answer: a reference that does
   not equal a parent id exactly keeps the row out of its parent's case, and nothing reports it.
 
@@ -129,9 +134,9 @@ Data sometimes shows the model is missing something: a field the source has and 
 model does not allow, an event that never fires because nothing in the rows can show it. Do not bend a connector to
 hide that. Tell the user what you found, and once they agree:
 
-1. Change the model in the Qlerify modeller through the Qlerify MCP tools (the `qlerify` server, with the
-   `mcp-companion` plugin's skills). `list_workflows` in Live gives each workflow's `modelLink`, and
-   `https://app.qlerify.com/workflow/<projectId>/<workflowId>` names the modeller workflow to edit.
+1. Change the model in the Qlerify modeler through the Qlerify MCP tools (the `qlerify` server, with this plugin's
+   `workflow-creation` skill). `list_workflows` in Live gives each workflow's `modelLink`, and
+   `https://app.qlerify.com/workflow/<projectId>/<workflowId>` names the modeler workflow to edit.
 2. `reload_model` in Live. It reconciles tables in place. If it answers `needsConfirmation`, tell the user which
    stored values would be lost before calling it again with `confirm: true`.
 3. Update the connectors the change touches and ingest again. `reload_model` already works the events out again when

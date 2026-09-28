@@ -191,7 +191,7 @@ it, the clock counts from each connector's last run. If you cannot honour the ca
 silently.
 
 **Wake-ups.** `get_adapter_config` returns `wakeSources`: the connectors the model says this one waits for (declared
-in the modeller by giving an event a domain-event schema in a read-model slot). When the list is not empty, offer
+in the modeler by giving an event a domain-event schema in a read-model slot). When the list is not empty, offer
 `set_connector_wake` after scheduling, so the connector runs as soon as its upstream one lands data; the schedule
 stays as the fallback. This replaces staggering start times by hand, which breaks the day an upstream run takes
 longer. Never invent a dependency the model does not declare.

@@ -1,0 +1,208 @@
+# Entity Generation Guide
+
+## Purpose
+
+Generate all entities and value objects involved in the execution of all commands. Each command operates on an aggregate root entity, which may have associated entities and value objects.
+
+## Entities vs Value Objects
+
+**Entities** have their own identity and lifecycle. They are referenced by ID from other entities.
+
+- MUST have `id` as the first field
+- MUST mark `id` with `isRequired: true` and `isKey: true` (it is the entity's primary key)
+- Examples: Customer, Order, Product, Cart
+
+**Value Objects** are defined only by their attributes — no `id` field.
+
+- Must NOT have an `id` field
+- Derive from nested structures in commands without a lifecycle and persistent identity
+- Examples: Money, Address, Adjustment
+
+## Bounded Contexts
+
+Group the entities and value objects into one or more bounded contexts, following Domain-Driven Design, and assign each one to a bounded context via a top-level `boundedContext` property (the human-readable context name, e.g. `"Order Management"`).
+
+- A bounded context is a cohesive boundary around the aggregates that change together and share a single, consistent domain language.
+- Identify bounded contexts by transactional consistency boundaries and aggregate cohesion: aggregate roots updated together by the same commands and referencing each other directly belong in the same context; aggregates from clearly different subdomains (e.g. ordering vs. catalog vs. customer management vs. payments) belong in separate contexts.
+- Assign EVERY entity and value object to exactly one bounded context. Place a value object in the same context as the aggregate root that owns it.
+- Use a small number of meaningful bounded contexts; do NOT create a separate context per entity. Prefer fewer, broader contexts when in doubt. A single bounded context is acceptable when all aggregates clearly belong to one subdomain.
+- Bounded context names must be human-readable, at most 40 characters, and used consistently: every entity in the same context must use the EXACT same `boundedContext` name string (same spelling and casing).
+- The bounded-context grouping determines which references are cross-context: when an entity references another entity placed in a DIFFERENT bounded context, apply the cross-context referencing rule below (flat `{entityName}Id` string instead of a nested `relatedEntity`).
+- A bounded context must already exist before an entity can be assigned to it — create it first with `create_bounded_context` (see SKILL.md, Phase 3 → Step 3), then pass the matching name as the entity's `boundedContext`. Assigning an entity to an unknown bounded context name is rejected with a "not found" error.
+
+## Critical Rules
+
+### Explicit Field Inclusion
+
+For every command that targets an aggregate, include ALL command attributes in an entity or value object. Every command attribute needs a corresponding attribute on an entity/value object as its "destination". No command attribute should be left out or ignored.
+
+### Merge Command Fields
+
+When an entity is targeted by multiple commands, assemble ALL unique command attributes from all associated commands. The resulting entity attributes should be the **union** of all unique command attributes.
+
+### No Field Filtering
+
+Include ALL command attributes without exception. Do NOT filter or omit:
+
+- Timestamp fields (e.g., `createdAt`, `pickedAt`, `deliveredAt`)
+- URL fields (e.g., `shippingLabelUrl`)
+- Signature fields (e.g., `deliverySignature`)
+- Note fields (e.g., `deliveryNotes`)
+
+### User-Supplied Attributes
+
+Attributes the user explicitly asks for and clearly ties to a specific entity in the workflow may also be added to that entity, even if they don't appear in any command.
+
+### Step-by-Step Derivation
+
+1. Identify the input data/arguments for each command
+2. For each command, determine which entity acts as its aggregate root and its associated entities/value objects
+3. Extract all unique fields from these commands and include them on the appropriate entity/value object
+
+### Handling Nested Command Fields
+
+When a command ("Create Order" operating on the aggregate root "Order") has a field with nested sub-fields (e.g., `shippingAddress` containing street, city, postalCode, country), create a corresponding attribute on the Order entity, and create an entity or value object with a matching name:
+
+- Command field `shippingAddress` → We need an Entity or Value Object named "Shipping Address" or "Address"
+- Include ALL the nested sub-fields as attributes
+
+### Aggregate Root References to Nested Structures
+
+The aggregate root entity must reference nested structures with the **EXACT SAME ATTRIBUTE NAME** as the corresponding command field. For example, if the command "Create Order" (operating on the aggregate root "Order") has an attribute named `shippingAddress`, then the entity Order must have:
+
+- A field named `shippingAddress` (NOT `shippingAddressId`)
+- With `dataType` set to `"object"`
+- And `relatedEntity` set to the referenced entity / VO "Shipping Address"
+
+This rule applies to collection renames too: if the command field is `lineItems`, the entity field must also be `lineItems` (not a generic `items`), even when the source description or DB table refers to the same collection as "items".
+
+## Field Naming Rules
+
+- **Entity names**: human-readable format with spaces (e.g., "Payment Method", not "PaymentMethod"). Max 30 characters.
+- **Field names**: camelCase (e.g., `paymentMethod`, not "Payment Method"). Max 30 characters.
+- **Field dataType**: one of `string`, `number`, `boolean`, `object`
+
+## Deriving Entities from Database Tables
+
+When the source material includes database table definitions (rather than commands), model the entities as a **domain/type model**, not a persistence model:
+
+- Describe relationships through **ownership and references**, not storage mechanics
+- Express ownership from the parent type (e.g., `Order.items: LineItem[]`)
+- Omit internal back-reference fields like `parent_id` / foreign key columns unless they're domain-significant
+- Avoid database terms like foreign keys, join tables, cascade deletes — use domain type relationships instead
+
+## Relationship Rules
+
+### Same bounded context (relatedEntity)
+
+Name the field as the entity in camelCase (singular or plural):
+
+```json
+[
+  { "name": "orderItems", "dataType": "object", "relatedEntity": "#/schemas/entities/OrderItem", "cardinality": "one-to-many" },
+  { "name": "shippingAddress", "dataType": "object", "relatedEntity": "#/schemas/entities/Address", "cardinality": "one-to-one" }
+]
+```
+
+### Cross-context reference (flat ID)
+
+When referencing an entity that lives in a different bounded context, just use a string id, don't model the entity details. Name the field as `{entityName}Id` with `dataType: "string"`.
+
+```json
+[
+  // when detailed customer and product information live in a different bounded context
+  { "name": "customerId", "dataType": "string" },
+  { "name": "productId", "dataType": "string" }
+]
+```
+
+## Required Fields
+
+Mark fields essential for the entity to exist in a **valid initial state** with `isRequired: true` on the field. Required means the field must have a value from the moment the entity is first created.
+
+Fields populated only during specific lifecycle transitions (expire, cancel, archive, complete) should NOT be required, even if required in those commands. Example: `expiryReason` is required on an "Expire Cart" command but optional on the Cart entity because it doesn't exist at creation time.
+
+## Keys (Primary Key)
+
+Mark the field(s) that uniquely identify an entity with `isKey: true`.
+
+- For most entities this is the single `id` field — set both `isRequired: true` and `isKey: true` on it.
+- When identity is a combination of fields, mark **each** member with `isKey: true` to form a **composite key** (e.g. an `OrderLineItem` keyed by `orderId` + `productId`).
+- Key fields must also be `isRequired: true` — a key must always have a value, so marking a field as a key implies it is required.
+- **Value objects** have no identity — never mark a key on a value object's fields.
+
+```json
+{ "name": "id", "dataType": "string", "description": "Unique identifier of the order", "exampleData": ["ord-001", "ord-002", "ord-003"], "isRequired": true, "isKey": true }
+```
+
+## Example Data
+
+**Every field MUST include `exampleData`** with 3 realistic example values. This applies to ALL fields, including fields with `relatedEntity`.
+
+For fields with `dataType: "object"` and `relatedEntity` (nested entity/value object references), use the placeholder `["Object", "Object", "Object"]`. This is the Qlerify convention — it signals that the field is a reference to another entity whose actual data is defined on that entity itself.
+
+```json
+{ "name": "orderItems", "dataType": "object", "relatedEntity": "#/schemas/entities/OrderItem", "cardinality": "one-to-many", "exampleData": ["Object", "Object", "Object"] }
+```
+
+## Descriptions (Required)
+
+Both entities/value objects AND their fields must carry `description` properties. Qlerify relies on these for stakeholder communication and downstream code generation.
+
+### Top-level entity/VO description
+
+Every entity or value object must include a **top-level `description`**: one or two concise sentences explaining its role in the domain.
+
+- For **aggregate roots**: explain what the aggregate represents and its lifecycle responsibility (e.g., "Aggregate root that represents a customer purchase and tracks its fulfilment lifecycle from placement to delivery.")
+- For **value objects**: explain its semantics and note that it's replaced as a whole (e.g., "Value object describing a physical postal location; immutable and replaced as a whole.")
+- For **related entities** (non-root entities within an aggregate): explain what they represent and how they relate to the aggregate root
+
+### Field description
+
+Every field must include a `description`: a single concise sentence (ideally under 120 characters) describing what the attribute represents in the domain.
+
+- Do NOT restate the field name — explain meaning, purpose, or role
+- For `id` fields: describe what the entity identifier references (e.g., "Unique identifier of the order")
+- For relationship fields: describe the nature of the relationship (e.g., "Line items included in this order")
+- Use business language, not technical jargon
+
+```json
+{ "name": "customerId", "dataType": "string", "description": "Customer who placed the order", "exampleData": ["cust-10", "cust-22", "cust-07"], "isRequired": true }
+```
+
+## Entity Example
+
+```json
+{
+  "name": "Order",
+  "description": "Aggregate root that represents a customer purchase and tracks its fulfilment lifecycle from placement to delivery.",
+  "boundedContext": "Order Management",
+  "fields": [
+    { "name": "id", "dataType": "string", "description": "Unique identifier of the order", "exampleData": ["ord-001", "ord-002", "ord-003"], "isRequired": true, "isKey": true },
+    { "name": "customerId", "dataType": "string", "description": "Customer who placed the order", "exampleData": ["cust-10", "cust-22", "cust-07"], "isRequired": true },
+    { "name": "status", "dataType": "string", "description": "Current fulfillment status of the order", "exampleData": ["pending", "confirmed", "shipped"], "isRequired": true },
+    { "name": "totalAmount", "dataType": "number", "description": "Total amount to be paid including all items, taxes, and shipping", "exampleData": ["59.99", "124.50", "9.99"], "isRequired": true },
+    { "name": "orderItems", "dataType": "object", "description": "Line items included in the order", "relatedEntity": "#/schemas/entities/OrderItem", "cardinality": "one-to-many", "exampleData": ["Object", "Object", "Object"] },
+    { "name": "trackingNumber", "dataType": "string", "description": "Shipping carrier tracking number assigned after the order is shipped", "exampleData": ["TRK-001", "TRK-002", "TRK-003"] },
+    { "name": "createdAt", "dataType": "string", "description": "Timestamp when the order was placed", "exampleData": ["2026-01-15T10:00:00Z", "2026-01-16T14:30:00Z", "2026-01-17T09:15:00Z"], "isRequired": true }
+  ]
+}
+```
+
+## Value Object Example
+
+```json
+{
+  "name": "Address",
+  "description": "Value object describing a physical postal location; immutable and replaced as a whole.",
+  "boundedContext": "Order Management",
+  "fields": [
+    { "name": "street", "dataType": "string", "description": "Street name and number", "exampleData": ["123 Maple Ave", "456 Oak St", "789 Pine Rd"], "isRequired": true },
+    { "name": "city", "dataType": "string", "description": "City name", "exampleData": ["New York", "Chicago", "Austin"], "isRequired": true },
+    { "name": "postalCode", "dataType": "string", "description": "Postal or ZIP code", "exampleData": ["10001", "60601", "73301"], "isRequired": true },
+    { "name": "country", "dataType": "string", "description": "ISO country code", "exampleData": ["USA", "USA", "USA"], "isRequired": true }
+  ]
+}
+```
+
+Note: the Address value object has NO `id` field — it is defined entirely by its attributes.

@@ -1,0 +1,34 @@
+{
+  "name": "qlerify",
+  "description": "Teaches AI agents how to work with Qlerify through its MCP servers: model workflows in the Qlerify modeler (workflow creation, aggregate extraction, code generation, domain model sync and fast data export) and build the connectors that fill them in Qlerify Live",
+  "version": "0.2.0",
+  "author": {
+    "name": "Qlerify",
+    "email": "support@qlerify.com"
+  },
+  "homepage": "https://qlerify.com",
+  "repository": "https://github.com/qlerify/qlerify-plugins",
+  "license": "MIT",
+  "keywords": [
+    "qlerify",
+    "qlerify-live",
+    "domain-driven-design",
+    "ddd",
+    "domain-model",
+    "aggregate",
+    "event-storming",
+    "reverse-engineering",
+    "legacy-modernization",
+    "code-generation",
+    "scaffolding",
+    "workflow",
+    "sync",
+    "connectors",
+    "data-integration",
+    "ingestion",
+    "etl",
+    "digital-twin",
+    "event-sourcing",
+    "mcp"
+  ]
+}
