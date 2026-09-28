@@ -12,7 +12,7 @@ description: >-
   and hands off to the code-generation skill. For brownfield/legacy codebases
   with unclear boundaries, isolate one aggregate at a time first (the
   workflow-creation skill's Phase 0 covers aggregate extraction).
-allowed-tools: Read, Write, Edit, Glob, Grep, Bash, mcp__plugin_qlerify_qlerify__*
+allowed-tools: Read, Write, Edit, Glob, Grep, Bash, mcp__qlerify__*
 ---
 
 # Sync Code and Qlerify Domain Model

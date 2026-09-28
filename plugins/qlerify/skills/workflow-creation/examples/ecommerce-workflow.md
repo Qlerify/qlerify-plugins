@@ -160,7 +160,7 @@ create_read_models(workflowId: "wf-1", readModels: [
       { name: "customerId" },
       { name: "status" },
       { name: "totalAmount" },
-      { name: "orderItems", relatedEntity: "#/schemas/valueObjects/OrderItem",
+      { name: "orderItems", relatedEntity: "#/schemas/valueObjects/OrderItem", cardinality: "one-to-many",
         fields: [{ name: "productName" }, { name: "quantity" }, { name: "unitPrice" }] },
       { name: "createdAt" }
     ]
@@ -281,6 +281,7 @@ update_entities(workflowId: "wf-1", entities: [
 ```
 
 Entity fields are derived from all commands/read models that reference each entity:
+
 - Order fields include everything from "Add Item To Order", "Place Order", "Confirm Payment", "Ship Order", etc.
 - `trackingNumber` and `carrier` come from "Ship Order" command
 - `orderItems` relationship comes from "Add Item To Order" and "Get Order Details"

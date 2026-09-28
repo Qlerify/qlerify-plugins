@@ -10,7 +10,7 @@ description: >-
   process modeling, legacy modernization, reverse-engineering code into a
   model, generating code from a model, or any direct use of the Qlerify
   modeling tools.
-allowed-tools: Read, Glob, Grep, Bash, mcp__plugin_qlerify_qlerify__*
+allowed-tools: Read, Glob, Grep, Bash, mcp__qlerify__*
 ---
 
 # Workflow Creation Guide
@@ -60,7 +60,6 @@ Use only alphanumeric characters and spaces in event names. If you use hyphens, 
 afterward to verify the actual `$ref` key before referencing it in subsequent calls.
 
 **Note:** Decisions (`decision`) are visualised as a separate shape on the event storming board taking up the same space as other events, but don't appear in the `get_workflow` domainEvents section. How to find a decision: a domain event is preceded by a decision shape if the domain event has a conditions attribute set. The name of the shape is hidden under the if property ("conditions":[{"after":{"$ref":"#/domainEvents/CustomerCreated"},"if":"Large Customer?","is":"YES"}]). If you need to reference a decision, call `get_workflow`, take the description from the "if" property, PascalCase it (drop spaces and punctuation, capitalize each word), and use it as the $ref segment. For example, a decision described as "Is order paid?" is referenced as #/domainEvents/IsOrderPaid.
-
 
 ## Creation Sequence
 
@@ -125,10 +124,10 @@ orchestration lives **outside** — note that it exists, but do not model it.
 - **Related entities** — children with their **own identity** and individual lifecycle (add / update / remove).
 - **Value objects** — children that are **replaced wholesale** (set-replacement semantics), with no independent lifecycle. They may still have technical IDs in the implementation — treat them as VOs anyway if the domain semantics are set-replacement.
 - **Commands** — each represents a distinct state change of the aggregate.
-  - If one command always triggers another, **merge them** into a single command.
-  - Find a granularity **coarser than per-attribute changes** but **finer than create/update/delete** for the whole aggregate. The right level is one where each command represents a business-meaningful action.
-  - For value objects, usually only one command is needed to set the value; clearing or removal can be modeled as setting a blank or empty value.
-  - Note which fields are create-only — required on create but not available on update.
+    - If one command always triggers another, **merge them** into a single command.
+    - Find a granularity **coarser than per-attribute changes** but **finer than create/update/delete** for the whole aggregate. The right level is one where each command represents a business-meaningful action.
+    - For value objects, usually only one command is needed to set the value; clearing or removal can be modeled as setting a blank or empty value.
+    - Note which fields are create-only — required on create but not available on update.
 - **Domain events** — one event per command, forming **1:1 pairs**. Aim for **8–20 events** per aggregate. Too many → hard for stakeholders to review on an event storming board. Too few → system becomes hard to reason about.
 - **Read models / queries** — queries needed by the client. Can contain **computed or derived fields** (totals, counts) that exist on API responses but not on entity models. When a field is clearly projection-only, prefer listing it on the read model instead of also on entity/VO attribute tables. Add a short description for any calculated field whose derivation isn't obvious from its name.
 - **Attributes** — **all** fields for every entity and VO: name, type, required/optional, defaults, notes. Prefer domain/type definitions over database schema. Describe relationships in type form (e.g. `Order.items: LineItem[]`), not database form. Omit internal back-reference fields like `parent_id` or FK fields unless they are domain-significant. Capture a short description for each entity and each attribute.
@@ -179,17 +178,17 @@ user has approved the artifact.**
 
 **After artifact approval, the mapping into Phase 1+ is:**
 
-| Artifact section                                  | Goes into                                                    |
-|---------------------------------------------------|--------------------------------------------------------------|
-| Domain events                                     | Phase 2 Step 2 (`create_domain_events`)                      |
-| Aggregate root, related entities, VOs             | Phase 3 Step 4 (`create_entities`)                           |
-| Commands                                          | Phase 3 Step 5 (`create_commands`)                           |
-| Read models / queries                             | Phase 3 Step 6 (`create_read_models`)                        |
-| Attributes, attribute-level invariants            | Phase 3 Step 8 (`update_entities`)                           |
-| Tests (Given/When/Then), command-level invariants | `acceptanceCriteria` on events in Phase 2 Step 2             |
-| Invariants                                        | Verified in Phase 4 (`validate_domain_model`)                |
-| External references (IDs to other BCs)            | Category 2 ID-only refs in commands (Phase 3 Step 5)         |
-| Bounded context (from title metadata)             | Phase 3 Step 3 (`create_bounded_context`)                    |
+| Artifact section                                  | Goes into                                            |
+|---------------------------------------------------|------------------------------------------------------|
+| Domain events                                     | Phase 2 Step 2 (`create_domain_events`)              |
+| Aggregate root, related entities, VOs             | Phase 3 Step 4 (`create_entities`)                   |
+| Commands                                          | Phase 3 Step 5 (`create_commands`)                   |
+| Read models / queries                             | Phase 3 Step 6 (`create_read_models`)                |
+| Attributes, attribute-level invariants            | Phase 3 Step 8 (`update_entities`)                   |
+| Tests (Given/When/Then), command-level invariants | `acceptanceCriteria` on events in Phase 2 Step 2     |
+| Invariants                                        | Verified in Phase 4 (`validate_domain_model`)        |
+| External references (IDs to other BCs)            | Category 2 ID-only refs in commands (Phase 3 Step 5) |
+| Bounded context (from title metadata)             | Phase 3 Step 3 (`create_bounded_context`)            |
 
 After completing Phase 0 and securing user approval of the artifact, proceed to Phase 1 — or to
 Phase S first if the aggregate is a state machine.
@@ -454,8 +453,8 @@ commands/read models and their aggregate root entities.
 
 1. Run `validate_domain_model`
 2. For each issue (MAJOR or MINOR), **judge whether it genuinely indicates a problem** or is a legitimate domain pattern:
-   - **If it's a real problem** → fix it
-   - **If it's a valid domain pattern** → leave it as-is
+    - **If it's a real problem** → fix it
+    - **If it's a valid domain pattern** → leave it as-is
 3. Re-run `validate_domain_model`
 4. **Repeat until all remaining issues are legitimate patterns you've consciously decided to keep**
 
@@ -488,15 +487,15 @@ Re-run the searches from Phase 0 Step 0.1 — the aggregate module, its reposito
 
 For each category below, list what's in the workflow vs what's in the code and flag discrepancies:
 
-| Category                    | In workflow but not in code                                | In code but not in workflow                                            |
-|-----------------------------|------------------------------------------------------------|------------------------------------------------------------------------|
-| Commands                    | Phantom command — models a mutation that does not exist    | Missing command — code has a state-changing method that's not modeled  |
-| Domain events               | Phantom event — no code path produces it                   | Missing event — code emits/persists something not modeled              |
-| Entity fields               | Phantom field on entity                                    | Missing field — code has a domain attribute not on the entity          |
-| Entity vs VO classification | Modeled as entity, code says VO (no id, set-replacement)   | Modeled as VO, code says entity (own id, own lifecycle)                |
-| Cardinality                 | one-to-one vs one-to-many mismatch                         | —                                                                      |
-| External refs               | Workflow models internals of an external aggregate         | —                                                                      |
-| Acceptance criteria         | Event has criteria with no matching test                   | Test at the aggregate boundary with no Given/When/Then on its event    |
+| Category                    | In workflow but not in code                              | In code but not in workflow                                           |
+|-----------------------------|----------------------------------------------------------|-----------------------------------------------------------------------|
+| Commands                    | Phantom command — models a mutation that does not exist  | Missing command — code has a state-changing method that's not modeled |
+| Domain events               | Phantom event — no code path produces it                 | Missing event — code emits/persists something not modeled             |
+| Entity fields               | Phantom field on entity                                  | Missing field — code has a domain attribute not on the entity         |
+| Entity vs VO classification | Modeled as entity, code says VO (no id, set-replacement) | Modeled as VO, code says entity (own id, own lifecycle)               |
+| Cardinality                 | one-to-one vs one-to-many mismatch                       | —                                                                     |
+| External refs               | Workflow models internals of an external aggregate       | —                                                                     |
+| Acceptance criteria         | Event has criteria with no matching test                 | Test at the aggregate boundary with no Given/When/Then on its event   |
 
 **Step 10.4 — Report and ask the user**
 
@@ -518,6 +517,7 @@ After applying fixes, **re-run Step 9** (`validate_domain_model`) to confirm the
 **Phase 4 stop condition**
 
 Phase 4 is complete when:
+
 1. Step 9 reports no unreviewed structural issues, AND
 2. Step 10 reports no unreviewed discrepancies between workflow and source code (or N/A for greenfield).
 
@@ -576,7 +576,6 @@ update_domain_event(domainEvent: "#/domainEvents/OrderPlaced", color: "blue")
 | Domain Event: nested structure | **YES** — nested event payload data           | `orderItems: [{ productId, qty, price }]`   |
 | Domain Event: ID reference     | **NO** — use flat field                       | `orderId`, `customerId`                     |
 | Entity: related entity         | **YES** — defines data model links            | `order → OrderItem (one-to-many)`           |
-
 
 **Naming rule:** If using `relatedEntity`, name the field as the entity (`guest`, `hotel`, `orderItems`).
 When one Entity/VO type plays multiple semantic roles on the same aggregate, use role-specific field names that all point to the same `relatedEntity` — e.g., `shippingAddress` and `billingAddress` both referencing a VO named "Address".

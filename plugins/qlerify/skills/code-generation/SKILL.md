@@ -8,7 +8,7 @@ description: >-
   next step is producing runnable code on a target tech stack. Pairs with the
   workflow-creation skill (which produces the model) and the sync skill (which
   keeps model and code aligned over time).
-allowed-tools: Read, Write, Edit, Glob, Grep, Bash, WebFetch, mcp__plugin_qlerify_qlerify__*
+allowed-tools: Read, Write, Edit, Glob, Grep, Bash, WebFetch, mcp__qlerify__*
 ---
 
 # Code Generation from Domain Model
