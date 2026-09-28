@@ -134,9 +134,9 @@ Data sometimes shows the model is missing something: a field the source has and 
 model does not allow, an event that never fires because nothing in the rows can show it. Do not bend a connector to
 hide that. Tell the user what you found, and once they agree:
 
-1. Change the model in the Qlerify modeller through the Qlerify MCP tools (the `qlerify` server, with the
-   `mcp-companion` plugin's skills). `list_workflows` in Live gives each workflow's `modelLink`, and
-   `https://app.qlerify.com/workflow/<projectId>/<workflowId>` names the modeller workflow to edit.
+1. Change the model in the Qlerify modeler through the Qlerify MCP tools (the `qlerify` server, with this plugin's
+   `workflow-creation` skill). `list_workflows` in Live gives each workflow's `modelLink`, and
+   `https://app.qlerify.com/workflow/<projectId>/<workflowId>` names the modeler workflow to edit.
 2. `reload_model` in Live. It reconciles tables in place. If it answers `needsConfirmation`, tell the user which
    stored values would be lost before calling it again with `confirm: true`.
 3. Update the connectors the change touches and ingest again. `reload_model` already works the events out again when
