@@ -89,9 +89,14 @@ Keep going without asking for anything the user asked you to do. Stop and ask fi
   on an actuator's table, whose rows are the record of the actions it took, so its next run may take them again (the
   tool refuses that without `confirmActions`); `reload_model` with `rebuild: "full"`; or `reload_model` answering
   `needsConfirmation` because stored values would be lost.
-- **credentials are needed.** Ask for exactly the fields the source needs and never invent them. Store them with
-  `set_connector_credentials` and never repeat them back. When another connector already holds them,
-  `list_connector_credentials` and `copy_connector_credentials` reuse them without anyone typing them again.
+- **credentials are needed.** Never invent them. Work out exactly which fields the source needs and ask for them with
+  `request_connector_credentials`: one field per value, a label in plain words, a hint on where to find it, and
+  `optional: true` for a value the connector code works without. Give the user the `formUrl` it returns: they enter
+  the values in Live's form, so the values never pass through this conversation. Once they say they have saved,
+  check that `list_connector_credentials` shows no `missingFields`. Only if the user prefers to paste values here,
+  store them with `set_connector_credentials`, which replaces everything stored before, and tell them first that
+  pasted values pass through the AI. When another connector already holds them, `list_connector_credentials` and
+  `copy_connector_credentials` reuse them without anyone typing them again.
 - **how a child row links to its parent is unclear.** "Match them up roughly" is not an answer: a reference that does
   not equal a parent id exactly keeps the row out of its parent's case, and nothing reports it.
 

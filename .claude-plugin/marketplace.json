@@ -39,7 +39,7 @@
     {
       "name": "qlerify-live-companion",
       "description": "Teaches AI agents how to build, test and fix the connectors that fill a Qlerify Live workflow, one table or the whole workflow at once, through the Qlerify Live MCP server",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "author": {
         "name": "Qlerify",
         "email": "support@qlerify.com"
