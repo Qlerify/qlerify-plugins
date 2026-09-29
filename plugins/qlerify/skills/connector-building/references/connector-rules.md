@@ -104,7 +104,9 @@ moves its case forward.
 - **A cycle-linked target** (rows that belong to a Quarter or similar) needs one more answer: is an item per subject
   forever, or per subject per period? Per period means the period goes into the row id, so each new period creates
   fresh rows instead of overwriting the last period's.
-- A plain pass-through pull from a system of record needs none of this, and neither does demo data.
+- A plain pass-through pull from a system of record needs none of this, and neither does demo data. When such a
+  source needs a detail call per record, the connector can still read its own table and skip the call for records
+  unchanged since the stored row, which keeps each run short.
 
 Write the chosen behaviour into the `instructions` you save with the code.
 
@@ -158,7 +160,7 @@ that need telling apart, or when your checks show events a row's state does not 
 
 The conditions belong to the events, and the model's Given/When/Then is their permanent home; the rule is compiled
 from them. Do not filter events inside the fetch code instead, and do not create rules nobody asked for. A rule can
-also name the row's own date column that best dates its event (a "referred date" for a "Motion Referred" step),
+also name the row's own date column that best dates its event (a "shipped date" for an "Order Shipped" step),
 which gives a more precise time than the general created or last-modified dates. A rule whose date is worked out
 rather than read (the earlier of two dates, say) should return `businessAtEstimated: true`, so the date shows as
 estimated; check for it with `view_trigger_rules`.
@@ -220,5 +222,6 @@ documentation before writing code, and use real field names rather than guesses.
   lands nothing new.
 - `ctx.readTable` gives at most 10,000 rows per table. A connector that checks its own table for work already done
   cannot see past that, so filter at the source as well once a table grows that large.
-- A run is killed at its time budget and loses every row it produced; run independent AI batches at the same time
-  rather than one after another.
+- A run is killed after 180 seconds and loses every row it produced; run independent AI batches and detail calls at
+  the same time rather than one after another. The 240 seconds in a tool error is the tool call giving up waiting,
+  not the run.

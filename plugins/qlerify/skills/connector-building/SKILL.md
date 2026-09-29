@@ -155,8 +155,9 @@ hide that. Tell the user what you found, and once they agree:
 
 ## Tool errors
 
-- "did not finish within 240s and may still complete": the work may still be running. Check `get_connector_history`
-  or `list_table_rows` before running it again, or it may happen twice.
+- "did not finish within 240s and may still complete": the tool call stopped waiting, but the work may still be
+  running. Check `get_connector_history` or `list_table_rows` before running it again, or it may happen twice. A
+  connector's own run is killed at 180 seconds (connector-rules section 12).
 - `[credential <field> hidden]` in a result: a stored credential's value was there. Never write the placeholder into
   code: read the value from `ctx.credentials.<field>`, and stop logging or returning it.
 - "no connector": use the `adapterId` that `create_connector` returned. The optional `id` you pass it is only a short

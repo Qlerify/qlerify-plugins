@@ -39,15 +39,15 @@ This skill runs the whole path and hands the detailed work to two others: `workf
 Ask once, and only what you cannot find out yourself:
 
 - where the records live: which systems, or which open data;
-- what one case is (one order, one proposition, one project) and when a case is done;
+- what one case is (one order, one support ticket, one project) and when a case is done;
 - the time window, if the request names one. Live measures the last 24 hours, 7 days, 30 days, 3 months or 12
   months, counted back from now;
-- how often the view should refresh (daily suits a public register, hourly a business system);
 - for each closed system, its schema, an export or a few sample rows, and whether a read-only login exists.
   Credentials are entered later in Live's form, never here.
 
-Skip anything the request already answers. Then work without stopping, except for the points in "When the user
-must act".
+Skip anything the request already answers. Do not ask how often to refresh: unless the request says, schedule a
+public register daily and a business system hourly. Then work without stopping, except for the points in "When the
+user must act".
 
 ## 2. Look at the data before modeling
 
@@ -58,16 +58,20 @@ The model has to match the records, so read the source first.
 
 Write down, per record type: its key, which field holds its parent's id, its status values in their real order,
 and which field dates each step. Look for traps: a date filter that looks right but filters on something else (the
-day a document was submitted, when the user asked for activity), dates in the future, placeholder records, records
-that link to several parents, and records that often have no parent at all.
+day a record was created, when the user asked for activity), dates in the future, placeholder records, records that
+link to several parents, and records that often have no parent at all.
 
 ## 3. Model it in the modeler
 
-Follow `workflow-creation`, and its `references/live-readiness.md` above all: that is what makes the cases come out
-right in Live. When the case follows a state machine and `workflow-creation` asks for approval of the state map
-(Phase S), still write the map, but do not wait for approval: take the states and their order from the source's
-real status values, note the map in `live-view.md`, and carry on. The user reviews the model in the modeler at the
-end.
+When the user gives a model (a modeler link or a workflow's name), do not model it again: check it against
+`workflow-creation`'s `references/live-readiness.md` and go to step 4. If it breaks a rule, tell the user what and
+why, and change it only once they agree. `validate_domain_model` is for models you build.
+
+Otherwise follow `workflow-creation`, and its `references/live-readiness.md` above all: that is what makes the
+cases come out right in Live. When the case follows a state machine and `workflow-creation` asks for approval of
+the state map (Phase S), still write the map, but do not wait for approval: take the states and their order from
+the source's real status values, note the map in `live-view.md`, and carry on. The user reviews the model in the
+modeler at the end.
 
 Live fetches the model with the Live organization's own modeler key, so the project must have that key's account
 as a member. Prefer a project that a `modelLink` in Live's `list_workflows` already names. Do not ask about the
@@ -77,7 +81,8 @@ project up front: step 4's check tells you whether Live can fetch the model. Fin
 
 1. `create_workflow` on the Live server with the modeler workflow's link and `dryRun: true`. It fetches the model
    and reports the case root, the tables that cannot reach it and any problem that would stop the load. Fix those in
-   the modeler and check again.
+   the modeler and check again. It also reports `doneRule`, when a case will count as done: if a way cases end is
+   missing from it (a last step only some cases reach), fix the model or say so in the answer.
 2. `create_workflow` without `dryRun`. It returns the Live `workflowId` and `url`.
 
 If Live says a workflow already follows this modeler workflow, use that one and call `reload_model` after changing
@@ -92,7 +97,8 @@ the source dates on its own to that field: events are dated when they are first 
 `rebuild_events`. Ingest each table in full: pass `ingest_connector` a `limit` above the table's size, since without
 one it lands only a first batch. A connector that checks its own table and would not finish in one run's time is
 ingested in batches instead (`connector-building`, connector-rules section 12). Check the cases as that skill
-describes before moving on.
+describes before moving on, and compare each step's event count with the rows that should have it (for a dated
+step, the rows whose date field is filled): `rebuild_events` reports the count per event.
 
 ## 6. Keep it live
 
@@ -110,10 +116,11 @@ Check `doneRule` against what the user said a case being done means. If they dif
 as `toEvent`, and tell the user they can set the rule in Live's Overview under "Done means…", which no tool can
 change.
 
-Pass `caseType` when the figure is about another kind of record than the workflow's root. When the user counts two
-kinds of record (propositions and motions), call `get_lead_time` once per kind and give each median with its own
-basis. In the root's view, a record that links to no root row (a motion with no proposition) counts as a case that
-never finishes, so do not report those as unfinished work.
+When the user counts two kinds of record, give a median per kind, each with its own basis. When a kind's later
+steps sit on another table, measure it in the root's view with `fromEvent` set to its first step. `caseType` set to
+the kind itself holds only the steps on that kind and its children; the reply's `note` says which steps it leaves
+out and which call measures across them. In the root's view, a record that links to no root row counts as a case
+that never finishes, so do not report those as unfinished work.
 
 Answer with:
 
