@@ -43,7 +43,8 @@ Ask once, and only what you cannot find out yourself:
 - the time window, if the request names one. Live measures the last 24 hours, 7 days, 30 days, 3 months or 12
   months, counted back from now;
 - how often the view should refresh (daily suits a public register, hourly a business system);
-- for each closed system, whether a read-only login exists. Credentials are entered later in Live's form, never here.
+- for each closed system, its schema, an export or a few sample rows, and whether a read-only login exists.
+  Credentials are entered later in Live's form, never here.
 
 Skip anything the request already answers. Then work without stopping, except for the points in "When the user
 must act".
@@ -53,7 +54,7 @@ must act".
 The model has to match the records, so read the source first.
 
 - **Open data or a public API:** read its documentation and fetch a few records with `WebFetch`.
-- **A closed system:** ask for its schema, an export or a few sample rows. Do not ask for credentials here.
+- **A closed system:** read the schema, export or sample rows the user gave in step 1.
 
 Write down, per record type: its key, which field holds its parent's id, its status values in their real order,
 and which field dates each step. Look for traps: a date filter that looks right but filters on something else (the
