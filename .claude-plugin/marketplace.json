@@ -11,6 +11,7 @@
   "plugins": [
     {
       "name": "mcp-companion",
+      "displayName": "MCP Companion (legacy)",
       "description": "Teaches AI agents how to plan and build Qlerify workflows via the MCP server — domain model sync, workflow creation, aggregate extraction, code generation, and fast data export",
       "version": "0.4.17",
       "author": {
@@ -38,6 +39,7 @@
     },
     {
       "name": "qlerify",
+      "displayName": "Qlerify",
       "description": "Teaches AI agents how to work with Qlerify through its MCP servers: model workflows in the Qlerify modeler (workflow creation, aggregate extraction, code generation, domain model sync and fast data export) and build the connectors that fill them in Qlerify Live",
       "version": "0.2.0",
       "author": {
