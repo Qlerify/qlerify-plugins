@@ -5,9 +5,9 @@ description: >-
   whole workflow in one go, through the Qlerify Live MCP server (tools such as list_workflows, create_connector,
   test_connector_code and ingest_connector). Use it whenever the user wants data in Qlerify Live: "build the
   connectors", "fill the tables", "connect Live to HubSpot / Postgres / this API", "ingest", "simulate demo data",
-  "populate the workflow", "keep it in sync", "fix this connector", "why are the cases wrong", or when ingested data
-  shows the model needs a change. Use it even when the user only names a table or a source system, as long as the
-  Qlerify Live MCP tools are available.
+  "populate the workflow", "keep it in sync", "fix this connector", "why are the cases wrong", "load this model into
+  Live", or when ingested data shows the model needs a change. Use it even when the user only names a table or a
+  source system, as long as the Qlerify Live MCP tools are available.
 allowed-tools: Read, WebFetch, WebSearch, mcp__qlerify-live__*, mcp__qlerify__*
 ---
 
@@ -18,7 +18,9 @@ small JavaScript module that fills one table from a source. After every ingest t
 events the landed rows imply and groups them into cases, one case per end-to-end run of the workflow. So a connector
 is only right when its rows produce the right cases and events, not merely when rows land.
 
-You work through the Qlerify Live MCP server. Every tool except `list_workflows` takes a `workflowId`.
+You work through the Qlerify Live MCP server. Every tool except `list_workflows` and `create_workflow` takes a
+`workflowId`. When the user wants a whole live view, from modeling to a figure and a link, the `live-view` skill runs
+the full path and uses this one for the connectors.
 
 ## If the tools are missing
 
@@ -31,7 +33,9 @@ organization admin rights, so a refusal that names a permission means the token'
 1. **Read the workflow.** `list_workflows`, then `get_workflow_definition` for the one the user means. It lists every
    event in order with its acceptance criteria (Given/When/Then) and every entity with its fields and allowed values.
    Those acceptance criteria are the spec your connectors must satisfy. Then `list_model_kinds` shows the tables per
-   system and the connectors already on them, and `list_table_rows` shows what a table already holds.
+   system and the connectors already on them, and `list_table_rows` shows what a table already holds. If the model is
+   in the modeler but not yet in Live, load it first with `create_workflow`: once with `dryRun: true`, which reports
+   problems without creating anything, then without.
 2. **Plan the order.** A child row joins its parent's case only through a field holding the parent row's exact id
    (`orderId` holding an `Order.id`). So fill parents before children: the root table first, then the tables that
    point at it, and so on down. A table no event is rooted on is reference data; fill it before any connector that
@@ -43,9 +47,9 @@ organization admin rights, so a refusal that names a permission means the token'
 4. **Build each table** in the planned order: `create_connector`, credentials if the source needs them,
    `get_connector_brief`, write the code, `test_connector_code` until it is right, `save_connector_code`,
    `set_connector_date_roles`, `adapter_dry_run`, then `ingest_connector` with a small first batch. Check it, then
-   ingest the rest. That first batch lands for real: if checking it makes you change the row ids or the linking, empty
-   the table with `clear_table` before ingesting again, since an ingest never removes rows. Details in "Writing a
-   connector".
+   ingest the rest with a `limit` above the table's size: without one an ingest lands only 25 rows. That first batch
+   lands for real: if checking it makes you change the row ids or the linking, empty the table with `clear_table`
+   before ingesting again, since an ingest never removes rows. Details in "Writing a connector".
 5. **Check the result** after each table, not only at the end. See "Checking the result".
 6. **Fix the model** when the data proves it wrong. See "When the model is wrong".
 7. **Keep it running** once everything checks out: schedules, wake-ups and notifications. See
@@ -67,8 +71,11 @@ re-run rules). Follow it: it is the contract the platform runs your code against
 - `save_connector_code` stores the code. Pass `instructions`: a plain description of the source and of what the code
   does, including filters and re-run behaviour. It replaces the stored description, so send the whole of it every
   time. A later rebuild works from it.
-- `set_connector_date_roles` next: which fields hold the source's creation date and last-change date. Saving code does
-  not work these out, and without them event dates fall back to a guess.
+- `set_connector_date_roles` next: which fields hold the source's creation date and last-change date, and in
+  `events`, each step whose own date the source records mapped to that field (`{"Order Shipped": "shippedAt"}`).
+  Saving code does not work these out. Without them event dates fall back to a guess, and a step that is not mapped
+  shares its row's last-change date, which makes lead times near zero. Events already in the log keep their dates
+  until `rebuild_events`.
 - `build_connector` makes the platform's AI write the code from `instructions` instead. Use it only when you cannot
   write and test code yourself: it is slower and it bills the organisation.
 
@@ -122,6 +129,9 @@ A connector is done when the cases are right.
 - When an ingest reports rows as updated on every run although nothing changed at the source, the stored value
   differs from what the code returns (rounding, formatting, types). Compare a row from `list_table_rows` with your
   test output and tell the user if the platform changed the value.
+- `get_lead_time` gives the median and P85 lead time over the cases, with how many it measured and left out, and
+  `reportsUrl`, the Reports page with the same window. Use it for any figure over many cases rather than adding up
+  events case by case.
 - The case tools (`list_cases`, `find_case`, `get_case_details`, `get_event_log`) group events by the workflow's own
   case unless you pass `caseType`, and that default view is the one to check connectors in. Another entity as
   `caseType` regroups the same events around that object, one case per order for instance: an event can then sit in

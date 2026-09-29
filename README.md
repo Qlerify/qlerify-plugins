@@ -7,27 +7,17 @@ Gemini CLI, and Cursor.
 
 1. **Qlerify account** with a workflow created
 2. **Qlerify MCP server** configured with your API token (see setup per tool below)
-3. For the `connector-building` skill: a **Qlerify Live** organization you administer, and its MCP server configured
-   with a Live token (see below)
+3. For the `connector-building` and `live-view` skills: a **Qlerify Live** organization you administer, and its MCP
+   server configured with a Live token (see below)
 
 ## Installation
 
 ### Claude Code
 
-Configure MCP server in `~/.claude.json`:
+Add the Qlerify MCP server, with the API key from your Qlerify account:
 
-```json
-{
-  "mcpServers": {
-    "qlerify": {
-      "type": "url",
-      "url": "https://mcp.qlerify.com",
-      "headers": {
-        "x-api-key": "YOUR_API_TOKEN"
-      }
-    }
-  }
-}
+```bash
+claude mcp add --transport http qlerify https://mcp.qlerify.com --header "x-api-key: YOUR_API_TOKEN"
 ```
 
 Install the plugin:
@@ -38,7 +28,7 @@ Install the plugin:
 ```
 
 After installation, skills are available as `/qlerify:workflow-creation`, `/qlerify:code-generation`,
-`/qlerify:sync`, `/qlerify:download` and `/qlerify:connector-building`.
+`/qlerify:sync`, `/qlerify:download`, `/qlerify:connector-building` and `/qlerify:live-view`.
 
 #### Qlerify Live
 
@@ -50,6 +40,9 @@ token:
 claude mcp add --transport http qlerify-live https://YOUR_LIVE_DOMAIN/mcp --header "x-api-key: YOUR_LIVE_TOKEN"
 ```
 
+Live fetches models from the modeler with its own Qlerify API key, saved under **Organization admin → General**. The
+account that key belongs to must be a member of every modeler project you load models from.
+
 ### Gemini CLI
 
 Install each skill using the `--path` flag:
@@ -60,10 +53,11 @@ gemini skills install https://github.com/qlerify/qlerify-plugins.git --path plug
 gemini skills install https://github.com/qlerify/qlerify-plugins.git --path plugins/qlerify/skills/sync
 gemini skills install https://github.com/qlerify/qlerify-plugins.git --path plugins/qlerify/skills/download
 gemini skills install https://github.com/qlerify/qlerify-plugins.git --path plugins/qlerify/skills/connector-building
+gemini skills install https://github.com/qlerify/qlerify-plugins.git --path plugins/qlerify/skills/live-view
 ```
 
-Configure the Qlerify MCP server (and the Qlerify Live one, for `connector-building`) in `~/.gemini/settings.json` per
-[Gemini CLI docs](https://geminicli.com/docs/cli/mcp/).
+Configure the Qlerify MCP server (and the Qlerify Live one, for `connector-building` and `live-view`) in
+`~/.gemini/settings.json` per [Gemini CLI docs](https://geminicli.com/docs/cli/mcp/).
 
 ### Cursor
 
@@ -194,6 +188,29 @@ wrong, it changes the model in the modeler (with `workflow-creation`) and reload
 5. Updates the model in the modeler and reloads it in Live when the data proves it wrong
 6. Sets up schedules, wake-ups and notifications
 
+#### `live-view`
+
+Runs the whole path from a request to a live view: models the workflow in the modeler from the real data, loads it
+into Qlerify Live, builds and runs the connectors, schedules them, and answers with figures such as the median lead
+time and a link to the Reports page. It uses `workflow-creation` and `connector-building` for the detailed work.
+
+**Triggers:**
+
+- "create a live view of our order process and tell me the median lead time"
+- "build a dashboard of this process from our data"
+- "how long do our invoices take from sent to paid"
+- "use the open data to show this process"
+- Any request for a live view, dashboard or KPIs of a process, even without naming Qlerify
+
+**What it does:**
+
+1. Settles scope in one question: sources, what one case is, the time window, refresh rate
+2. Looks at the source data before modeling
+3. Models the workflow following the Live rules in `workflow-creation`
+4. Checks and loads the model into Live
+5. Builds, fills and schedules every connector, asking for all credentials at once
+6. Answers with the figure, its basis and a link, keeping a run log so a long run can resume
+
 ### `mcp-companion`
 
 The earlier plugin with the four modeler skills (`workflow-creation`, `code-generation`, `sync` and `download`). It
@@ -209,6 +226,7 @@ which new setups should install instead.
 /qlerify:sync
 /qlerify:download
 /qlerify:connector-building
+/qlerify:live-view
 
 # Or just ask naturally - skills trigger automatically
 > create a workflow for an e-commerce order process
@@ -218,4 +236,5 @@ which new setups should install instead.
 > generate code from the Cart workflow
 > build connectors for all tables in the Order Fulfilment workflow in Qlerify Live
 > fill the Customer table in Live with demo data and keep it in sync nightly
+> create a live view of our invoicing process for the last 12 months and tell me the median lead time
 ```

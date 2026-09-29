@@ -26,10 +26,11 @@ plugins/qlerify/
     ├── code-generation/SKILL.md # Generate code from a Qlerify domain model
     ├── sync/SKILL.md            # Bidirectional domain model sync skill
     ├── download/SKILL.md        # Fast data export via curl+jq skill
-    └── connector-building/
-        ├── SKILL.md             # Build, test and fix Qlerify Live connectors for a whole workflow
-        └── references/
-            └── connector-rules.md  # The connector rules, adapted from qlerify-live's docs/CONNECTORS.md
+    ├── connector-building/
+    │   ├── SKILL.md             # Build, test and fix Qlerify Live connectors for a whole workflow
+    │   └── references/
+    │       └── connector-rules.md  # The connector rules, adapted from qlerify-live's docs/CONNECTORS.md
+    └── live-view/SKILL.md       # From a request to a live view: model, load into Live, connectors, figures, link
 
 plugins/mcp-companion/           # Frozen: the modeler skills as they were before they moved into plugins/qlerify/
 ```
@@ -69,5 +70,8 @@ The skills operate on DDD concepts from Qlerify workflows: **Entities** (persist
 The modeler skills require a configured Qlerify MCP server (`https://mcp.qlerify.com`) with API key authentication.
 The MCP server provides 29+ tools for CRUD operations on workflow elements.
 
-`connector-building` requires the Qlerify Live MCP server (`https://<live-domain>/mcp`), configured under the name
-`qlerify-live` with a token from Live's Organization admin → MCP tab. Its tools come from qlerify-live's `src/mcp/`.
+`connector-building` and `live-view` require the Qlerify Live MCP server (`https://<live-domain>/mcp`), configured
+under the name `qlerify-live` with a token from Live's Organization admin → MCP tab. Its tools come from
+qlerify-live's `src/mcp/`. `live-view` also needs the modeler server to build a new view.
+`workflow-creation/references/live-readiness.md` holds what Live needs from a model; keep it in step with
+qlerify-live's model checks (`modelProblems` in `src/twin/apply-plan.ts`).
