@@ -217,10 +217,13 @@ documentation before writing code, and use real field names rather than guesses.
 ## 12. Limits
 
 - `ingest_connector` lands 25 rows unless you pass a `limit`, and a scheduled pull stops at 10,000 rows. For a first
-  load, pass a `limit` above the source's size. A manual ingest passes no cursor, so a plain pull run again returns
-  the same first rows. A connector that checks its own table (section 4) returns the next ones instead: when one run
-  of it would not fit the time budget or the AI call limit, ingest it in batches with a smaller `limit` until a run
-  lands nothing new.
+  load, pass a `limit` above the source's size when one run can fetch it all within the time limit below. A delta
+  connector (section 4) whose source holds more than one run can fetch lists the oldest changes first and adds
+  `more: true` when it stops at the limit: ingest it once, schedule it, and the scheduled runs carry on from its
+  cursor, a few minutes apart, until it has caught up. A manual ingest passes no cursor, so a plain pull run again
+  returns the same first rows. A connector that checks its own table (section 4) returns the next ones instead: when
+  one run of it would not fit the time budget or the AI call limit, ingest it in batches with a smaller `limit` until
+  a run lands nothing new.
 - `ctx.readTable` gives at most 10,000 rows per table. A connector that checks its own table for work already done
   cannot see past that, so filter at the source as well once a table grows that large.
 - A run is killed after 180 seconds and loses every row it produced; run independent AI batches and detail calls at

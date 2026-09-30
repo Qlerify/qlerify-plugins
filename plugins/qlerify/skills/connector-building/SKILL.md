@@ -82,7 +82,7 @@ re-run rules). Follow it: it is the contract the platform runs your code against
 The rules that matter most in the code: authenticate only from `ctx.credentials`, and keep secrets out of the code,
 log lines and returned rows (a stored credential value in a tool result shows as `[credential <field> hidden]`);
 return every field the source has, not just the model's; give each row a stable `id` taken from the source's natural
-key; honour `ctx.limit`, where null means everything. The brief has the rest.
+key; return at most `ctx.limit` rows, which is always a number. The brief has the rest.
 
 ## When to ask
 
