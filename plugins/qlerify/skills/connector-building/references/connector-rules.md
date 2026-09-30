@@ -95,7 +95,8 @@ nothing is duplicated. So a source record that changes later (an order marked sh
 moves its case forward.
 
 - **Delta** is the right choice whenever the source can answer "what changed since": return `{ rows, cursor }` and
-  read only changes after `ctx.cursor` on a delta pull. The brief explains it.
+  read only changes after `ctx.cursor` on a delta pull. The brief explains it. `set_connector_cursor` moves a date
+  cursor by hand, for example to start from a chosen day, or clears it so the next scheduled run pulls in full.
 - **Computed content** (an AI call or a paid API per row) needs the user's choice before building:
     - **incremental** (recommend it, and use it when they have no preference): read this connector's own table with
       `ctx.readTable` and process only source items that have no row yet. A run that finds nothing new returns an empty

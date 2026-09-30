@@ -81,9 +81,12 @@ project up front: step 4's check tells you whether Live can fetch the model. Fin
 
 1. `create_workflow` on the Live server with the modeler workflow's link and `dryRun: true`. It fetches the model
    and reports the case root, the tables that cannot reach it and any problem that would stop the load. Fix those in
-   the modeler and check again. It also reports `doneRule`, when a case will count as done: if a way cases end is
-   missing from it (a last step only some cases reach), fix the model or say so in the answer.
-2. `create_workflow` without `dryRun`. It returns the Live `workflowId` and `url`.
+   the modeler and check again. When the case root is the wrong entity (not the record the user counts, or many
+   tables cannot reach it), pass the right one as `rootAggregate`. It also reports `doneRule`, when a case will count
+   as done: if a way cases end is missing from it (a last step only some cases reach), fix the model, or set the
+   rule with `set_done_rule` once the workflow exists and the user agrees.
+2. `create_workflow` without `dryRun`. It returns the Live `workflowId` and `url`. For a workflow that already
+   exists, `set_case_root` changes the case root.
 
 If Live says a workflow already follows this modeler workflow, use that one and call `reload_model` after changing
 the model. If Live cannot fetch the model, that is the modeler-access point in "When the user must act".
@@ -113,8 +116,8 @@ answer which one the figure covers. Use `fromEvent` and `toEvent` when the user 
 submitted to decided.
 
 Check `doneRule` against what the user said a case being done means. If they differ, pass the user's closing event
-as `toEvent`, and tell the user they can set the rule in Live's Overview under "Done means…", which no tool can
-change.
+as `toEvent`, and offer to set the rule with `set_done_rule`. It changes the figures everyone sees in Live, so set
+it only once the user agrees.
 
 When the user counts two kinds of record, give a median per kind, each with its own basis. When a kind's later
 steps sit on another table, measure it in the root's view with `fromEvent` set to its first step. `caseType` set to
