@@ -41,7 +41,7 @@
       "name": "qlerify",
       "displayName": "Qlerify",
       "description": "Teaches AI agents how to work with Qlerify through its MCP servers: model workflows in the Qlerify modeler (workflow creation, aggregate extraction, code generation, domain model sync and fast data export) and build the connectors that fill them in Qlerify Live",
-      "version": "0.2.0",
+      "version": "0.3.0",
       "author": {
         "name": "Qlerify",
         "email": "support@qlerify.com"

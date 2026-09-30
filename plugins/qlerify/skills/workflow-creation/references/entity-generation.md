@@ -88,7 +88,10 @@ When the source material includes database table definitions (rather than comman
 
 - Describe relationships through **ownership and references**, not storage mechanics
 - Express ownership from the parent type (e.g., `Order.items: LineItem[]`)
-- Omit internal back-reference fields like `parent_id` / foreign key columns unless they're domain-significant
+- Omit internal back-reference fields like `parent_id` / foreign key columns inside one aggregate unless they're
+  domain-significant. Keep a record's reference to another aggregate, as a `relatedEntity` field in the same bounded
+  context or a flat `<entity>Id` across contexts (see Relationship Rules): a model that runs in Qlerify Live links a
+  record into its parent's case through it (see `live-readiness.md`)
 - Avoid database terms like foreign keys, join tables, cascade deletes — use domain type relationships instead
 
 ## Relationship Rules

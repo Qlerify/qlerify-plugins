@@ -68,6 +68,9 @@ A domain event that branches off a decision carries a `conditions` attribute nam
 Follow these steps in order. Each step depends on the previous one. For an existing or
 legacy codebase, start at Phase 0; otherwise skip Phase 0 and start at Phase 1.
 
+If the model will run in Qlerify Live (a live view, a dashboard, connectors filling it with real data), read
+`references/live-readiness.md` before Phase 2 and apply it throughout: it decides whether the cases come out right.
+
 If the workflow centers on an aggregate that is a **state machine** — a state that *guards* transitions (a status enum or another
 encoding; see Phase S), with cycles, multiple terminal states, or guard-forks — run **Phase S** to
 map the states first (after Phase 0 if you ran it; otherwise directly before Phase 1). It changes how Phase 2 builds the flow and
@@ -132,7 +135,7 @@ orchestration lives **outside** — note that it exists, but do not model it.
     - Note which fields are create-only — required on create but not available on update.
 - **Domain events** — one event per command, forming **1:1 pairs**. Aim for **8–20 events** per aggregate. Too many → hard for stakeholders to review on an event storming board. Too few → system becomes hard to reason about.
 - **Read models / queries** — queries needed by the client. Can contain **computed or derived fields** (totals, counts) that exist on API responses but not on entity models. When a field is clearly projection-only, prefer listing it on the read model instead of also on entity/VO attribute tables. Add a short description for any calculated field whose derivation isn't obvious from its name.
-- **Attributes** — **all** fields for every entity and VO: name, type, required/optional, defaults, notes. Prefer domain/type definitions over database schema. Describe relationships in type form (e.g. `Order.items: LineItem[]`), not database form. Omit internal back-reference fields like `parent_id` or FK fields unless they are domain-significant. Capture a short description for each entity and each attribute.
+- **Attributes** — **all** fields for every entity and VO: name, type, required/optional, defaults, notes. Prefer domain/type definitions over database schema. Describe relationships in type form (e.g. `Order.items: LineItem[]`), not database form. Omit internal back-reference fields like `parent_id` or FK fields inside one aggregate unless they are domain-significant. Capture a short description for each entity and each attribute.
 - **Invariants** — business rules: required fields, non-negative amounts, set-replacement semantics, snapshot patterns, computed-only fields. Invariants will map to GTWs on commands, command attribute rules and entity attribute rules later in the process.
 - **Tests** — for each aggregate command, extract tests that validate the command's behavior **at the aggregate boundary**, in business language. If only service-level tests exist, extract only the part that proves aggregate behavior; ignore external orchestration. Example: "Given no Order exists, When the caller creates an Order with a valid customer id, Then an Order is returned with an assigned id." These map to `acceptanceCriteria` on events in Phase 2 Step 2.
 - **External references** — fields pointing to **other aggregates by ID only** (e.g., `customerId` → `Customer` in a separate bounded context). Do **not** model the external aggregate's internals.
@@ -292,7 +295,7 @@ Each entry needs:
 
 Optional parameters:
 
-- `acceptanceCriteria` — Array of Given-When-Then acceptance criteria strings. If the input contains test scenarios, behavior specs, or sentences in "Given X, When Y, Then Z" form, attach the relevant ones to each event here — don't leave them as background documentation.
+- `acceptanceCriteria` — Array of Given-When-Then acceptance criteria strings. If the input contains test scenarios, behavior specs, or sentences in "Given X, When Y, Then Z" form, attach the relevant ones to each event here — don't leave them as background documentation. For a model that will run in Qlerify Live, give every event at least one (see `references/live-readiness.md`).
 - `conditionLabel` — Branch label shown when this event's `follows` is a **decision** (e.g. "Yes", "No"); labels a guard-fork branch inline. Ignored if the parent isn't a decision.
 - `group` — The state column the event belongs to. **State machines only** — set it on each column's first event (see the note below and Phase S); leave it unset on ordinary workflows.
 
@@ -618,8 +621,9 @@ To build parallel branches, give each branch the same `follows` and set `paralle
 - **Default to a linear chain; use decisions and parallel branches sparingly.** Decisions are only for genuine conditional (either-or) branching; parallel branches only for events genuinely triggered at the same time by the same predecessor. Unordered or optional steps should still be sequenced, not branched (see **Branching: parallel vs decision**).
 - **Name events as past-tense occurrences.** "Order Created", not "Create Order" — the command name carries the imperative.
 - **Avoid special characters in event names.** Use only alphanumeric characters and spaces. No `?`, `!`, `&`, `#`.
-- **Include realistic example data.** 3 values per field helps stakeholders understand the model.
+- **Include realistic example data.** 3 values per field helps stakeholders understand the model. A `status` field in a model for Qlerify Live lists every value in order instead, with alternative outcomes as in `references/live-readiness.md`.
 - **After completing the workflow, use the `/download` skill** to save the specification to a file. This is much faster than fetching via MCP tools for large workflows.
+- **For a live view in Qlerify Live, continue with the `live-view` skill**, which loads the model into Live and fills it with data.
 
 ## Additional Resources
 
@@ -637,6 +641,7 @@ Consult these for detailed rules when creating specific element types:
 - **`references/domain-event-generation.md`** — Domain event payload rules, identifier/timestamp conventions
 - **`references/entity-generation.md`** — Entity field derivation from commands, merge strategy, entity vs value object rules
 - **`references/tools.md`** — Complete MCP tool reference with parameters and usage tips
+- **`references/live-readiness.md`** — What a model needs to run in Qlerify Live: case root, child-to-parent ids, full status lists, a date per step, name limits
 
 ### Example Files
 
