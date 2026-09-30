@@ -100,10 +100,13 @@ and wait once. Before the full ingest, set each connector's date roles, includin
 the source dates on its own to that field: events are dated when they are first worked out, so dates set later need
 `rebuild_events`. Ingest each table in full: pass `ingest_connector` a `limit` above the table's size, since without
 one it lands only a first batch. A connector that checks its own table and would not finish in one run's time is
-ingested in batches instead, and a delta connector over a source too big for one run fills through its schedule
-(`connector-building`, connector-rules section 12). Check the cases as that skill describes before moving on, and
-compare each step's event count with the rows that should have it (for a dated step, the rows whose date field is
-filled): `rebuild_events` reports the count per event.
+ingested in batches instead (`connector-building`, connector-rules section 12). A delta connector over a source too
+big for one run fills through its schedule: schedule it right after its first batch, go on with the tables that do
+not link to it, and check it, or fill the tables that link to it, once `get_adapter_config` no longer shows
+`catchingUp`. If it is still catching up when everything else is done, say the figures are partial and when its next
+run is. Check the cases as that skill describes before moving on, and compare each step's event count with the rows
+that should have it (for a dated step, the rows whose date field is filled): `rebuild_events` reports the count per
+event.
 
 ## 6. Keep it live
 

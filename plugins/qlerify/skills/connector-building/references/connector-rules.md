@@ -217,13 +217,15 @@ documentation before writing code, and use real field names rather than guesses.
 ## 12. Limits
 
 - `ingest_connector` lands 25 rows unless you pass a `limit`, and a scheduled pull stops at 10,000 rows. For a first
-  load, pass a `limit` above the source's size when one run can fetch it all within the time limit below. A delta
-  connector (section 4) whose source holds more than one run can fetch lists the oldest changes first and adds
-  `more: true` when it stops at the limit: ingest it once, schedule it, and the scheduled runs carry on from its
-  cursor, a few minutes apart, until it has caught up. A manual ingest passes no cursor, so a plain pull run again
-  returns the same first rows. A connector that checks its own table (section 4) returns the next ones instead: when
-  one run of it would not fit the time budget or the AI call limit, ingest it in batches with a smaller `limit` until
-  a run lands nothing new.
+  load, pass a `limit` above the source's size when one run can fetch it all within the time limit below. A manual
+  ingest passes no cursor, so a plain pull run again returns the same first rows. A connector that checks its own
+  table (section 4) returns the next ones instead: when one run of it would not fit the time budget or the AI call
+  limit, ingest it in batches with a smaller `limit` until a run lands nothing new.
+- A delta connector (section 4) whose source holds more than one run can fetch lists the oldest changes first and
+  adds `more: true` when it stops at the limit. Ingest a first batch and schedule it straight away: the scheduled runs
+  carry on from its cursor, a few minutes apart, until it has caught up. If the user wants it manual only, ask
+  whether it may run on a schedule until then, since manual pulls cannot finish it. While `get_adapter_config` shows
+  `catchingUp`, the table is still filling: check its cases, and fill the tables that link to it, once that is false.
 - `ctx.readTable` gives at most 10,000 rows per table. A connector that checks its own table for work already done
   cannot see past that, so filter at the source as well once a table grows that large.
 - A run is killed after 180 seconds and loses every row it produced; run independent AI batches and detail calls at

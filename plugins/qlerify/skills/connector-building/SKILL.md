@@ -47,9 +47,11 @@ organization admin rights, so a refusal that names a permission means the token'
 4. **Build each table** in the planned order: `create_connector`, credentials if the source needs them,
    `get_connector_brief`, write the code, `test_connector_code` until it is right, `save_connector_code`,
    `set_connector_date_roles`, `adapter_dry_run`, then `ingest_connector` with a small first batch. Check it, then
-   ingest the rest with a `limit` above the table's size: without one an ingest lands only 25 rows. That first batch
-   lands for real: if checking it makes you change the row ids or the linking, empty the table with `clear_table`
-   before ingesting again, since an ingest never removes rows. Details in "Writing a connector".
+   ingest the rest with a `limit` above the table's size: without one an ingest lands only 25 rows. A delta source too
+   big for one run fills through its schedule instead: schedule it after the first batch, and check it, or build the
+   tables that link to it, once `get_adapter_config` no longer shows `catchingUp` (connector-rules section 12). That
+   first batch lands for real: if checking it makes you change the row ids or the linking, empty the table with
+   `clear_table` before ingesting again, since an ingest never removes rows. Details in "Writing a connector".
 5. **Check the result** after each table, not only at the end. See "Checking the result".
 6. **Fix the model** when the data proves it wrong. See "When the model is wrong".
 7. **Keep it running** once everything checks out: schedules, wake-ups and notifications. See
