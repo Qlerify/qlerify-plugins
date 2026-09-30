@@ -70,5 +70,5 @@ give empty or wrong cases in Live. Apply these rules whenever the model will run
 
 `validate_domain_model` does not check any of this. In Live, `create_workflow` with `dryRun: true` fetches the model
 and reports the case root, the tables that cannot reach it, the done rule (`doneRule`: check that every way a case
-can end is in it), and the problems that would stop the load. When the case root is the wrong entity, `rootAggregate`
-on `create_workflow` picks another one.
+can end is in it), and the problems that would stop the load. When the case root is not the record the user counts,
+`rootAggregate` on `create_workflow` picks that one; a table that cannot reach the root needs a link, not a new root.
