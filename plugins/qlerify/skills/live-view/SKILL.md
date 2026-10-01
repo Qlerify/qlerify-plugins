@@ -120,6 +120,9 @@ Call `get_lead_time`. For a window, pass `within` (24h, 7d, 30d, 3mo or 12mo, co
 answer which one the figure covers. Use `fromEvent` and `toEvent` when the user means a specific span, such as
 submitted to decided.
 
+The first `get_lead_time` after a large load or rebuild can take over a minute while Live indexes the cases. If it
+times out, call it again: once the cases are indexed, it answers in seconds.
+
 Check `doneRule` against what the user said a case being done means. If they differ, pass the user's closing event
 as `toEvent`, and offer to set the rule with `set_done_rule`. It changes the figures everyone sees in Live, so set
 it only once the user agrees.

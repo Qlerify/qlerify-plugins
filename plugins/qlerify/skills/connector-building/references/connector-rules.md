@@ -216,11 +216,12 @@ documentation before writing code, and use real field names rather than guesses.
 
 ## 12. Limits
 
-- `ingest_connector` lands 25 rows unless you pass a `limit`, and a scheduled pull stops at 10,000 rows. For a first
-  load, pass a `limit` above the source's size when one run can fetch it all within the time limit below. A manual
-  ingest passes no cursor, so a plain pull run again returns the same first rows. A connector that checks its own
-  table (section 4) returns the next ones instead: when one run of it would not fit the time budget or the AI call
-  limit, ingest it in batches with a smaller `limit` until a run lands nothing new.
+- `ingest_connector` lands 25 rows unless you pass a `limit`, and uses the `limit` you pass as given, even above
+  10,000; only a scheduled pull stops at 10,000 rows. For a first load, pass a `limit` above the source's size when
+  one run can fetch it all within the time limit below. A manual ingest passes no cursor, so a plain pull run again
+  returns the same first rows. A connector that checks its own table (section 4) returns the next ones instead: when
+  one run of it would not fit the time budget or the AI call limit, ingest it in batches with a smaller `limit` until
+  a run lands nothing new.
 - A delta connector (section 4) whose source holds more than one run can fetch lists the oldest changes first and
   adds `more: true` when it stops at the limit. Ingest a first batch and schedule it straight away: the scheduled runs
   carry on from its cursor, a few minutes apart, until it has caught up. If the user wants it manual only, ask
@@ -229,5 +230,6 @@ documentation before writing code, and use real field names rather than guesses.
 - `ctx.readTable` gives at most 10,000 rows per table. A connector that checks its own table for work already done
   cannot see past that, so filter at the source as well once a table grows that large.
 - A run is killed after 180 seconds and loses every row it produced; run independent AI batches and detail calls at
-  the same time rather than one after another. The 240 seconds in a tool error is the tool call giving up waiting,
-  not the run.
+  the same time rather than one after another. A tool call can stop waiting before the work is done: Claude Code
+  gives up after 60 seconds with "The operation timed out.", and Live answers after 240 seconds that the call may
+  still complete. The work carries on either way, so check the result before you run a write again.
