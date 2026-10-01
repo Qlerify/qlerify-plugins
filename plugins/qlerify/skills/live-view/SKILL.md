@@ -100,14 +100,19 @@ and wait once. Before the full ingest, set each connector's date roles, includin
 the source dates on its own to that field: events are dated when they are first worked out, so dates set later need
 `rebuild_events`. Ingest each table in full: pass `ingest_connector` a `limit` above the table's size, since without
 one it lands only a first batch. A connector that checks its own table and would not finish in one run's time is
-ingested in batches instead (`connector-building`, connector-rules section 12). Check the cases as that skill
-describes before moving on, and compare each step's event count with the rows that should have it (for a dated
-step, the rows whose date field is filled): `rebuild_events` reports the count per event.
+ingested in batches instead (`connector-building`, connector-rules section 12). A delta connector over a source too
+big for one run fills through its schedule: schedule it right after its first batch, without a `startAt`, go on with
+the tables that do not link to it, and check it, or fill the tables that link to it, once `get_adapter_config` shows
+`completeAt`. If it is still catching up when everything else is done, say the figures are partial and when its next
+run is. Check the cases as that skill describes before moving on, and compare each step's event count with the rows
+that should have it (for a dated step, the rows whose date field is filled): `rebuild_events` reports the count per
+event.
 
 ## 6. Keep it live
 
 Schedule every connector at the agreed refresh with `set_connector_schedule`, parents first, and offer wake-ups
-where the model declares them. A live view without schedules goes stale.
+where the model declares them. Give a connector that is still catching up no `startAt` in the future: it would hold
+the catch-up back until that time. A live view without schedules goes stale.
 
 ## 7. Answer, with a link
 
@@ -115,6 +120,9 @@ Call `get_lead_time`. For a window, pass `within` (24h, 7d, 30d, 3mo or 12mo, co
 `windowBy` when the window is about when cases started; for any other period, use the closest window and say in the
 answer which one the figure covers. Use `fromEvent` and `toEvent` when the user means a specific span, such as
 submitted to decided.
+
+The first `get_lead_time` after a large load or rebuild can take over a minute while Live indexes the cases. If it
+times out, call it again: once the cases are indexed, it answers in seconds.
 
 Check `doneRule` against what the user said a case being done means. If they differ, pass the user's closing event
 as `toEvent`, and offer to set the rule with `set_done_rule`. It changes the figures everyone sees in Live, so set

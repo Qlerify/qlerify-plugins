@@ -47,7 +47,9 @@ organization admin rights, so a refusal that names a permission means the token'
 4. **Build each table** in the planned order: `create_connector`, credentials if the source needs them,
    `get_connector_brief`, write the code, `test_connector_code` until it is right, `save_connector_code`,
    `set_connector_date_roles`, `adapter_dry_run`, then `ingest_connector` with a small first batch. Check it, then
-   ingest the rest with a `limit` above the table's size: without one an ingest lands only 25 rows. That first batch
+   ingest the rest with a `limit` above the table's size: without one an ingest lands only 25 rows. A delta source too
+   big for one run fills through its schedule instead: schedule it after the first batch, and check it, or build the
+   tables that link to it, once `get_adapter_config` shows `completeAt` (connector-rules section 12). That first batch
    lands for real: if checking it makes you change the row ids or the linking, empty the table with `clear_table`
    before ingesting again, since an ingest never removes rows. Details in "Writing a connector".
 5. **Check the result** after each table, not only at the end. See "Checking the result".
@@ -82,7 +84,7 @@ re-run rules). Follow it: it is the contract the platform runs your code against
 The rules that matter most in the code: authenticate only from `ctx.credentials`, and keep secrets out of the code,
 log lines and returned rows (a stored credential value in a tool result shows as `[credential <field> hidden]`);
 return every field the source has, not just the model's; give each row a stable `id` taken from the source's natural
-key; honour `ctx.limit`, where null means everything. The brief has the rest.
+key; return at most `ctx.limit` rows, which is always a number. The brief has the rest.
 
 ## When to ask
 
@@ -152,7 +154,9 @@ hide that. Tell the user what you found, and once they agree:
 3. Update the connectors the change touches and ingest again. `reload_model` already works the events out again when
    the change affects them. If acceptance criteria behind trigger rules changed, compile those rules again with
    `build_trigger_rules`, then run `rebuild_events`. A connector whose table was renamed or removed moves to the new
-   table with `repoint_connector`; check its code against that table before the next ingest.
+   table with `repoint_connector`; check its code against that table before the next ingest. If its polling stopped
+   because the old table was gone (`get_adapter_config` shows the reason in its `schedule`), turn it back on with
+   `set_connector_schedule`.
 
 ## Tool errors
 
