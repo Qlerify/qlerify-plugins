@@ -67,9 +67,11 @@ target fields and their allowed values, the events this table drives with their 
 parent tables, fields already seen at the source, and the code contract (`fetchRows(ctx)`, what `ctx` offers, the
 re-run rules). Follow it: it is the contract the platform runs your code against.
 
-- `test_connector_code` runs your code in the platform's sandbox, against the live source and real snapshots of the
-  workflow's tables, and saves nothing. Iterate with it. Read `missingRequired`, the error and the trace;
-  `extraFields` are source fields the model does not declare, which are kept, not an error.
+- `test_connector_code` runs the code you pass, unsaved, in the platform's sandbox, against the live source and real
+  snapshots of the workflow's tables, and saves nothing. Iterate with it. Read `missingRequired`, the error and the
+  trace; `extraFields` are source fields the model does not declare, which are kept, not an error. A test is a full
+  pull from the first row: to try the next batch of a connector that returns `more: true`, pass the `cursor` the
+  test returned.
 - `save_connector_code` stores the code. Pass `instructions`: a plain description of the source and of what the code
   does, including filters and re-run behaviour. It replaces the stored description, so send the whole of it every
   time. A later rebuild works from it.
@@ -78,6 +80,8 @@ re-run rules). Follow it: it is the contract the platform runs your code against
   Saving code does not work these out. Without them event dates fall back to a guess, and a step that is not mapped
   shares its row's last-change date, which makes lead times near zero. Events already in the log keep their dates
   until `rebuild_events`.
+- `adapter_dry_run` runs the saved connector the way an ingest will, still landing nothing: the last check before
+  `ingest_connector`. Use `test_connector_code` while you are still changing the code.
 - `build_connector` makes the platform's AI write the code from `instructions` instead. Use it only when you cannot
   write and test code yourself: it is slower and it bills the organisation.
 
