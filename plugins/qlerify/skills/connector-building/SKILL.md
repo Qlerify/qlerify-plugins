@@ -123,6 +123,11 @@ A connector is done when the cases are right.
   no parent's case, and nothing reports it.
 - `get_case_details` on a few cases: the events that fired should match each row's state. An order that is only
   placed must not have a "shipped" event.
+- When rows land but no events come (the ingest reply says so, or `rebuild_events` emits none for the table), check
+  the model before anything else. A step without a command is never worked out from data, and trigger rules are
+  refused for it: `reload_model` and `rebuild_events` name such steps in `eventsWithoutCommand`. Then check that
+  each step's command adds a field of its own that the table holds (a command that adds nothing new never fires),
+  each step's acceptance criteria and, for a dated step, its date role. Fix the model ("When the model is wrong").
 - When events fire that a row's state does not justify, or two sibling events need telling apart, compile trigger
   rules with `build_trigger_rules`, check each with `preview_trigger_rule` and read its code with
   `view_trigger_rules`, then run `rebuild_events`. Ingesting again only adds events; it never removes wrong ones.
