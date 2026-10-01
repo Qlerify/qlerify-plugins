@@ -101,9 +101,9 @@ the source dates on its own to that field: events are dated when they are first 
 `rebuild_events`. Ingest each table in full: pass `ingest_connector` a `limit` above the table's size, since without
 one it lands only a first batch. A connector that checks its own table and would not finish in one run's time is
 ingested in batches instead (`connector-building`, connector-rules section 12). A delta connector over a source too
-big for one run fills through its schedule: schedule it right after its first batch, go on with the tables that do
-not link to it, and check it, or fill the tables that link to it, once `get_adapter_config` no longer shows
-`catchingUp`. If it is still catching up when everything else is done, say the figures are partial and when its next
+big for one run fills through its schedule: schedule it right after its first batch, without a `startAt`, go on with
+the tables that do not link to it, and check it, or fill the tables that link to it, once `get_adapter_config` shows
+`completeAt`. If it is still catching up when everything else is done, say the figures are partial and when its next
 run is. Check the cases as that skill describes before moving on, and compare each step's event count with the rows
 that should have it (for a dated step, the rows whose date field is filled): `rebuild_events` reports the count per
 event.
@@ -111,7 +111,8 @@ event.
 ## 6. Keep it live
 
 Schedule every connector at the agreed refresh with `set_connector_schedule`, parents first, and offer wake-ups
-where the model declares them. A live view without schedules goes stale.
+where the model declares them. Give a connector that is still catching up no `startAt` in the future: it would hold
+the catch-up back until that time. A live view without schedules goes stale.
 
 ## 7. Answer, with a link
 

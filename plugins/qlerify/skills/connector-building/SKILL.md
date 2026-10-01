@@ -49,9 +49,9 @@ organization admin rights, so a refusal that names a permission means the token'
    `set_connector_date_roles`, `adapter_dry_run`, then `ingest_connector` with a small first batch. Check it, then
    ingest the rest with a `limit` above the table's size: without one an ingest lands only 25 rows. A delta source too
    big for one run fills through its schedule instead: schedule it after the first batch, and check it, or build the
-   tables that link to it, once `get_adapter_config` no longer shows `catchingUp` (connector-rules section 12). That
-   first batch lands for real: if checking it makes you change the row ids or the linking, empty the table with
-   `clear_table` before ingesting again, since an ingest never removes rows. Details in "Writing a connector".
+   tables that link to it, once `get_adapter_config` shows `completeAt` (connector-rules section 12). That first batch
+   lands for real: if checking it makes you change the row ids or the linking, empty the table with `clear_table`
+   before ingesting again, since an ingest never removes rows. Details in "Writing a connector".
 5. **Check the result** after each table, not only at the end. See "Checking the result".
 6. **Fix the model** when the data proves it wrong. See "When the model is wrong".
 7. **Keep it running** once everything checks out: schedules, wake-ups and notifications. See
@@ -154,7 +154,9 @@ hide that. Tell the user what you found, and once they agree:
 3. Update the connectors the change touches and ingest again. `reload_model` already works the events out again when
    the change affects them. If acceptance criteria behind trigger rules changed, compile those rules again with
    `build_trigger_rules`, then run `rebuild_events`. A connector whose table was renamed or removed moves to the new
-   table with `repoint_connector`; check its code against that table before the next ingest.
+   table with `repoint_connector`; check its code against that table before the next ingest. If its polling stopped
+   because the old table was gone (`get_adapter_config` shows the reason in its `schedule`), turn it back on with
+   `set_connector_schedule`.
 
 ## Tool errors
 
