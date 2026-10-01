@@ -151,7 +151,8 @@ hide that. Tell the user what you found, and once they agree:
    stored values would be lost before calling it again with `confirm: true`.
 3. Update the connectors the change touches and ingest again. `reload_model` already works the events out again when
    the change affects them. If acceptance criteria behind trigger rules changed, compile those rules again with
-   `build_trigger_rules`, then run `rebuild_events`.
+   `build_trigger_rules`, then run `rebuild_events`. A connector whose table was renamed or removed moves to the new
+   table with `repoint_connector`; check its code against that table before the next ingest.
 
 ## Tool errors
 

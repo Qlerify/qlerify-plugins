@@ -36,7 +36,7 @@ give empty or wrong cases in Live. Apply these rules whenever the model will run
   An outcome that can happen at any point (withdrawn) still makes every earlier step fire, so in Live it needs
   trigger rules (`build_trigger_rules`).
 - **Every end event finishes the case.** Live counts a case done once any event that nothing follows has fired,
-  unless someone changes the rule in Live's Overview under "Done means…"; no tool can set it. Lead a side branch
+  unless the rule is changed: "Done means…" in Live's Overview, or `set_done_rule`. Lead a side branch
   that is not an ending (reminders, notifications) back into the main flow, so the only events with nothing after
   them are real endings. A step that only some cases reach after the real ending (a follow-up sent only when the
   customer must act) must not be the last step, or the cases that skip it never finish: end the flow at the step
@@ -70,4 +70,5 @@ give empty or wrong cases in Live. Apply these rules whenever the model will run
 
 `validate_domain_model` does not check any of this. In Live, `create_workflow` with `dryRun: true` fetches the model
 and reports the case root, the tables that cannot reach it, the done rule (`doneRule`: check that every way a case
-can end is in it), and the problems that would stop the load.
+can end is in it), and the problems that would stop the load. When the case root is not the record the user counts,
+`rootAggregate` on `create_workflow` picks that one; a table that cannot reach the root needs a link, not a new root.
