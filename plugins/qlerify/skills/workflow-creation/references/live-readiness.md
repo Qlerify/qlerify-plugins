@@ -35,12 +35,13 @@ give empty or wrong cases in Live. Apply these rules whenever the model will run
   command. Live then fires each branch from its own field instead of the status, and that field can date the step.
   An outcome that can happen at any point (withdrawn) still makes every earlier step fire, so drive such a flow from
   dates instead (next rule).
-- **Drive the steps from dates when an ending can come at any point.** When records can be cancelled, withdrawn or
-  expire at any stage, do not name the source's status field `status`: keep it under another name
-  (`sourceStatus`), where Live treats it as plain data. Give every step and every ending a date field that its own
-  command sets, and map each step to its field in the connector's date roles. A step then counts once its own date
-  is filled, whatever the status says, so a date set in advance (an expiry) must stay empty until it passes.
-  Trigger rules (`build_trigger_rules`) are for when the source has no such dates.
+- **Drive the steps from dates when an ending can come at any point.** Check every value the source's status takes.
+  When records can be cancelled, withdrawn, rejected, dropped or expire at any stage, do not name the source's
+  status field `status`: keep it under another name (`sourceStatus`), where Live treats it as plain data. Give every
+  step and every ending a date field that its own command sets, and map each step to its field in the connector's
+  date roles. A step then counts once its own date is filled, whatever the status says, so a date set in advance (an
+  expiry) must stay empty until it passes. Trigger rules (`build_trigger_rules`) are for when the source has no such
+  dates.
 - **Every end event finishes the case.** Live counts a case done once any event that nothing follows has fired,
   unless the rule is changed: "Done means…" in Live's Overview, or `set_done_rule`. Lead a side branch
   that is not an ending (reminders, notifications) back into the main flow, so the only events with nothing after
