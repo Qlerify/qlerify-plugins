@@ -211,7 +211,8 @@ exact message with `preview_connector_notification`. Leave `problems` and `stopp
 ## 11. Knowing the source
 
 When you are unsure of a source API's endpoints, fields, authentication or pagination, read the vendor's public
-documentation before writing code, and use real field names rather than guesses. After the first successful test,
+documentation before writing code, and use real field names rather than guesses. If it limits callers without a key
+and offers a free one, tell the user what the key would save. After the first successful test,
 `discover_source_fields` records the source's actual field shape on the connector, and later briefs include it.
 
 ## 12. Limits
@@ -222,16 +223,16 @@ documentation before writing code, and use real field names rather than guesses.
   A manual ingest passes no cursor, so a plain pull run again returns the same first rows. A connector that checks
   its own table (section 4) returns the next ones instead: when one run of it would not fit the time budget or the AI
   call limit, ingest it in batches with a smaller `limit` until a run lands nothing new.
-- A delta connector (section 4) whose source holds more than one run can fetch lists the oldest changes first and
-  adds `more: true` when it stops at the limit. Ingest a first batch and schedule it straight away: the scheduled runs
-  carry on from its cursor, a few minutes apart, until it has caught up. Give it no `startAt` until then: a `startAt`
-  in the future holds those runs back until that time. Manual pulls cannot finish it, since each one starts again
-  from the first row. If the user wants it manual only, ask whether it may run on a schedule until it has caught up.
-  The schedule stays on until someone turns it off, so turn it off with `set_connector_schedule` then, or tell the
-  user to. The table holds the whole source once `get_adapter_config` shows `completeAt`: check its cases, and fill
-  the tables that link to it, only then. The catch-up runs only while the schedule is on (`nextRunAt` is set). If
-  `catchingUp` turns false without `completeAt`, the catch-up stopped: the last run's notes in `get_connector_history`
-  say why.
+- A delta connector (section 4) whose source holds more than one run can fetch lists the oldest changes first and adds
+  `more: true` when it stops at the limit, or early to stay inside the time limit. Ingest a first batch and schedule
+  it straight away: the scheduled runs carry on from its cursor, a few minutes apart, until it has caught up. Give it
+  no `startAt` until then: a `startAt` in the future holds those runs back until that time. Manual pulls cannot finish
+  it, since each one starts again from the first row. If the user wants it manual only, ask whether it may run on a
+  schedule until it has caught up. The schedule stays on until someone turns it off, so turn it off with
+  `set_connector_schedule` then, or tell the user to. The table holds the whole source once `get_adapter_config` shows
+  `completeAt`: check its cases, and fill the tables that link to it, only then. The catch-up runs only while the
+  schedule is on (`nextRunAt` is set). If `catchingUp` turns false without `completeAt`, the catch-up stopped: the
+  last run's notes in `get_connector_history` say why.
 - `ctx.readTable` gives at most 10,000 rows per table. A connector that checks its own table for work already done
   cannot see past that, so filter at the source as well once a table grows that large.
 - A run is killed after 180 seconds and loses every row it produced; run independent AI batches and detail calls at

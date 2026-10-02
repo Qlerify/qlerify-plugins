@@ -67,11 +67,20 @@ When the user gives a model (a modeler link or a workflow's name), do not model 
 `workflow-creation`'s `references/live-readiness.md` and go to step 4. If it breaks a rule, tell the user what and
 why, and change it only once they agree. `validate_domain_model` is for models you build.
 
-Otherwise follow `workflow-creation`, and its `references/live-readiness.md` above all: that is what makes the
-cases come out right in Live. When the case follows a state machine and `workflow-creation` asks for approval of
-the state map (Phase S), still write the map, but do not wait for approval: take the states and their order from
-the source's real status values, note the map in `live-view.md`, and carry on. The user reviews the model in the
-modeler at the end.
+Otherwise load `workflow-creation` and read its `references/live-readiness.md` before you create anything: that is
+what makes the cases come out right in Live. At the least, the model needs:
+
+- a command on every step. Live never works out a step without one from data, so a model of events alone loads
+  and stays empty;
+- acceptance criteria on every step, whose Then names the field or status value that shows the step happened;
+- a field named `id` on every entity, and on every child a field holding its parent's id;
+- every way a case can end, the alternative endings included;
+- for each step, the field that dates it, or every status value in order. When an ending can come at any point
+  (cancelled, withdrawn), drive the steps from their dates instead (`live-readiness.md`, "Status and steps").
+
+When the case follows a state machine and `workflow-creation` asks for approval of the state map (Phase S), still
+write the map, but do not wait for approval: take the states and their order from the source's real status values,
+note the map in `live-view.md`, and carry on. The user reviews the model in the modeler at the end.
 
 Live fetches the model with the Live organization's own modeler key, so the project must have that key's account
 as a member. Prefer a project that a `modelLink` in Live's `list_workflows` already names. Do not ask about the
@@ -85,7 +94,8 @@ project up front: step 4's check tells you whether Live can fetch the model. Fin
    `rootAggregate`. Tables that cannot reach the case root need a link to it in the model (a child holding its
    parent's id), not a different root. It also reports `doneRule`, when a case will count as done: if a way cases
    end is missing from it (a last step only some cases reach), fix the model, or set the rule with `set_done_rule`
-   once the workflow exists and the user agrees.
+   once the workflow exists and the user agrees. `eventsWithoutCommand` names the steps that have no command: give
+   each one a command in the modeler before you go on.
 2. `create_workflow` without `dryRun`, with the same `rootAggregate` if you passed one. It returns the Live
    `workflowId` and `url`. For a workflow that already exists, `set_case_root` changes the case root.
 

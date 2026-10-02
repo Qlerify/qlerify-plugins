@@ -33,8 +33,15 @@ give empty or wrong cases in Live. Apply these rules whenever the model will run
   Application Approved. Put the shared path first and the alternative outcomes last, and model each outcome as a
   branch of a decision whose command adds a field of its own (`approvedAt`, `rejectedAt`) rather than one shared
   command. Live then fires each branch from its own field instead of the status, and that field can date the step.
-  An outcome that can happen at any point (withdrawn) still makes every earlier step fire, so in Live it needs
-  trigger rules (`build_trigger_rules`).
+  An outcome that can happen at any point (withdrawn) still makes every earlier step fire, so drive such a flow from
+  dates instead (next rule).
+- **Drive the steps from dates when an ending can come at any point.** Check every value the source's status takes.
+  When records can be cancelled, withdrawn, rejected, dropped or expire at any stage, do not name the source's
+  status field `status`: keep it under another name (`sourceStatus`), where Live treats it as plain data. Give every
+  step and every ending a date field that its own command sets, and map each step to its field in the connector's
+  date roles. A step then counts once its own date is filled, whatever the status says, so a date set in advance (an
+  expiry) must stay empty until it passes. Trigger rules (`build_trigger_rules`) are for when the source has no such
+  dates.
 - **Every end event finishes the case.** Live counts a case done once any event that nothing follows has fired,
   unless the rule is changed: "Done means…" in Live's Overview, or `set_done_rule`. Lead a side branch
   that is not an ending (reminders, notifications) back into the main flow, so the only events with nothing after
@@ -50,6 +57,9 @@ give empty or wrong cases in Live. Apply these rules whenever the model will run
   counts only when every field its command adds is filled, and a yes/no field at false counts as empty. An optional
   field on the command (a flag, a text that can be blank) then stops the step for those rows, so keep such fields
   on the entity only.
+- **Give every event a command.** Live works out from data only a step that has one: an event without a command is
+  shown in the flow and never fires, so a model of events alone loads and stays empty, and a case that ends at such
+  a step never counts as done.
 - **Write acceptance criteria for every event.** At least one Given/When/Then whose Then names the data change that
   shows the step happened: a field filled, a status value. Live gives them to the code that fills the tables and to
   the rules that tell events apart.
@@ -70,5 +80,6 @@ give empty or wrong cases in Live. Apply these rules whenever the model will run
 
 `validate_domain_model` does not check any of this. In Live, `create_workflow` with `dryRun: true` fetches the model
 and reports the case root, the tables that cannot reach it, the done rule (`doneRule`: check that every way a case
-can end is in it), and the problems that would stop the load. When the case root is not the record the user counts,
-`rootAggregate` on `create_workflow` picks that one; a table that cannot reach the root needs a link, not a new root.
+can end is in it), the problems that would stop the load, and `eventsWithoutCommand`, the steps that would never
+fire. When the case root is not the record the user counts, `rootAggregate` on `create_workflow` picks that one; a
+table that cannot reach the root needs a link, not a new root.
