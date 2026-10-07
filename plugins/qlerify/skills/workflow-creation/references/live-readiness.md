@@ -64,6 +64,14 @@ give empty or wrong cases in Live. Apply these rules whenever the model will run
   shows the step happened: a field filled, a status value. Live gives them to the code that fills the tables and to
   the rules that tell events apart.
 
+## Source systems
+
+- **One bounded context per source system.** Live shows each bounded context as one system: the Systems page lists
+  its tables under it, and its connectors are named after it. Put the tables of each system the data comes from (an
+  ERP, a CRM, a ticketing tool) in a context named after that system, and keep each context to one system, even
+  where the general rule would merge them. A child kept in another system then sits in another context than its
+  parent and holds the parent's id as a flat `<parent>Id` string.
+
 ## Names
 
 - **Field names:** English letters, digits and `_` only, in camelCase, not starting with a digit: no å, ä, ö,
@@ -73,8 +81,10 @@ give empty or wrong cases in Live. Apply these rules whenever the model will run
   table name short.
 - **Entity and event names in English letters.** The modeler drops letters such as å, ä and ö from the keys Live
   uses, so the table gets a different name than the entity and a child's `<entity>Id` field no longer matches it.
-- **One name per entity across bounded contexts.** Two systems that both hold customers get `ErpCustomer` and
-  `CrmCustomer`, not two `Customer` entities.
+- **Entity, event and command names unique across bounded contexts.** Live reads every context into one model, so
+  a name used in two contexts points at one thing. Two systems that both hold customers get `ErpCustomer` and
+  `CrmCustomer`, their events Erp Customer Created and Crm Customer Created, and their commands Create Erp Customer
+  and Create Crm Customer.
 
 ## Checking before the load
 

@@ -314,6 +314,7 @@ Create bounded contexts BEFORE entities, so entities can be assigned during crea
 - Ask: "Could a team realistically build and deploy this as a separate service?" If not → same BC
 - Over-splitting creates unnecessary inter-service complexity (distributed transactions, API contracts, eventual consistency)
 - Common pattern: start with 1 BC, split later when the domain grows and clear boundaries emerge
+- A model that runs in Qlerify Live is cut by source system instead: one BC per system the data comes from (see `references/live-readiness.md`)
 
 **Examples:**
 

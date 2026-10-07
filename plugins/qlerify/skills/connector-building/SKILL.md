@@ -141,8 +141,9 @@ A connector is done when the cases are right.
   differs from what the code returns (rounding, formatting, types). Compare a row from `list_table_rows` with your
   test output and tell the user if the platform changed the value.
 - `get_lead_time` gives the median and P85 lead time over the cases, with how many it measured and left out, and
-  `reportsUrl`, the Reports page with the same window. Use it for any figure over many cases rather than adding up
-  events case by case.
+  `reportsUrl`, the Reports page with the same window; `groupBy` splits it by a field of the case's record. Use it
+  for any figure over many cases rather than adding up events case by case. `export_case_timeline` returns each
+  case's steps with their dates, a page at a time, for a figure it does not give.
 - The case tools (`list_cases`, `find_case`, `get_case_details`, `get_event_log`) group events by the workflow's own
   case unless you pass `caseType`, and that default view is the one to check connectors in. Another entity as
   `caseType` regroups the same events around that object, one case per order for instance: an event can then sit in
