@@ -129,7 +129,9 @@ the catch-up back until that time. A live view without schedules goes stale.
 Call `get_lead_time`. For a window, pass `within` (24h, 7d, 30d, 3mo or 12mo, counted back from now) and
 `windowBy` when the window is about when cases started; for any other period, use the closest window and say in the
 answer which one the figure covers. Use `fromEvent` and `toEvent` when the user means a specific span, such as
-submitted to decided.
+submitted to decided. When the user wants the figure per type, region or any other value of a field on the case's
+record, pass that field as `groupBy`: each value gets its own figures and basis, and its own `reportsUrl` when the
+Reports page can filter on that field.
 
 The first `get_lead_time` after a large load or rebuild can take over a minute while Live indexes the cases. If it
 times out, call it again: once the cases are indexed, it answers in seconds.
@@ -153,7 +155,9 @@ Answer with:
   `reportsShowsThisFigure` is false, say the page shows the default figure rather than this one.
 
 If many measured cases rely on estimated dates, say the figure is approximate and name the table that lacks a real
-date. Do not work a median out by hand from single cases.
+date. Do not work out by hand a figure `get_lead_time` gives. For one it does not give (a trend by month, the
+slowest cases), page through `export_case_timeline` with the same `caseType` and window, treat the dates it marks
+estimated as approximate, and say the figure was worked out outside Live, so it can differ from Live's own.
 
 ## When the user must act
 
