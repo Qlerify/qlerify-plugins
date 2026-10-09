@@ -96,7 +96,7 @@ moves its case forward.
 
 - **Delta** is the right choice whenever the source can answer "what changed since": return `{ rows, cursor }` and
   read only changes after `ctx.cursor` on a delta pull. The brief explains it. `set_connector_cursor` moves a date
-  cursor by hand, for example to start from a chosen day, or clears it so the next scheduled run pulls in full.
+  cursor by hand, for example to start from a chosen day, or clears it so the next run loads everything.
 - **Computed content** (an AI call or a paid API per row) needs the user's choice before building:
     - **incremental** (recommend it, and use it when they have no preference): read this connector's own table with
       `ctx.readTable` and process only source items that have no row yet. A run that finds nothing new returns an empty
@@ -190,8 +190,8 @@ output tokens each; a prompt containing one of the connector's credential values
 **Schedules.** If the user mentioned a cadence at any point ("every 6 hours", "nightly", "keep it in sync"), act on
 it before finishing: convert it to minutes (6 hours is 360, daily is 1440, the minimum is 5) and call
 `set_connector_schedule`. Pass `startAt` whenever the time of day matters or connectors must run in order; without
-it, the clock counts from each connector's last run. Leave it off a connector that is still catching up (section
-12). If you cannot honour the cadence, say so. Never let it pass silently.
+it, the clock counts from each connector's last run. If you cannot honour the cadence, say so. Never let it pass
+silently.
 
 **Wake-ups.** `get_adapter_config` returns `wakeSources`: the connectors the model says this one waits for (declared
 in the modeler by giving an event a domain-event schema in a read-model slot). When the list is not empty, offer
@@ -217,22 +217,24 @@ and offers a free one, tell the user what the key would save. After the first su
 
 ## 12. Limits
 
-- `ingest_connector` lands 25 rows unless you pass a `limit`, and uses the `limit` you pass as given, even above
-  10,000. Pulls that set no number stop at 10,000 rows: scheduled runs, and `reload_model` with `rebuild: "full"`.
-  For a first load, pass a `limit` above the source's size when one run can fetch it all within the time limit below.
-  A manual ingest passes no cursor, so a plain pull run again returns the same first rows. A connector that checks
-  its own table (section 4) returns the next ones instead: when one run of it would not fit the time budget or the AI
-  call limit, ingest it in batches with a smaller `limit` until a run lands nothing new.
-- A delta connector (section 4) whose source holds more than one run can fetch lists the oldest changes first and adds
-  `more: true` when it stops at the limit, or early to stay inside the time limit. Ingest a first batch and schedule
-  it straight away: the scheduled runs carry on from its cursor, a few minutes apart, until it has caught up. Give it
-  no `startAt` until then: a `startAt` in the future holds those runs back until that time. Manual pulls cannot finish
-  it, since each one starts again from the first row. If the user wants it manual only, ask whether it may run on a
-  schedule until it has caught up. The schedule stays on until someone turns it off, so turn it off with
-  `set_connector_schedule` then, or tell the user to. The table holds the whole source once `get_adapter_config` shows
-  `completeAt`: check its cases, and fill the tables that link to it, only then. The catch-up runs only while the
-  schedule is on (`nextRunAt` is set). If `catchingUp` turns false without `completeAt`, the catch-up stopped: the
-  last run's notes in `get_connector_history` say why.
+- For a connector that copies a source (`sync`), `ingest_connector` without a `limit` loads everything in the
+  background: the first batch starts from the oldest row, each later one carries on after the position the last one
+  returned (the brief tells the code to list the oldest rows first and add `more: true` when it stops at the limit),
+  and the load keeps going after the call returns. Live picks what to load by the connector's state: nothing loaded
+  yet means everything, a load that stopped or failed carries on where it stopped, and a complete connector fetches
+  what changed. `get_connector_load` follows a load, and with `waitSeconds` (up to 45) answers as soon as it moves on;
+  `stop_connector_load` stops it. While a load runs nothing else changes that connector, and the workflow's events are
+  worked out once it finishes, so figures are partial until then. A scheduled run that falls due for a full pull, or
+  finds more rows waiting, hands over to a load the same way; a person's Stop holds that back until the next regular
+  run. A load stops when the workflow holds 200,000 rows. `get_adapter_config` shows `loading` while a load runs,
+  `catchingUp` when more rows are waiting and nothing is loading them, and `completeAt` once a pull has brought in the
+  whole source: check its cases, and fill the tables that link to it, only then. If a load ends without `completeAt`,
+  `get_connector_load` says why.
+- With a `limit`, `ingest_connector` runs once and lands at most that many rows, up to 10,000: a 25-row run checks the
+  mapping. Any other connector runs once, 25 rows unless a `limit` says otherwise, and `reload_model` with
+  `rebuild: "full"` stops at 10,000 rows per connector. A connector that checks its own table (section 4) returns the
+  next rows on each run: when one run of it would not fit the time budget or the AI call limit, ingest it in batches
+  with a smaller `limit` until a run lands nothing new.
 - `ctx.readTable` gives at most 10,000 rows per table. A connector that checks its own table for work already done
   cannot see past that, so filter at the source as well once a table grows that large.
 - A run is killed after 180 seconds and loses every row it produced; run independent AI batches and detail calls at
