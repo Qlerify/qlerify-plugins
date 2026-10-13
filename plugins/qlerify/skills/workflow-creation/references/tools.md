@@ -446,10 +446,23 @@ The whole batch is atomic: if any update fails validation, none are applied.
 
 ### delete_read_model
 
-Remove a read model from the event.
+Permanently delete a read model and all its fields. If the read model is shared across several events, its card on every event is removed as well. To take a read model off specific events and keep it, use `detach_read_models` instead.
 
 - `workflowId` — Identifies the workflow
 - `readModel` — `$ref` path to the read model
+
+### detach_read_models
+
+Detach one or more read models from domain events without deleting them. Each detachment removes only the Read Model card linking that read model to that event; the read model, its fields, and its attachments to other events are kept. Pass an array of detachments; for a single one, pass an array with one element.
+
+A read model detached from its last event stays in the workflow (listed under `schemas.queries`). Re-attach it with `create_read_models` using the same name, or remove it with `delete_read_model`.
+
+- `workflowId` — Identifies the workflow
+- `detachments` — Array of read model / event pairs, each with:
+  - `readModel` — Required. `$ref` path to the read model (e.g., `#/schemas/queries/GetOrderDetails`)
+  - `domainEvent` — Required. `$ref` path to the event to detach it from (e.g., `#/domainEvents/OrderShipped`)
+
+The whole batch is validated first: if any read model is not attached to the given event, nothing is detached.
 
 ---
 
