@@ -108,21 +108,20 @@ Follow `connector-building` for every table, parents before children. Ask for al
 `request_connector_credentials` for each connector that needs them, give the user every form link in one message,
 and wait once. Before the full ingest, set each connector's date roles, including `events`, which maps every step
 the source dates on its own to that field: events are dated when they are first worked out, so dates set later need
-`rebuild_events`. Ingest each table in full: pass `ingest_connector` a `limit` above the table's size, since without
-one it lands only a first batch. A connector that checks its own table and would not finish in one run's time is
-ingested in batches instead (`connector-building`, connector-rules section 12). A delta connector over a source too
-big for one run fills through its schedule: schedule it right after its first batch, without a `startAt`, go on with
-the tables that do not link to it, and check it, or fill the tables that link to it, once `get_adapter_config` shows
-`completeAt`. If it is still catching up when everything else is done, say the figures are partial and when its next
-run is. Check the cases as that skill describes before moving on, and compare each step's event count with the rows
-that should have it (for a dated step, the rows whose date field is filled): `rebuild_events` reports the count per
-event.
+`rebuild_events`. Ingest each table in full: `ingest_connector` without a `limit` loads everything a connector that
+copies a source has, in the background. Go on with the tables that do not link to it, and check it, or fill the
+tables that link to it, once `get_adapter_config` shows `completeAt`. Pass any other connector a `limit` above the
+table's size, or ingest it in batches when it checks its own table and would not finish in one run's time
+(`connector-building`, connector-rules section 12). Events are worked out once the workflow's loads finish: if one is
+still loading when everything else is done, say the figures are partial and give the user its `connectorUrl` from
+`get_connector_load`. Check the cases as that skill describes before moving on, and compare each step's event count
+with the rows that should have it (for a dated step, the rows whose date field is filled): `rebuild_events` reports
+the count per event.
 
 ## 6. Keep it live
 
 Schedule every connector at the agreed refresh with `set_connector_schedule`, parents first, and offer wake-ups
-where the model declares them. Give a connector that is still catching up no `startAt` in the future: it would hold
-the catch-up back until that time. A live view without schedules goes stale.
+where the model declares them. A live view without schedules goes stale.
 
 ## 7. Answer, with a link
 
