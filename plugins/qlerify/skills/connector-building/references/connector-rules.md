@@ -66,8 +66,8 @@ Ask only what the conversation has not answered, and for all tables at once rath
    section 4.
 4. **Case linkage.** Section 3.
 5. **Which events fire.** This is not a choice: after every run the platform works out the events the landed rows
-   justify. Compile trigger rules only when the user states per-event conditions or your checks show wrong events
-   (section 7).
+   justify. Compile trigger rules for the steps listed in `eventsNeedingRules`, and otherwise only when the user
+   states per-event conditions or your checks show wrong events (section 7).
 
 ## 3. Linking rows into cases
 
@@ -80,7 +80,8 @@ a key you can derive, or a lookup your code performs against the parent table wi
 does not match does not fail; it silently starts a one-row case of its own. Write the agreed linkage into the
 `instructions` you save.
 
-`get_connector_brief` lists the linking fields the model declares, with real ids from the parent tables. For a
+`get_connector_brief` lists the linking fields the model declares, with real ids from the parent tables, including
+a computed field of a read model that names the parent: the source has no such field, so the code works it out. For a
 connector triggered by workflow events, copy the linkage off the event, which carries `aggregateId` and `caseId`. For
 demo data, section 5 settles linkage.
 
@@ -147,9 +148,13 @@ Ask which, unless the conversation makes it obvious.
 ## 7. Which events fire, and trigger rules
 
 By default the platform works out events from each row's state with general rules (creation, the status sequence,
-which fields are filled). Those cannot express conditions such as "fire Upsell Deal Created for upsell deals and Cross
-Sell Deal Created for cross-sell deals". When the user states such conditions, when one table drives sibling events
-that need telling apart, or when your checks show events a row's state does not justify:
+which fields are filled). A step that listens for another step, or that another step listens for, never gets those: it
+fires only from a trigger rule, and `create_workflow`, `reload_model`, `get_adapter_config`, `build_connector` and
+`save_connector_code` list such steps in `eventsNeedingRules`. The general rules also cannot express conditions such
+as "fire Upsell Deal Created for upsell deals and Cross Sell Deal Created for cross-sell deals". So once the code
+works, for every step in `eventsNeedingRules` (its Given/When/Then is the condition), when the user states such
+conditions, when one table drives sibling events that need telling apart, or when your checks show events a row's
+state does not justify:
 
 1. Restate each event with its condition.
 2. `build_trigger_rules` with the whole family of related events in one call, so sibling conditions stay consistent.
@@ -160,11 +165,11 @@ that need telling apart, or when your checks show events a row's state does not 
 5. Only then ingest, or run `rebuild_events` when rows are already in.
 
 The conditions belong to the events, and the model's Given/When/Then is their permanent home; the rule is compiled
-from them. Do not filter events inside the fetch code instead, and do not create rules nobody asked for. A rule can
-also name the row's own date column that best dates its event (a "shipped date" for an "Order Shipped" step),
-which gives a more precise time than the general created or last-modified dates. A rule whose date is worked out
-rather than read (the earlier of two dates, say) should return `businessAtEstimated: true`, so the date shows as
-estimated; check for it with `view_trigger_rules`.
+from them. Do not filter events inside the fetch code instead, and beyond `eventsNeedingRules` do not create rules
+nobody asked for. A rule can also name the row's own date column that best dates its event (a "shipped date" for an
+"Order Shipped" step), which gives a more precise time than the general created or last-modified dates. A rule whose
+date is worked out rather than read (the earlier of two dates, say) should return `businessAtEstimated: true`, so the
+date shows as estimated; check for it with `view_trigger_rules`.
 
 ## 8. Reading other tables and the event log
 

@@ -15,7 +15,7 @@ Primitive values returned by the query. Tag with `isFilter: true` if the field s
 ```
 
 ### Computed Fields
-When a read model needs a field that is not stored on the queried entity because it is calculated at runtime — totals, counts, sums, derived values, or composed/formatted values — mark it with `computed: true`. This tells the system the field is legitimate even though no matching entity field exists. Do not use `computed` for plain entity attributes or related entity references.
+When a read model needs a field that is not stored on the queried entity because it is calculated at runtime — totals, counts, sums, derived values, or composed/formatted values — mark it with `computed: true`. This tells the system the field is legitimate even though no matching entity field exists. Do not use `computed` for plain entity attributes or related entity references, except for a parent the queried record does not name, which a model that runs in Qlerify Live needs (see `live-readiness.md`).
 ```json
 [
   { "name": "totalAmount", "computed": true },
