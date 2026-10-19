@@ -13,9 +13,9 @@ give empty or wrong cases in Live. Apply these rules whenever the model will run
   child to the parent only, so `Order.items` on the parent does not bring the items into the order's case, while
   `OrderItem.orderId` does. When a record belongs to several parents, make the field one-to-many and fill it with
   every parent's id. When the source record has no field naming its parent (it is matched by a naming convention),
-  keep the entity as the source has it and give a read model of that table that some step reads a computed field
-  related to the parent, one-to-one and with no nested fields: the connector works out the parent's id, and Live
-  links through it.
+  keep the entity as the source has it and give a read model of that table that some step reads a field with
+  `computed: true` and `relatedEntity` set to the parent, one-to-one and with no nested fields. It is the one computed
+  reference the read-model rules allow: the connector works out the parent's id, and Live links through it.
 - **A record with its own source table and its own events is its own aggregate root**, not a part of another one:
   a time entry, a payment, a shipment. Live works out events only for tables that an event is rooted on.
 - **A part-of table with no events** (invoice lines) needs its root's id only when something must join the two,
