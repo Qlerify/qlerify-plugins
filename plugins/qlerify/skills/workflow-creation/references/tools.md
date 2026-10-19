@@ -205,7 +205,7 @@ Modify an existing domain event — change its name, lane, color, condition labe
 - `conditionLabel` — Branch label for events following a gateway, or empty string to clear (optional)
 - `group` — Name of an **existing** group to assign this event to, or empty string to remove it from its current group (optional). Create the group first with `create_group`, or the call fails. Only set it on the group's first event; the ones that follow inherit via the parent chain. No need to assign when the workflow has only one group (events auto-show under it).
 - `type` — Change the shape: `"domainEvent"` (a box) or `"decision"` (a diamond). Omit to leave unchanged. Converting a decision to an event clears its followers' branch condition labels (optional).
-- `aggregateRoot` — `$ref` path to entity, or empty string to remove (optional)
+- `aggregateRoot` — `$ref` path to entity, or empty string to take the aggregate root off the event. The entity itself is kept (optional)
 - `acceptanceCriteria` — Array of GWT strings, replaces all existing (optional)
 
 ### delete_domain_event
@@ -385,7 +385,7 @@ Define one or more domain event schemas in a single atomic workflow write. Pass 
 
 ### update_domain_event_schemas
 
-Modify one or more domain event schemas in a single atomic workflow write — rename, change entity, or modify fields. Pass an array of schema updates; for a single schema, pass an array with one element. Field operations are applied per schema in order: remove → update → add.
+Modify one or more domain event schemas in a single atomic workflow write — rename, change entity, or modify fields. Pass an array of schema updates; for a single schema, pass an array with one element. Field operations are applied per schema in order: remove → update → add. Renaming a schema also renames it on every event that shows it, as its domain event schema or as a read model.
 
 - `workflowId` — Identifies the workflow
 - `domainEventSchemas` — Array of schema updates, each with:
@@ -398,7 +398,7 @@ The whole batch is atomic: if any update fails validation, none are applied.
 
 ### delete_domain_event_schema
 
-Remove a domain event schema from the event.
+Permanently delete a domain event schema and all its fields. To take it off an event and keep it, use `detach_schemas` instead.
 
 - `workflowId` — Identifies the workflow
 - `domainEventSchema` — `$ref` path to the schema
@@ -440,7 +440,7 @@ Modify one or more read models in a single atomic workflow write — rename, cha
 
 - `workflowId` — Identifies the workflow
 - `readModels` — Array of read model updates, each with:
-  - `readModel` — `$ref` path to the read model (e.g., `#/schemas/queries/GetOrderDetails`). Required.
+  - `readModel` — `$ref` path to the read model (e.g., `#/schemas/queries/GetOrderDetails`). Required. Only queries are updated here: a domain event schema listed among an event's read models is changed with `update_domain_event_schemas`.
   - `name` — New name (optional)
   - `entity` — Updated source entity `$ref` path (optional)
   - `addFields`, `updateFields`, `removeFields` — Field modifications
@@ -450,23 +450,10 @@ The whole batch is atomic: if any update fails validation, none are applied.
 
 ### delete_read_model
 
-Permanently delete a read model and all its fields. If the read model is shared across several events, its card on every event is removed as well. To take a read model off specific events and keep it, use `detach_read_models` instead.
+Permanently delete a read model and all its fields, and take it off every event it is on. Only a query can be deleted here. To take a read model off specific events and keep it, use `detach_schemas` instead.
 
 - `workflowId` — Identifies the workflow
 - `readModel` — `$ref` path to the read model
-
-### detach_read_models
-
-Detach one or more read models from domain events without deleting them. Each detachment removes only the Read Model card linking that read model to that event; the read model, its fields, and its attachments to other events are kept. Pass an array of detachments; for a single one, pass an array with one element.
-
-A read model detached from its last event stays in the workflow (listed under `schemas.queries`). Re-attach it with `create_read_models` using the same name, or remove it with `delete_read_model`.
-
-- `workflowId` — Identifies the workflow
-- `detachments` — Array of read model / event pairs, each with:
-  - `readModel` — Required. `$ref` path to the read model (e.g., `#/schemas/queries/GetOrderDetails`)
-  - `domainEvent` — Required. `$ref` path to the event to detach it from (e.g., `#/domainEvents/OrderShipped`)
-
-The whole batch is validated first: if any read model is not attached to the given event, nothing is detached.
 
 ---
 
@@ -514,11 +501,25 @@ Modify a card — change its content or card type. Cards are identified by their
 
 ### delete_card
 
-Remove a card from an event. Cards are identified by their event and text.
+Remove a card from an event. Cards are identified by their event and text. To take a read model or a domain event schema off an event, use `detach_schemas`; for an aggregate root, use `update_domain_event`.
 
 - `workflowId`, `projectId` — Identifies the workflow
 - `domainEvent` — `$ref` path to the event the card is on
 - `description` — The card's description, used to locate it
+
+### detach_schemas
+
+Take read models and domain event schemas off events without deleting them. Each detachment names the event and exactly one of `readModel` or `domainEventSchema`, the same way `get_workflow` lists them on that event. Only that link is removed: the schema, its fields and its links to other events are kept. Pass an array of detachments; for a single one, pass an array with one element.
+
+A schema detached from its last event stays in the workflow and can still be updated or deleted. Put a read model back on an event with `create_read_models`, using the same name. To take an aggregate root off an event, use `update_domain_event` with `aggregateRoot` set to an empty string.
+
+- `workflowId`: Identifies the workflow
+- `detachments`: Array of detachments, each with:
+  - `domainEvent`: Required. `$ref` path to the event to detach from (e.g., `#/domainEvents/OrderShipped`)
+  - `readModel`: `$ref` path to one of the event's read models, as listed under its `readModels` (e.g., `#/schemas/queries/GetOrderDetails`). A read model can also be a domain event schema (e.g., `#/schemas/domainEvents/OrderPlaced`)
+  - `domainEventSchema`: `$ref` path to the event's own domain event schema, as listed under its `domainEventSchema` (e.g., `#/schemas/domainEvents/OrderShipped`)
+
+The whole batch is validated first: if any of them is not on the given event, nothing is detached.
 
 ---
 
