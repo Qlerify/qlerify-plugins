@@ -12,7 +12,10 @@ give empty or wrong cases in Live. Apply these rules whenever the model will run
   `<parent>Id` as a string, or a field with `relatedEntity` pointing at the parent. Live follows links from the
   child to the parent only, so `Order.items` on the parent does not bring the items into the order's case, while
   `OrderItem.orderId` does. When a record belongs to several parents, make the field one-to-many and fill it with
-  every parent's id.
+  every parent's id. When the source record has no field naming its parent (it is matched by a naming convention),
+  keep the entity as the source has it and give a read model of that table that some step reads a computed field
+  related to the parent, one-to-one and with no nested fields: the connector works out the parent's id, and Live
+  links through it.
 - **A record with its own source table and its own events is its own aggregate root**, not a part of another one:
   a time entry, a payment, a shipment. Live works out events only for tables that an event is rooted on.
 - **A part-of table with no events** (invoice lines) needs its root's id only when something must join the two,
@@ -62,7 +65,9 @@ give empty or wrong cases in Live. Apply these rules whenever the model will run
   a step never counts as done.
 - **Write acceptance criteria for every event.** At least one Given/When/Then whose Then names the data change that
   shows the step happened: a field filled, a status value. Live gives them to the code that fills the tables and to
-  the rules that tell events apart.
+  the rules that tell events apart. A step that listens for another step, or that another step listens for, fires
+  only from a rule written from them, so say what in the data proves it (a new record can be enough), which date it
+  carries, and, when a later state overwrites the proof, that a later state counts too.
 
 ## Source systems
 
