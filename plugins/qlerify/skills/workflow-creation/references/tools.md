@@ -365,6 +365,8 @@ existing domain event schemas under `schemas/domainEvents/`.
 
 Define one or more domain event schemas in a single atomic workflow write. Pass an array of schemas, each bound to a domain event; for a single schema, pass an array with one element. Schemas represent the data payload published when the event fires. Each event can have only one domain event schema, so each schema in the batch must target a different event.
 
+**Reuse:** if an entry's `name` matches an existing domain event schema, or another entry in the batch, that schema is linked to the event and any new fields are merged into it, as with read models.
+
 - `workflowId` — Identifies the workflow
 - `domainEventSchemas` — Array of schema definitions, each with:
   - `domainEvent` — `$ref` path to the event (e.g., `#/domainEvents/OrderPlaced`). Required.
@@ -420,7 +422,7 @@ Define one or more read models/queries in a single atomic workflow write. Pass a
 - `workflowId` — Identifies the workflow
 - `readModels` — Array of read model definitions, each with:
   - `domainEvent` — Required. `$ref` path to the event (e.g., `#/domainEvents/OrderPlaced`)
-  - `name` — Read model name with spaces (e.g., "Get Order Details")
+  - `name` — Read model name with spaces (e.g., "Get Order Details"). To show a domain event as a read model, give its domain event schema's name.
   - `description` — Optional one-sentence description of what the query returns and when it is used. Omit when the name already makes the intent obvious.
   - `cardinality` — Required. `"one-to-one"` or `"one-to-many"`
   - `entity` — Recommended. `$ref` path to the source entity (e.g., `#/schemas/entities/Order`)
@@ -511,7 +513,7 @@ Remove a card from an event. Cards are identified by their event and text. To ta
 
 Take read models and domain event schemas off events without deleting them. Each detachment names the event and exactly one of `readModel` or `domainEventSchema`, the same way `get_workflow` lists them on that event. Only that link is removed: the schema, its fields and its links to other events are kept. Pass an array of detachments; for a single one, pass an array with one element.
 
-A schema detached from its last event stays in the workflow and can still be updated or deleted. Put a read model back on an event with `create_read_models`, using the same name. To take an aggregate root off an event, use `update_domain_event` with `aggregateRoot` set to an empty string.
+A schema detached from its last event stays in the workflow and can still be updated or deleted. To put one back, use `create_read_models` or `create_domain_event_schemas` with its name. To take an aggregate root off an event, use `update_domain_event` with `aggregateRoot` set to an empty string.
 
 - `workflowId`: Identifies the workflow
 - `detachments`: Array of detachments, each with:
