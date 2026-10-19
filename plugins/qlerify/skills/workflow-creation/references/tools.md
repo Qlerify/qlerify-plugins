@@ -409,6 +409,8 @@ Remove a domain event schema from the event.
 
 Read models represent data queries and views — what the API returns to callers (GET endpoints / query operations). Use `get_workflow` to see existing read models. See `references/read-model-generation.md` for field design rules.
 
+**Update triggers:** a read model can record which domain events cause it to be refreshed. `get_workflow` returns them as `updateTriggers` on the query, each a `$ref` to a domain event schema. Set them with `updateTriggers` on `create_read_models` and change them with `addUpdateTriggers` / `removeUpdateTriggers` on `update_read_models`. A trigger may point at a domain event schema in another bounded context, which is how you record that a read model in one context is kept current by something happening in another.
+
 ### create_read_models
 
 Define one or more read models/queries in a single atomic workflow write. Pass an array of read models, each bound to a domain event; for a single read model, pass an array with one element. An event can carry several different read models (e.g. "Get Order Details" + "List Orders" both on `OrderPlaced`); only attaching the same read model name to the same event twice is rejected.
@@ -422,6 +424,7 @@ Define one or more read models/queries in a single atomic workflow write. Pass a
   - `description` — Optional one-sentence description of what the query returns and when it is used. Omit when the name already makes the intent obvious.
   - `cardinality` — Required. `"one-to-one"` or `"one-to-many"`
   - `entity` — Recommended. `$ref` path to the source entity (e.g., `#/schemas/entities/Order`)
+  - `updateTriggers` — Optional. `$ref` paths to the domain event schemas that refresh this read model (e.g., `#/schemas/domainEvents/OrderPlaced`). On a read model that already exists these are added to the ones it already has; this parameter can never remove or replace them.
   - `fields` — Array of field definitions. Each field:
     - `name` — camelCase
     - `description` — Short description of the field's meaning, purpose, or filter/computed intent. Add when non-obvious from the name; omit on self-explanatory fields.
@@ -441,6 +444,7 @@ Modify one or more read models in a single atomic workflow write — rename, cha
   - `name` — New name (optional)
   - `entity` — Updated source entity `$ref` path (optional)
   - `addFields`, `updateFields`, `removeFields` — Field modifications
+  - `addUpdateTriggers`, `removeUpdateTriggers` — Domain event schema `$ref` paths to add to or remove from the read model's update triggers. Removals are applied before additions. Adding one that is already set changes nothing; removing one that is not set is an error.
 
 The whole batch is atomic: if any update fails validation, none are applied.
 
