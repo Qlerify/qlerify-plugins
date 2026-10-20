@@ -103,7 +103,10 @@ Beyond its name and lane, an event can hold one command, one or more read models
 root, one domain event schema, and any number of requirement items (given-when-thens, user
 stories, …). None of these are drawn on the box — they live in the tabs and sidebar. Create and link
 them with the matching tools (`create_commands`, `create_read_models`, `create_entities`,
-`create_domain_event_schemas`, `create_card`) — see `references/tools.md`.
+`create_domain_event_schemas`, `create_card`) — see `references/tools.md`. Take a read model or the
+domain event schema off an event, and keep it in the workflow, with `detach_schemas`. Set which
+domain events update a read model with its update triggers on `create_read_models` and
+`update_read_models`.
 
 Cards can also carry **comments** and file attachments, but those are people-only features: they are
 not part of the workflow specification and there are no tools for them. If you are asked to comment
