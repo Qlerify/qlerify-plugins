@@ -400,7 +400,7 @@ The whole batch is atomic: if any update fails validation, none are applied.
 
 ### delete_domain_event_schema
 
-Permanently delete a domain event schema and all its fields. To take it off an event and keep it, use `detach_schemas` instead.
+Permanently delete a domain event schema and all its fields, and take it off every event it is on, including where it is shown as a read model. To take it off an event and keep it, use `detach_schemas` instead.
 
 - `workflowId` — Identifies the workflow
 - `domainEventSchema` — `$ref` path to the schema
