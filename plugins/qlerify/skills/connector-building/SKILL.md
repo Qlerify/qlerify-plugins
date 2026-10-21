@@ -64,13 +64,15 @@ already asked for; "When to ask" lists the exceptions.
 ## Writing a connector
 
 Write the code yourself. `get_connector_brief` returns exactly what the platform's own code writer is told: the
-target fields and their allowed values, the events this table drives with their acceptance criteria, real ids from
-parent tables, fields already seen at the source, and the code contract (`fetchRows(ctx)`, what `ctx` offers, the
-re-run rules). Follow it: it is the contract the platform runs your code against.
+target fields with their descriptions and allowed values, the read models the workflow reads from this table, the
+events this table drives with their acceptance criteria, real ids from parent tables, fields already seen at the
+source, and the code contract (`fetchRows(ctx)`, what `ctx` offers, the re-run rules). Follow it: it is the contract
+the platform runs your code against.
 
 - `test_connector_code` runs the code you pass, unsaved, in the platform's sandbox, against the live source and real
-  snapshots of the workflow's tables, and saves nothing. Iterate with it. Read `missingRequired`, the error and the
-  trace; `extraFields` are source fields the model does not declare, which are kept, not an error. A test is a full
+  snapshots of the workflow's tables, and saves nothing. Iterate with it. Read `missingRequired`,
+  `missingReadModelFields` (fields a read model lists that no returned row carries), the error and the trace;
+  `extraFields` are source fields the model does not declare, which are kept, not an error. A test is a full
   pull from the first row: to try the next batch of a connector that returns `more: true`, pass the `cursor` the
   test returned.
 - `save_connector_code` stores the code. Pass `instructions`: a plain description of the source and of what the code
@@ -130,7 +132,8 @@ A connector is done when the cases are right.
   placed must not have a "shipped" event.
 - When rows land but no events come (the ingest reply says so, or `rebuild_events` emits none for the table), check
   the model before anything else. A step without a command is never worked out from data, and trigger rules are
-  refused for it: `reload_model` and `rebuild_events` name such steps in `eventsWithoutCommand`. Then check that
+  refused for it: `reload_model` and `rebuild_events` name such steps in `eventsWithoutCommand`. A step listed in
+  `eventsNeedingRules` fires only from a trigger rule, so it stays empty until one is built. Then check that
   each step's command adds a field of its own that the table holds (a command that adds nothing new never fires),
   each step's acceptance criteria and, for a dated step, its date role. Fix the model ("When the model is wrong").
 - When events fire that a row's state does not justify, or two sibling events need telling apart, compile trigger
