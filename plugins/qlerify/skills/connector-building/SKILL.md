@@ -39,14 +39,18 @@ organization admin rights, so a refusal that names a permission means the token'
 2. **Plan the order.** A child row joins its parent's case only through a field holding the parent row's exact id
    (`orderId` holding an `Order.id`). So fill parents before children: the root table first, then the tables that
    point at it, and so on down. A table no event is rooted on is reference data; fill it before any connector that
-   reads it. A table has at most one connector, so repair an existing one instead of creating a second.
+   reads it. A table its read models describe gets one connector per read model, and a table no read model
+   describes one for the whole table (connector-rules section 13). Repair an existing one instead of creating a
+   second.
 3. **Ask once, for everything.** Settle what you cannot work out yourself for all tables at once, grouped by source
    system, instead of one table at a time: where the data lives and how to reach it, how often it should refresh,
    whether any connector writes to another system, and for each child table which source field carries the parent's
    id. Skip anything the workflow definition or the user already answered. See "When to ask".
 4. **Build each table** in the planned order: `create_connector`, credentials if the source needs them,
-   `get_connector_brief`, write the code, `test_connector_code` until it is right, `save_connector_code`,
-   `set_connector_date_roles`, `adapter_dry_run`, then `ingest_connector` with a small first batch. Check it, then
+   `get_connector_brief`, a read model's filters (connector-rules section 13), write the code, `test_connector_code`
+   until it is right, `save_connector_code`, `set_connector_date_roles`, `build_trigger_rules` for every step in the
+   connector's `eventsNeedingRules` (connector-rules section 7), `adapter_dry_run`, then `ingest_connector` with a
+   small first batch. Check it, then
    ingest the rest without a `limit`: a connector that copies a source loads all of it in the background, and
    `get_connector_load` follows it. Pass any other connector a `limit` above the table's size, since without
    one it lands 25 rows. Check the table, or build the tables that link to it, once `get_adapter_config` shows
@@ -74,7 +78,8 @@ the platform runs your code against.
   `missingReadModelFields` (fields a read model lists that no returned row carries), the error and the trace;
   `extraFields` are source fields the model does not declare, which are kept, not an error. A test is a full
   pull from the first row: to try the next batch of a connector that returns `more: true`, pass the `cursor` the
-  test returned.
+  test returned. For a read model it also reports `readModelProblems`, and takes `given` for the filters given each
+  time and `lookup` to run `lookupRows` for some ids.
 - `save_connector_code` stores the code. Pass `instructions`: a plain description of the source and of what the code
   does, including filters and re-run behaviour. It replaces the stored description, so send the whole of it every
   time. A later rebuild works from it.
@@ -132,13 +137,14 @@ A connector is done when the cases are right.
   placed must not have a "shipped" event.
 - When rows land but no events come (the ingest reply says so, or `rebuild_events` emits none for the table), check
   the model before anything else. A step without a command is never worked out from data, and trigger rules are
-  refused for it: `reload_model` and `rebuild_events` name such steps in `eventsWithoutCommand`. A step listed in
-  `eventsNeedingRules` fires only from a trigger rule, so it stays empty until one is built. Then check that
-  each step's command adds a field of its own that the table holds (a command that adds nothing new never fires),
-  each step's acceptance criteria and, for a dated step, its date role. Fix the model ("When the model is wrong").
-- When events fire that a row's state does not justify, or two sibling events need telling apart, compile trigger
-  rules with `build_trigger_rules`, check each with `preview_trigger_rule` and read its code with
-  `view_trigger_rules`, then run `rebuild_events`. Ingesting again only adds events; it never removes wrong ones.
+  refused for it: `reload_model` and `rebuild_events` name such steps in `eventsWithoutCommand`. Every step fires
+  only from its trigger rule, so a step listed in `eventsNeedingRules` stays empty until one is built. Then check
+  each rule against its step's acceptance criteria and, for a dated step, its date role. Fix the model ("When the
+  model is wrong").
+- When events fire that a row's state does not justify, or two sibling events need telling apart, rebuild each
+  rule with `build_trigger_rules`, passing what was wrong as `errorReport`, check each with `preview_trigger_rule`
+  and read its code with `view_trigger_rules`, then run `rebuild_events`. Ingesting again only adds events; it never
+  removes wrong ones.
 - When rows landed wrong (wrong ids, a child linked to the wrong parent), fix the code, `clear_table`, and ingest
   again. Ingesting again alone leaves the wrong rows in place.
 - When an ingest reports rows as updated on every run although nothing changed at the source, the stored value
