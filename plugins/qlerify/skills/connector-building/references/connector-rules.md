@@ -259,7 +259,9 @@ fields. A table no read model describes keeps one connector for the whole table.
   when no returned row carries a filter's field.
 - **Lookups.** Export `lookupRows(ctx)`: the records for `ctx.ids` as they are at the source now, ignoring the fixed
   filters. A one-item read model needs it and is never scheduled; its records come from `look_up_records`. For a list,
-  Live sees on full pulls which records left the read model and looks them up again with it.
+  Live sees on full pulls which records left the read model and looks them up again with it. Live also looks up the
+  records a step the read model is refreshed by names, right after a fetch works it out; those ids can come from
+  another system's data, so encode each one before it goes into a URL or a query.
 - Two connectors of one table write the same rows, so neither can fetch or load while the other does: it is
   refused until the other has finished. `copy_connector_credentials` gives a second connector the first one's
   credentials.

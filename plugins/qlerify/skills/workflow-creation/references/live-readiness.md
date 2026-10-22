@@ -59,6 +59,12 @@ give empty or wrong cases in Live. Apply these rules whenever the model will run
   every step fires only from a trigger rule written from them, so say what in the data proves it (a new record can
   be enough), which date it carries, and, when a later state overwrites the proof, that a later state counts too
   (Order Shipped: status is `SHIPPED` or `DELIVERED`), never an alternative outcome.
+- **Make a read model's update triggers the steps that change its records.** Once a fetch works out one of them
+  (a table's first full load refreshes nothing), Live looks up, by id, the records it names in that read model, and
+  marks each in or out by a list's fixed filters. A step on another table needs a field naming the record
+  (`<table>Id`, `relatedEntity`, or a computed reference on its read model). A step on the read model's own table
+  refreshes it only when another connector of that table brought the change, so the step a read model proves is a
+  poor trigger: its own fetch has just read it.
 
 ## Source systems
 
