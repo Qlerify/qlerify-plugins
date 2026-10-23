@@ -270,20 +270,25 @@ fields. A table no read model describes keeps one connector for the whole table.
 ## 14. Listeners
 
 A listener carries out one step in the system the step acts in, right after a step it listens for happens (a step
-whose read-model slot names another step's event). Listeners run as a dry run: a read (GET, or a GraphQL query) really
-runs only against the hosts in the listener's `readHosts`, and every other request is recorded and never sent.
+whose read-model slot names another step's event). It reaches only the hosts in its `hosts`. Armed as a dry run, a
+read (GET, or a GraphQL query) to those hosts really runs and every other request is recorded, never sent. Armed live,
+every request is sent to those hosts and nowhere else.
 
 - `list_listeners` shows each listening step and its listener. `create_listener` makes one; it borrows the
   credentials of a connector in the step's system, and is refused when that system has none.
 - Write the code yourself from `get_listener_brief`, or have Live's AI write it with `build_listener`. The code is
   `export async function act(ctx)`: `ctx.event` is the step it heard, `ctx.record` the row it acts on, and
-  `ctx.fetch` its only way out. No imports and no other network: the code is refused otherwise.
-- `test_listener` runs it once and records nothing; check the requests it would send. `save_listener_code` stores it.
-  When it checks the outside system first, set the API's host name with `set_listener_settings` `readHosts`, or every
-  read is answered "dry run" with no data.
+  `ctx.fetch` its only way out. No imports and no other network: the code is refused otherwise. A step can be heard
+  and an action run again, so the code checks first whether the step is already done, and signs in during the run
+  with the credentials when the system needs it.
+- Set the hosts with `set_listener_settings` `hosts`. `test_listener` runs it once as a dry run and records nothing;
+  check the requests it would send. `save_listener_code` stores it.
 - `arm_listener` answers first how many earlier occurrences it will skip: tell the user, then call again with
-  `confirm: true`. From then on each new occurrence queues one action (steps recorded again by
-  `rebuild_events` or a changed rule never do); `list_listener_actions` shows what each read and would have sent.
-  `pause_listener` stops it; new code, another connector or new read hosts pause it too.
+  `confirm: true`. From then on each new occurrence queues one action (steps recorded again by `rebuild_events` or a
+  changed rule never do). `pause_listener` stops it; new code, another connector or other hosts pause it too.
+- Arm it live (`live: true`) only when the user asks. It needs hosts and a test of the saved code that ended without
+  an error and stayed on those hosts. After a live action Live reads the record back: `list_listener_actions` shows
+  `confirm` as waiting, confirmed, or not seen when the step never showed. A failed, unknown or not-seen action is the
+  user's to check: `retry_listener_action` runs it again (live, it sends again), `dismiss_listener_action` closes it.
 - Mark a listener safe to repeat with `set_listener_settings` only when running it twice is harmless: an action whose
   outcome is unknown runs again only then.
