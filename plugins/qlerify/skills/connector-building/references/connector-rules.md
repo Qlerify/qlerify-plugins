@@ -16,6 +16,8 @@ The rules Qlerify Live's own connector assistant follows, written for an agent w
 10. Keeping connectors running
 11. Knowing the source
 12. Limits
+13. Read-model connectors
+14. Listeners
 
 ## 1. Connector types
 
@@ -66,8 +68,8 @@ Ask only what the conversation has not answered, and for all tables at once rath
    section 4.
 4. **Case linkage.** Section 3.
 5. **Which events fire.** This is not a choice: after every run the platform works out the events the landed rows
-   justify. Compile trigger rules for the steps listed in `eventsNeedingRules`, and otherwise only when the user
-   states per-event conditions or your checks show wrong events (section 7).
+   prove, each step only through its trigger rule. Build one for every step in `eventsNeedingRules`, with a
+   condition only when the user states one (section 7).
 
 ## 3. Linking rows into cases
 
@@ -147,14 +149,13 @@ Ask which, unless the conversation makes it obvious.
 
 ## 7. Which events fire, and trigger rules
 
-By default the platform works out events from each row's state with general rules (creation, the status sequence,
-which fields are filled). A step that listens for another step, or that another step listens for, never gets those: it
-fires only from a trigger rule, and `create_workflow`, `reload_model`, `get_adapter_config`, `build_connector` and
-`save_connector_code` list such steps in `eventsNeedingRules`. The general rules also cannot express conditions such
-as "fire Upsell Deal Created for upsell deals and Cross Sell Deal Created for cross-sell deals". So once the code
-works, for every step in `eventsNeedingRules` (its Given/When/Then is the condition), when the user states such
-conditions, when one table drives sibling events that need telling apart, or when your checks show events a row's
-state does not justify:
+Every step fires only from its trigger rule: a small check compiled from the step's Given/When/Then, which alone
+decides whether the step happened. A step with no rule fires nothing, and `create_workflow`, `reload_model`,
+`get_adapter_config`, `build_connector` and `save_connector_code` list such steps in `eventsNeedingRules`, each on
+the connector that holds its rule. A step dated after now waits until its date passes. So once the code works, build
+the rule of every step in the connector's `eventsNeedingRules` (its Given/When/Then is the condition, plus any the
+user states, such as "fire Upsell Deal Created for upsell deals and Cross Sell Deal Created for cross-sell deals"),
+and again when your checks show events a row's state does not justify:
 
 1. Restate each event with its condition.
 2. `build_trigger_rules` with the whole family of related events in one call, so sibling conditions stay consistent.
@@ -165,11 +166,10 @@ state does not justify:
 5. Only then ingest, or run `rebuild_events` when rows are already in.
 
 The conditions belong to the events, and the model's Given/When/Then is their permanent home; the rule is compiled
-from them. Do not filter events inside the fetch code instead, and beyond `eventsNeedingRules` do not create rules
-nobody asked for. A rule can also name the row's own date column that best dates its event (a "shipped date" for an
-"Order Shipped" step), which gives a more precise time than the general created or last-modified dates. A rule whose
-date is worked out rather than read (the earlier of two dates, say) should return `businessAtEstimated: true`, so the
-date shows as estimated; check for it with `view_trigger_rules`.
+from them. Do not filter events inside the fetch code instead. A rule can also name the row's own date column that
+best dates its event (a "shipped date" for an "Order Shipped" step), which gives a more precise time than the general
+created or last-modified dates. A rule whose date is worked out rather than read (the earlier of two dates, say)
+should return `businessAtEstimated: true`, so the date shows as estimated; check for it with `view_trigger_rules`.
 
 ## 8. Reading other tables and the event log
 
@@ -246,3 +246,49 @@ and offers a free one, tell the user what the key would save. After the first su
   the same time rather than one after another. A tool call can stop waiting before the work is done: Claude Code
   gives up after 60 seconds with "The operation timed out.", and Live answers after 240 seconds that the call may
   still complete. The work carries on either way, so check the result before you run a write again.
+
+## 13. Read-model connectors
+
+A table its read models describe gets one connector per read model: `create_connector` with `readModel`, which it
+refuses there without one (`list_model_kinds` lists each table's read models and the connector filling each). The
+brief then gives the read model as the contract: return exactly its records, with its fields and its worked-out
+fields. A table no read model describes keeps one connector for the whole table.
+
+- **Filters** live on the connector, not in the code. Set them with `set_read_model_filters` from the read model's
+  description: a `fixed` value is part of what it means ("only open orders"), a `given` one is supplied each time
+  (one customer's id). The code reads `ctx.filters` at run time, so a change needs no new code, and the test fails
+  when no returned row carries a filter's field.
+- **Lookups.** Export `lookupRows(ctx)`: the records for `ctx.ids` as they are at the source now, ignoring the fixed
+  filters. A one-item read model needs it and is never scheduled; its records come from `look_up_records`. For a list,
+  Live sees on full pulls which records left the read model and looks them up again with it. Live also looks up the
+  records a step the read model is refreshed by names, right after a fetch works it out; those ids can come from
+  another system's data, so encode each one before it goes into a URL or a query.
+- Two connectors of one table write the same rows, so neither can fetch or load while the other does: it is
+  refused until the other has finished. `copy_connector_credentials` gives a second connector the first one's
+  credentials.
+
+## 14. Listeners
+
+A listener carries out one step in the system the step acts in, right after a step it listens for happens (a step
+whose read-model slot names another step's event). It reaches only the hosts in its `hosts`. Armed as a dry run, a
+read (GET, or a GraphQL query) to those hosts really runs and every other request is recorded, never sent. Armed live,
+every request is sent to those hosts and nowhere else.
+
+- `list_listeners` shows each listening step and its listener. `create_listener` makes one; it borrows the
+  credentials of a connector in the step's system, and is refused when that system has none.
+- Write the code yourself from `get_listener_brief`, or have Live's AI write it with `build_listener`. The code is
+  `export async function act(ctx)`: `ctx.event` is the step it heard, `ctx.record` the row it acts on, and
+  `ctx.fetch` its only way out. No imports and no other network: the code is refused otherwise. A step can be heard
+  and an action run again, so the code checks first whether the step is already done, and signs in during the run
+  with the credentials when the system needs it.
+- Set the hosts with `set_listener_settings` `hosts`. `test_listener` runs it once as a dry run and records nothing;
+  check the requests it would send. `save_listener_code` stores it.
+- `arm_listener` answers first how many earlier occurrences it will skip: tell the user, then call again with
+  `confirm: true`. From then on each new occurrence queues one action (steps recorded again by `rebuild_events` or a
+  changed rule never do). `pause_listener` stops it; new code, another connector or other hosts pause it too.
+- Arm it live (`live: true`) only when the user asks. It needs hosts and a test of the saved code that ended without
+  an error and stayed on those hosts. After a live action Live reads the record back: `list_listener_actions` shows
+  `confirm` as waiting, confirmed, or not seen when the step never showed. A failed, unknown or not-seen action is the
+  user's to check: `retry_listener_action` runs it again (live, it sends again), `dismiss_listener_action` closes it.
+- Mark a listener safe to repeat with `set_listener_settings` only when running it twice is harmless: an action whose
+  outcome is unknown runs again only then.
