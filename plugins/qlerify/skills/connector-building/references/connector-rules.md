@@ -17,6 +17,7 @@ The rules Qlerify Live's own connector assistant follows, written for an agent w
 11. Knowing the source
 12. Limits
 13. Read-model connectors
+14. Listeners
 
 ## 1. Connector types
 
@@ -265,3 +266,24 @@ fields. A table no read model describes keeps one connector for the whole table.
 - Two connectors of one table write the same rows, so neither can fetch or load while the other does: it is
   refused until the other has finished. `copy_connector_credentials` gives a second connector the first one's
   credentials.
+
+## 14. Listeners
+
+A listener carries out one step in the system the step acts in, right after a step it listens for happens (a step
+whose read-model slot names another step's event). Listeners run as a dry run: a read (GET, or a GraphQL query) really
+runs only against the hosts in the listener's `readHosts`, and every other request is recorded and never sent.
+
+- `list_listeners` shows each listening step and its listener. `create_listener` makes one; it borrows the
+  credentials of a connector in the step's system, and is refused when that system has none.
+- Write the code yourself from `get_listener_brief`, or have Live's AI write it with `build_listener`. The code is
+  `export async function act(ctx)`: `ctx.event` is the step it heard, `ctx.record` the row it acts on, and
+  `ctx.fetch` its only way out. No imports and no other network: the code is refused otherwise.
+- `test_listener` runs it once and records nothing; check the requests it would send. `save_listener_code` stores it.
+  When it checks the outside system first, set the API's host name with `set_listener_settings` `readHosts`, or every
+  read is answered "dry run" with no data.
+- `arm_listener` answers first how many earlier occurrences it will skip: tell the user, then call again with
+  `confirm: true`. From then on each new occurrence queues one action (steps recorded again by
+  `rebuild_events` or a changed rule never do); `list_listener_actions` shows what each read and would have sent.
+  `pause_listener` stops it; new code, another connector or new read hosts pause it too.
+- Mark a listener safe to repeat with `set_listener_settings` only when running it twice is harmless: an action whose
+  outcome is unknown runs again only then.

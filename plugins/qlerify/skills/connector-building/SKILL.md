@@ -192,4 +192,5 @@ hide that. Tell the user what you found, and once they agree:
 
 Read `references/connector-rules.md` before the first connector of a session. It covers in depth the connector types,
 the questions to settle before building, linking rows into cases, re-run behaviour, demo data, value objects, trigger
-rules, reading other tables and the event log, AI inside a connector, and keeping connectors running.
+rules, reading other tables and the event log, AI inside a connector, keeping connectors running, read-model
+connectors and listeners.
