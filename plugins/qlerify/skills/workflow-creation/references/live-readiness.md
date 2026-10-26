@@ -29,22 +29,17 @@ give empty or wrong cases in Live. Apply these rules whenever the model will run
 
 - **List every status value, in order.** For an entity whose events follow a status field, name the field exactly
   `status` and give every value in its `exampleData`, in lifecycle order, not three samples. Use the same words in
-  the event names (Order Shipped for `SHIPPED`). A row whose status is not in the list counts as having reached
-  none of the status steps.
-- **Alternative outcomes are not steps in that order.** Live reads the status list as a ladder: a row at a later
-  value counts as having passed every earlier step. With `APPROVED, REJECTED`, every rejected row also gets
-  Application Approved. Put the shared path first and the alternative outcomes last, and model each outcome as a
-  branch of a decision whose command adds a field of its own (`approvedAt`, `rejectedAt`) rather than one shared
-  command. Live then fires each branch from its own field instead of the status, and that field can date the step.
-  An outcome that can happen at any point (withdrawn) still makes every earlier step fire, so drive such a flow from
-  dates instead (next rule).
-- **Drive the steps from dates when an ending can come at any point.** Check every value the source's status takes.
-  When records can be cancelled, withdrawn, rejected, dropped or expire at any stage, do not name the source's
-  status field `status`: keep it under another name (`sourceStatus`), where Live treats it as plain data. Give every
-  step and every ending a date field that its own command sets, and map each step to its field in the connector's
-  date roles. A step then counts once its own date is filled, whatever the status says, so a date set in advance (an
-  expiry) must stay empty until it passes. Trigger rules (`build_trigger_rules`) are for when the source has no such
-  dates.
+  the event names (Order Shipped for `SHIPPED`). Each step's trigger rule is written from these values and the
+  step's acceptance criteria.
+- **Alternative outcomes are branches, not later states.** Put the shared path first and the alternative outcomes
+  last, and model each outcome as a branch of a decision whose command adds a field of its own (`approvedAt`,
+  `rejectedAt`) rather than one shared command. Each branch's rule can then read its own field, and that field can
+  date the step.
+- **Give every step a date when an ending can come at any point.** Check every value the source's status takes.
+  When records can be cancelled, withdrawn, rejected, dropped or expire at any stage, the last status cannot show
+  how far a record got. Give every step and every ending a date field that its own command sets, and say in each
+  step's acceptance criteria that its date is filled. A date set in advance (an expiry) is a plan: the step fires
+  only once it passes.
 - **Every end event finishes the case.** Live counts a case done once any event that nothing follows has fired,
   unless the rule is changed: "Done means…" in Live's Overview, or `set_done_rule`. Lead a side branch
   that is not an ending (reminders, notifications) back into the main flow, so the only events with nothing after
@@ -53,21 +48,23 @@ give empty or wrong cases in Live. Apply these rules whenever the model will run
   every case reaches and leave the optional one out.
 - **Give each timed step a date field** on its entity (`submittedAt`, `decidedAt`), holding an ISO date as a string:
   the modeler has no date type, and the step's own command sets it. In Live, the connector maps each step's event to
-  its field (`set_connector_date_roles` with `events`, one field per step): the step is dated from it, and a filled
-  date is enough for the step to count. Without a date field, Live dates the step with the row's creation or
-  last-change date and marks it estimated, and lead times come out approximate or near zero.
-- **Keep a step's command to what that step sets.** A step without a mapped date, and every alternative outcome,
-  counts only when every field its command adds is filled, and a yes/no field at false counts as empty. An optional
-  field on the command (a flag, a text that can be blank) then stops the step for those rows, so keep such fields
-  on the entity only.
+  its field (`set_connector_date_roles` with `events`, one field per step), and the step is dated from it. Without a
+  date field, Live dates the step with the row's creation or last-change date and marks it estimated, and lead times
+  come out approximate or near zero.
 - **Give every event a command.** Live works out from data only a step that has one: an event without a command is
   shown in the flow and never fires, so a model of events alone loads and stays empty, and a case that ends at such
   a step never counts as done.
 - **Write acceptance criteria for every event.** At least one Given/When/Then whose Then names the data change that
-  shows the step happened: a field filled, a status value. Live gives them to the code that fills the tables and to
-  the rules that tell events apart. A step that listens for another step, or that another step listens for, fires
-  only from a rule written from them, so say what in the data proves it (a new record can be enough), which date it
-  carries, and, when a later state overwrites the proof, that a later state counts too.
+  shows the step happened: a field filled, a status value. Live gives them to the code that fills the tables, and
+  every step fires only from a trigger rule written from them, so say what in the data proves it (a new record can
+  be enough), which date it carries, and, when a later state overwrites the proof, that a later state counts too
+  (Order Shipped: status is `SHIPPED` or `DELIVERED`), never an alternative outcome.
+- **Make a read model's update triggers the steps that change its records.** Once a fetch works out one of them
+  (a table's first full load refreshes nothing), Live looks up, by id, the records it names in that read model, and
+  marks each in or out by a list's fixed filters. A step on another table needs a field naming the record
+  (`<table>Id`, `relatedEntity`, or a computed reference on its read model). A step on the read model's own table
+  refreshes it only when another connector of that table brought the change, so the step a read model proves is a
+  poor trigger: its own fetch has just read it.
 
 ## Source systems
 
