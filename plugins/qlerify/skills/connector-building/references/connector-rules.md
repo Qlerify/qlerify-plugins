@@ -285,7 +285,8 @@ every request is sent to those hosts and nowhere else.
   check the requests it would send. `save_listener_code` stores it.
 - `arm_listener` answers first how many earlier occurrences it will skip: tell the user, then call again with
   `confirm: true`. From then on each new occurrence queues one action (steps recorded again by `rebuild_events` or a
-  changed rule never do). `pause_listener` stops it; new code, another connector or other hosts pause it too.
+  changed rule, or worked out from rows that fill an empty table, never do). `pause_listener` stops it; new code,
+  another connector or other hosts pause it too.
 - Arm it live (`live: true`) only when the user asks. It needs hosts and a test of the saved code that ended without
   an error and stayed on those hosts. After a live action Live reads the record back: `list_listener_actions` shows
   `confirm` as waiting, confirmed, or not seen when the step never showed. A failed, unknown or not-seen action is the
