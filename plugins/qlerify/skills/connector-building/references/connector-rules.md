@@ -33,6 +33,9 @@ The rules Qlerify Live's own connector assistant follows, written for an agent w
 - **`extractor`**: the connector reads an unstructured source (a document, a sheet) and interprets it with AI.
   Re-running is safe but pays for the extraction again.
 
+A **listener** is the other kind of connector: it fills no table and carries out a step instead (section 14).
+`create_listener` makes one, never `create_connector`.
+
 Cost does not decide the type. A connector that mirrors a source is `sync` even when it pays for AI to derive one
 column; typing it `generator` silently gives up the check for deleted rows.
 
@@ -269,13 +272,15 @@ fields. A table no read model describes keeps one connector for the whole table.
 
 ## 14. Listeners
 
-A listener carries out one step in the system the step acts in, right after a step it listens for happens (a step
-whose read-model slot names another step's event). It reaches only the hosts in its `hosts`. Armed as a dry run, a
-read (GET, or a GraphQL query) to those hosts really runs and every other request is recorded, never sent. Armed live,
-every request is sent to those hosts and nowhere else.
+A listener is a connector of type `listener` that fills no table. It carries out one step in the system the step acts
+in, right after a step it listens for happens (a step whose read-model slot names another step's event). It reaches
+only the hosts in its `hosts`. Armed as a dry run, a read (GET, or a GraphQL query) to those hosts really runs and
+every other request is recorded, never sent. Armed live, every request is sent to those hosts and nowhere else.
 
-- `list_listeners` shows each listening step and its listener. `create_listener` makes one; it borrows the
-  credentials of a connector in the step's system, and is refused when that system has none.
+- `list_listeners` shows each listening step and its listener. `create_listener` makes one as a draft, one per step;
+  its id is the `adapterId` the listener tools take. It holds its own credentials: ask for them with
+  `request_connector_credentials`, or copy them with `copy_connector_credentials` from a connector of the step's
+  system. It has no schedule, wake, trigger rule or rows, and the tools that fetch rows refuse it.
 - Write the code yourself from `get_listener_brief`, or have Live's AI write it with `build_listener`. The code is
   `export async function act(ctx)`: `ctx.event` is the step it heard, `ctx.record` the row it acts on, and
   `ctx.fetch` its only way out. No imports and no other network: the code is refused otherwise. A step can be heard
@@ -284,9 +289,10 @@ every request is sent to those hosts and nowhere else.
 - Set the hosts with `set_listener_settings` `hosts`. `test_listener` runs it once as a dry run and records nothing;
   check the requests it would send. `save_listener_code` stores it.
 - `arm_listener` answers first how many earlier occurrences it will skip: tell the user, then call again with
-  `confirm: true`. From then on each new occurrence queues one action (steps recorded again by `rebuild_events` or a
-  changed rule, or worked out from rows that fill an empty table, never do). `pause_listener` stops it; new code,
-  another connector or other hosts pause it too.
+  `confirm: true` and the `codeHash`, `hosts` and `credentialStamp` that answer gave. From then on each new occurrence
+  queues one action (steps recorded again by `rebuild_events` or a changed rule, or worked out from rows that fill an
+  empty table, never do). `pause_listener` stops it; new code, other hosts or new credentials pause it too, and need a
+  new test before it is armed live.
 - Arm it live (`live: true`) only when the user asks. It needs hosts and a test of the saved code that ended without
   an error and stayed on those hosts. After a live action Live reads the record back: `list_listener_actions` shows
   `confirm` as waiting, confirmed, or not seen when the step never showed. A failed, unknown or not-seen action is the
