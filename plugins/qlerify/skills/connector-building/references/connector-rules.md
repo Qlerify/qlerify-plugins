@@ -154,11 +154,14 @@ Ask which, unless the conversation makes it obvious.
 
 Every step fires only from its trigger rule: a small check compiled from the step's Given/When/Then, which alone
 decides whether the step happened. A step with no rule fires nothing, and `create_workflow`, `reload_model`,
-`get_adapter_config`, `build_connector` and `save_connector_code` list such steps in `eventsNeedingRules`, each on
-the connector that holds its rule. A step dated after now waits until its date passes. So once the code works, build
-the rule of every step in the connector's `eventsNeedingRules` (its Given/When/Then is the condition, plus any the
-user states, such as "fire Upsell Deal Created for upsell deals and Cross Sell Deal Created for cross-sell deals"),
-and again when your checks show events a row's state does not justify:
+`get_adapter_config`, `build_connector` and `save_connector_code` list such steps in `eventsNeedingRules`, each on the
+connector that holds its rule. A step dated after now waits until its date passes. A step fires once per record,
+unless `set_repeating_steps` sets it to fire again on each change of its row: do that for a step that means the record
+was created or changed (keeping an order's copy in another system up to date), never for a one-time milestone, and
+build its rule after setting it; the rule can date a record's first recording apart from the later ones. So once the
+code works, build the rule of every step in the connector's `eventsNeedingRules` (its Given/When/Then is the
+condition, plus any the user states, such as "fire Upsell Deal Created for upsell deals and Cross Sell Deal Created
+for cross-sell deals"), and again when your checks show events a row's state does not justify:
 
 1. Restate each event with its condition.
 2. `build_trigger_rules` with the whole family of related events in one call, so sibling conditions stay consistent.
@@ -291,8 +294,9 @@ every other request is recorded, never sent. Armed live, every request is sent t
 - `arm_listener` answers first how many earlier occurrences it will skip: tell the user, then call again with
   `confirm: true` and the `codeHash`, `hosts` and `credentialStamp` that answer gave. From then on each new occurrence
   queues one action (steps recorded again by `rebuild_events` or a changed rule, or worked out from rows that fill an
-  empty table, never do). `pause_listener` stops it; new code, other hosts or new credentials pause it too, and need a
-  new test before it is armed live.
+  empty table, never do), and a step set to repeat occurs on every change of its record: never set one whose listener
+  writes back to the records it hears. `pause_listener` stops it; new code, other hosts or new credentials pause it
+  too, and need a new test before it is armed live.
 - Arm it live (`live: true`) only when the user asks. It needs hosts and a test of the saved code that ended without
   an error and stayed on those hosts. After a live action Live reads the record back: `list_listener_actions` shows
   `confirm` as waiting, confirmed, or not seen when the step never showed. A failed, unknown or not-seen action is the
