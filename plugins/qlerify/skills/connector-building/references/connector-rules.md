@@ -267,8 +267,8 @@ fields. A table no read model describes keeps one connector for the whole table.
 - **Lookups.** Export `lookupRows(ctx)`: the records for `ctx.ids` as they are at the source now, ignoring the fixed
   filters. A one-item read model needs it and is never scheduled; its records come from `look_up_records`. For a list,
   Live sees on full pulls which records left the read model and looks them up again with it. Live also looks up the
-  records a step the read model is refreshed by names, right after a fetch works it out; those ids can come from
-  another system's data, so encode each one before it goes into a URL or a query.
+  records a step the read model is refreshed by names, right after a fetch works it out or a listener carries it
+  out; those ids can come from another system's data, so encode each one before it goes into a URL or a query.
 - Two connectors of one table write the same rows, so neither can fetch or load while the other does: it is
   refused until the other has finished. `copy_connector_credentials` gives a second connector the first one's
   credentials.
@@ -298,8 +298,11 @@ every other request is recorded, never sent. Armed live, every request is sent t
   writes back to the records it hears. `pause_listener` stops it; new code, other hosts or new credentials pause it
   too, and need a new test before it is armed live.
 - Arm it live (`live: true`) only when the user asks. It needs hosts and a test of the saved code that ended without
-  an error and stayed on those hosts. After a live action Live reads the record back: `list_listener_actions` shows
-  `confirm` as waiting, confirmed, or not seen when the step never showed. A failed, unknown or not-seen action is the
-  user's to check: `retry_listener_action` runs it again (live, it sends again), `dismiss_listener_action` closes it.
+  an error and stayed on those hosts. A live action that succeeds records its step at once as claimed (`claim` in the
+  event log), and the first fetch of its record that starts after the action checks it, right away when a read model
+  is refreshed by the step. `list_listener_actions` shows `confirm` as waiting, confirmed, or withdrawn with a
+  `withdrawReason` when the step did not show; a withdrawn step leaves the event log. Listeners act only on steps no
+  listener claimed or whose claim was confirmed. A failed, unknown or withdrawn action is the user's to check:
+  `retry_listener_action` runs it again (live, it sends again), `dismiss_listener_action` closes it.
 - Mark a listener safe to repeat with `set_listener_settings` only when running it twice is harmless: an action whose
   outcome is unknown runs again only then.
