@@ -299,10 +299,12 @@ every other request is recorded, never sent. Armed live, every request is sent t
   too, and need a new test before it is armed live.
 - Arm it live (`live: true`) only when the user asks. It needs hosts and a test of the saved code that ended without
   an error and stayed on those hosts. A live action that succeeds records its step at once as claimed (`claim` in the
-  event log), and the first fetch of its record that starts after the action checks it, right away when a read model
-  is refreshed by the step. `list_listener_actions` shows `confirm` as waiting, confirmed, or withdrawn with a
-  `withdrawReason` when the step did not show; a withdrawn step leaves the event log. Listeners act only on steps no
-  listener claimed or whose claim was confirmed. A failed, unknown or withdrawn action is the user's to check:
-  `retry_listener_action` runs it again (live, it sends again), `dismiss_listener_action` closes it.
+  event log). Live then looks its record up again for up to 30 minutes, right away and at growing gaps when a read
+  model is refreshed by the step, and any fetch of the record that starts after the action counts too.
+  `list_listener_actions` shows `confirm` as waiting (with `checks` so far and `checkAt` for the next look),
+  confirmed, or withdrawn with a `withdrawReason` when nothing showed the step in time; a withdrawn step leaves the
+  event log. Listeners act only on steps no listener claimed or whose claim was confirmed. A failed, unknown or
+  withdrawn action is the user's to check: `retry_listener_action` runs it again (live, it sends again),
+  `dismiss_listener_action` closes it.
 - Mark a listener safe to repeat with `set_listener_settings` only when running it twice is harmless: an action whose
   outcome is unknown runs again only then.
