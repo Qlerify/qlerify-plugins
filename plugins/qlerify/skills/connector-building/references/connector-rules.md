@@ -289,8 +289,10 @@ every other request is recorded, never sent. Armed live, every request is sent t
   `ctx.fetch` its only way out. No imports and no other network: the code is refused otherwise. A step can be heard
   and an action run again, so the code checks first whether the step is already done, and signs in during the run
   with the credentials when the system needs it.
-- Set the hosts with `set_listener_settings` `hosts`. `test_listener` runs it once as a dry run and records nothing;
-  check the requests it would send. `save_listener_code` stores it.
+- Set the hosts with `set_listener_settings` `hosts`. `test_listener` runs it once as a dry run on the latest step it
+  heard and records nothing; check the requests it would send. Before that step has happened, `standIn` plays it: a
+  `recordId` of the heard step's table, or the `payload` it carries, with its record's `id`, when that table holds
+  none. `save_listener_code` stores it.
 - `arm_listener` answers first how many earlier occurrences it will skip: tell the user, then call again with
   `confirm: true` and the `codeHash`, `hosts` and `credentialStamp` that answer gave. From then on each new occurrence
   queues one action (steps recorded again by `rebuild_events` or a changed rule, or worked out from rows that fill an
