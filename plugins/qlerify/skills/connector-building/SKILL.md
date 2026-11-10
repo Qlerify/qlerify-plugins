@@ -145,8 +145,13 @@ A connector is done when the cases are right.
   rule with `build_trigger_rules`, passing what was wrong as `errorReport`, check each with `preview_trigger_rule`
   and read its code with `view_trigger_rules`, then run `rebuild_events`. Ingesting again only adds events; it never
   removes wrong ones.
-- When rows landed wrong (wrong ids, a child linked to the wrong parent), fix the code, `clear_table`, and ingest
-  again. Ingesting again alone leaves the wrong rows in place.
+- When rows landed wrong (wrong ids, a child linked to the wrong parent) or a step kept a wrong date after the code
+  was corrected, fix the code and fetch the table again from scratch, since ingesting again alone leaves the wrong
+  rows and the old dates in place. While you are still building, `clear_table` and an ingest do it. On a table
+  already in use, run `reimport_connector`: it empties that one table, fetches every connector that fills it again,
+  looks up the records that are in none of its lists any more, and works its steps out again as history, so no
+  listener acts on them. It answers first with what it will empty: tell the user, then call again with
+  `confirm: true`, and report `gone`, `more` and `failures` from its answer.
 - When an ingest reports rows as updated on every run although nothing changed at the source, the stored value
   differs from what the code returns (rounding, formatting, types). Compare a row from `list_table_rows` with your
   test output and tell the user if the platform changed the value.
