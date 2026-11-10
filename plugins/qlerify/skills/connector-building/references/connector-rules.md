@@ -299,6 +299,11 @@ every other request is recorded, never sent. Armed live, every request is sent t
   empty table, never do), and a step set to repeat occurs on every change of its record: never set one whose listener
   writes back to the records it hears. `pause_listener` stops it; new code, other hosts or new credentials pause it
   too, and need a new test before it is armed live.
+- When more actions come within 10 minutes than its `floodLimit` (100 unless set with `set_listener_settings`), it
+  pauses and holds them (`state: "held"` in `list_listener_actions`), since a burst may be old steps recorded again.
+  Tell the user. When they say the steps are real, arm it again, which also holds the steps recorded while it was
+  paused, and call `run_held_listener_actions`: they run once, in the mode it is armed in. Otherwise
+  `dismiss_held_listener_actions`. Raise `floodLimit` only when the user says bursts that size are normal.
 - Arm it live (`live: true`) only when the user asks. It needs hosts and a test of the saved code that ended without
   an error and stayed on those hosts. A live action that succeeds records its step at once as claimed (`claim` in the
   event log). Live then looks its record up again for up to 30 minutes, right away and at growing gaps when a read
