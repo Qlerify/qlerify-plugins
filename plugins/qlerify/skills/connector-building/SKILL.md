@@ -108,8 +108,9 @@ Keep going without asking for anything the user asked you to do. Stop and ask fi
 - **scheduling or waking an actuator**, since its actions then happen with nobody watching.
 - **deleting or rebuilding**: `remove_connector`; `clear_table` on a table holding data you did not load yourself, or
   on an actuator's table, whose rows are the record of the actions it took, so its next run may take them again (the
-  tool refuses that without `confirmActions`); `reload_model` with `rebuild: "full"`; or `reload_model` answering
-  `needsConfirmation` because stored values would be lost.
+  tool refuses that without `confirmActions`); `reimport_connector`, which empties a table already in use;
+  `reload_model` with `rebuild: "full"`; or `reload_model` answering `needsConfirmation` because stored values would
+  be lost.
 - **credentials are needed.** Never invent them. Work out exactly which fields the source needs and ask for them with
   `request_connector_credentials`: one field per value, a label in plain words, a hint on where to find it, and
   `optional: true` for a value the connector code works without. Give the user the `formUrl` it returns: they enter
@@ -145,8 +146,13 @@ A connector is done when the cases are right.
   rule with `build_trigger_rules`, passing what was wrong as `errorReport`, check each with `preview_trigger_rule`
   and read its code with `view_trigger_rules`, then run `rebuild_events`. Ingesting again only adds events; it never
   removes wrong ones.
-- When rows landed wrong (wrong ids, a child linked to the wrong parent), fix the code, `clear_table`, and ingest
-  again. Ingesting again alone leaves the wrong rows in place.
+- When rows landed wrong (wrong ids, a child linked to the wrong parent) or a step kept a wrong date after the code
+  was corrected, fix the code and fetch the table again from scratch, since ingesting again alone leaves the wrong
+  rows and the old dates in place. While you are still building, `clear_table` and an ingest do it. On a table
+  already in use, run `reimport_connector`: it empties that one table, fetches every connector that fills it again,
+  looks up the records that are in none of its lists any more, and works its steps out again as history, so no
+  listener acts on them. It answers first with what it will empty: tell the user that and wait for their yes before
+  calling again with `confirm: true`, then report `gone`, `more` and `failures` from its answer.
 - When an ingest reports rows as updated on every run although nothing changed at the source, the stored value
   differs from what the code returns (rounding, formatting, types). Compare a row from `list_table_rows` with your
   test output and tell the user if the platform changed the value.
