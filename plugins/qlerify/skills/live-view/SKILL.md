@@ -158,6 +158,14 @@ date. Do not work out by hand a figure `get_lead_time` gives. For one it does no
 slowest cases), page through `export_case_timeline` with the same `caseType` and window, treat the dates it marks
 estimated as approximate, and say the figure was worked out outside Live, so it can differ from Live's own.
 
+When the user wants a number other than time on the view (an amount, a count, a size) and a step's record carries
+it as a number field, show it as a KPI with `set_step_kpis`. Each KPI names a step, a number field of that step's
+record, a label, and `sum` or `median` across cases. Live shows it from a badge on the step, across cases on the
+Workflow tab and for one case on its page, and the call returns each value with the cases it covers. `kpis`
+replaces the whole list, so call it without `kpis` first to read what is set. A field the model does not type as a
+number is refused: type it in the modeler and call `reload_model`. Everyone sees these numbers, so set them only
+once the user agrees.
+
 ## When the user must act
 
 Some steps need a person. Gather them so the user is interrupted as rarely as possible, and say exactly what to do:
