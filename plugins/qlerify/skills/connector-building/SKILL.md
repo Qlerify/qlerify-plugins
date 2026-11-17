@@ -95,8 +95,10 @@ the platform runs your code against.
 
 The rules that matter most in the code: authenticate only from `ctx.credentials`, and keep secrets out of the code,
 log lines and returned rows (a stored credential value in a tool result shows as `[credential <field> hidden]`);
-return every field the source has, not just the model's; give each row a stable `id` taken from the source's natural
-key; return at most `ctx.limit` rows, which is always a number. The brief has the rest.
+pass a token the code gets while running (a sign-in, OAuth or installation token) through `ctx.hide`, in a
+connector or a listener: `const token = ctx.hide(await signIn())`; return every field the source has, not just the
+model's; give each row a stable `id` taken from the source's natural key; return at most `ctx.limit` rows, which is
+always a number. The brief has the rest.
 
 ## When to ask
 
@@ -191,6 +193,8 @@ hide that. Tell the user what you found, and once they agree:
   connector's own run is killed at 180 seconds (connector-rules section 12).
 - `[credential <field> hidden]` in a result: a stored credential's value was there. Never write the placeholder into
   code: read the value from `ctx.credentials.<field>`, and stop logging or returning it.
+- `[hidden value]` in a result: a value the code passed to `ctx.hide` was there. Stop logging or returning it: a run
+  whose rows or cursor hold it fails, and `ctx.ai` refuses a prompt that holds it.
 - "no connector": use the `adapterId` that `create_connector` returned. The optional `id` you pass it is only a short
   name.
 
