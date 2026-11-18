@@ -313,7 +313,8 @@ every other request is recorded, never sent. Armed live, every request is sent t
   event log), on the record the step it heard named or the one its code handed back. Live then looks that record
   up again for up to 30 minutes, right away and at growing gaps when a read model is refreshed by the step, and any
   fetch of the record that starts after the action counts too. With no record at all nothing is claimed, and each
-  read model refreshed by the step is fetched once instead, as it is when its connector cannot look a record up.
+  read model refreshed by the step is fetched once instead, as is one the step names no record of or whose
+  connector cannot look a record up.
   That fetch reads only what changed since the connector's saved position: a connector that keeps none waits for
   its next fetch, and its history says so.
   `list_listener_actions` shows `confirm` as waiting (with `checks` so far and `checkAt` for the next look),
