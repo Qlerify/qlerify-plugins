@@ -269,6 +269,7 @@ fields. A table no read model describes keeps one connector for the whole table.
   Live sees on full pulls which records left the read model and looks them up again with it. Live also looks up the
   records a step the read model is refreshed by names, right after a fetch works it out or a listener carries it
   out; those ids can come from another system's data, so encode each one before it goes into a URL or a query.
+  Rows a lookup adds or changes go through the connector's notification rules like rows from a fetch.
 - Two connectors of one table write the same rows, so neither can fetch or load while the other does: it is
   refused until the other has finished. `copy_connector_credentials` gives a second connector the first one's
   credentials.
@@ -288,7 +289,13 @@ every other request is recorded, never sent. Armed live, every request is sent t
   `export async function act(ctx)`: `ctx.event` is the step it heard, `ctx.record` the row it acts on, and
   `ctx.fetch` its only way out. No imports and no other network: the code is refused otherwise. A step can be heard
   and an action run again, so the code checks first whether the step is already done, and signs in during the run
-  with the credentials when the system needs it.
+  with the credentials when the system needs it. When its step makes or changes a record and `ctx.record` is null,
+  it returns `{ summary, record }`: the record as the other system answered it, with its id there as `id` and its
+  fields under the names the step's table has in Live, the ones naming its parent records included, since they
+  decide its case. Only when the run created the record, it adds `created: true` beside it, and the record then
+  joins its read model's list at once. A record is ignored, with a line in the action's trace, when it holds a
+  credential, is over 20,000 characters, has an id over 200 characters, names another record than the step it
+  heard does, or belongs to a table whose ids Live makes itself from its key fields.
 - Set the hosts with `set_listener_settings` `hosts`. `test_listener` runs it once as a dry run on the latest step it
   heard and records nothing; check the requests it would send. Before that step has happened, `standIn` plays it: a
   `recordId` of the heard step's table, or the `payload` it carries, with its record's `id`, when that table holds
@@ -306,8 +313,13 @@ every other request is recorded, never sent. Armed live, every request is sent t
   `dismiss_held_listener_actions`. Raise `floodLimit` only when the user says bursts that size are normal.
 - Arm it live (`live: true`) only when the user asks. It needs hosts and a test of the saved code that ended without
   an error and stayed on those hosts. A live action that succeeds records its step at once as claimed (`claim` in the
-  event log). Live then looks its record up again for up to 30 minutes, right away and at growing gaps when a read
-  model is refreshed by the step, and any fetch of the record that starts after the action counts too.
+  event log), on the record the step it heard named or the one its code handed back. Live then looks that record
+  up again for up to 30 minutes, right away and at growing gaps when a read model is refreshed by the step, and any
+  fetch of the record that starts after the action counts too. With no record at all nothing is claimed, and each
+  read model refreshed by the step is fetched once instead, as is one the step names no record of or whose
+  connector cannot look a record up.
+  That fetch reads only what changed since the connector's saved position: a connector that keeps none waits for
+  its next fetch, and its history says so.
   `list_listener_actions` shows `confirm` as waiting (with `checks` so far and `checkAt` for the next look),
   confirmed, or withdrawn with a `withdrawReason` when nothing showed the step in time; a withdrawn step leaves the
   event log. Listeners act only on steps no listener claimed or whose claim was confirmed. A failed, unknown or
