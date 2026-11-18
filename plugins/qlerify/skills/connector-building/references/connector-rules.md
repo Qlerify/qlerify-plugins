@@ -292,7 +292,10 @@ every other request is recorded, never sent. Armed live, every request is sent t
   with the credentials when the system needs it. When its step makes or changes a record and `ctx.record` is null,
   it returns `{ summary, record }`: the record as the other system answered it, with its id there as `id` and its
   fields under the names the step's table has in Live, the ones naming its parent records included, since they
-  decide its case. Leave credentials out of it, or it is ignored.
+  decide its case. Only when the run created the record, it adds `created: true` beside it, and the record then
+  joins its read model's list at once. A record is ignored, with a line in the action's trace, when it holds a
+  credential, is over 20,000 characters, has an id over 200 characters, names another record than the step it
+  heard does, or belongs to a table whose ids Live makes itself from its key fields.
 - Set the hosts with `set_listener_settings` `hosts`. `test_listener` runs it once as a dry run on the latest step it
   heard and records nothing; check the requests it would send. Before that step has happened, `standIn` plays it: a
   `recordId` of the heard step's table, or the `payload` it carries, with its record's `id`, when that table holds
