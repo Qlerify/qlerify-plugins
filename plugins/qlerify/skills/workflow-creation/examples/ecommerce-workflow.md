@@ -30,9 +30,9 @@ yet — entities don't exist. Do NOT set `group` — groups are optional and com
 create_domain_events(workflowId: "wf-1", projectId: "proj-1", domainEvents: [
   { description: "Item Added to Order", type: "domainEvent", lane: "Customer", follows: "start" },
   { description: "Order Placed", type: "domainEvent", lane: "Customer", follows: "Item Added to Order" },
-  { description: "Payment Outcome", type: "decision", lane: "Automation", follows: "Order Placed" },
-  { description: "Payment Confirmed", type: "domainEvent", lane: "Automation", follows: "Payment Outcome" },
-  { description: "Payment Failed", type: "domainEvent", lane: "Automation", follows: "Payment Outcome" },
+  { description: "Payment successful?", type: "decision", lane: "Automation", follows: "Order Placed" },
+  { description: "Payment Confirmed", type: "domainEvent", lane: "Automation", follows: "Payment successful?" },
+  { description: "Payment Failed", type: "domainEvent", lane: "Automation", follows: "Payment successful?" },
   { description: "Order Shipped", type: "domainEvent", lane: "Warehouse Worker", follows: "Payment Confirmed" }
 ])
 ```
@@ -41,10 +41,10 @@ After the bulk call, set the gateway branch labels with two `update_domain_event
 
 ```
 update_domain_event(workflowId: "wf-1", projectId: "proj-1",
-  domainEvent: "#/domainEvents/PaymentConfirmed", conditionLabel: "Success")
+  domainEvent: "#/domainEvents/PaymentConfirmed", conditionLabel: "Yes")
 
 update_domain_event(workflowId: "wf-1", projectId: "proj-1",
-  domainEvent: "#/domainEvents/PaymentFailed", conditionLabel: "Failed")
+  domainEvent: "#/domainEvents/PaymentFailed", conditionLabel: "No")
 ```
 
 ---

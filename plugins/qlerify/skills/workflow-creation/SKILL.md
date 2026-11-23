@@ -56,8 +56,9 @@ Event names are converted to PascalCase `$ref` keys:
 - Hyphens are removed, next letter capitalized: `"Check-in Completed"` → `CheckInCompleted`
 - **Special characters (`?`, `!`, `&`, `#`, `/`) break `$ref` path resolution** — avoid them entirely
 
-Use only alphanumeric characters and spaces in event names. If you use hyphens, call `get_workflow`
-afterward to verify the actual `$ref` key before referencing it in subsequent calls.
+Use only alphanumeric characters and spaces in event names. Decisions are the exception: name them as
+questions ending in `?` (see the note below). If you use hyphens, call `get_workflow` afterward to verify
+the actual `$ref` key before referencing it in subsequent calls.
 
 **Note:** Decisions (`decision`) are visualized as a separate shape on the event storming board taking up the same space as other events, but they do NOT appear in the `get_workflow` `domainEvents` section. They have their own top-level `decisions` block, keyed by the `$ref` segment to use: `"decisions":{"IsOrderPaid":{"description":"Is order paid?",...}}` is referenced as `#/decisions/IsOrderPaid`. **Never `#/domainEvents/IsOrderPaid`** — event refs skip gateways, so that form resolves to nothing and every tool taking it errors with "not found".
 
@@ -621,7 +622,7 @@ To build parallel branches, give each branch the same `follows` and set `paralle
 - **Start with events, not entities.** Map the business process flow first, then identify what data each step needs.
 - **Default to a linear chain; use decisions and parallel branches sparingly.** Decisions are only for genuine conditional (either-or) branching; parallel branches only for events genuinely triggered at the same time by the same predecessor. Unordered or optional steps should still be sequenced, not branched (see **Branching: parallel vs decision**).
 - **Name events as past-tense occurrences.** "Order Created", not "Create Order" — the command name carries the imperative.
-- **Avoid special characters in event names.** Use only alphanumeric characters and spaces. No `?`, `!`, `&`, `#`.
+- **Avoid special characters in event names.** Use only alphanumeric characters and spaces. No `?`, `!`, `&`, `#`. Decisions are the exception: name them as questions ending in `?`.
 - **Include realistic example data.** 3 values per field helps stakeholders understand the model. A `status` field in a model for Qlerify Live lists every value in order instead, with alternative outcomes as in `references/live-readiness.md`.
 - **After completing the workflow, use the `/download` skill** to save the specification to a file. This is much faster than fetching via MCP tools for large workflows.
 - **For a live view in Qlerify Live, continue with the `live-view` skill**, which loads the model into Live and fills it with data.

@@ -34,6 +34,8 @@ Rules:
 - Use only alphanumeric characters and spaces — no `?`, `!`, `&`, `#`, `/`
 - The aggregate is the entity being created, updated, or deleted
 
+These rules are for domain events. Decisions are named as questions; see "Decisions" below.
+
 ## Roles
 
 For each event, specify who or what triggers it via the `lane` parameter — either a human role (Sales Rep, Customer, Courier, Hotel Staff, Admin, Warehouse Worker) or the exact word `Automation` for system-triggered steps. See "Lane Tools" in `references/tools.md` for naming rules, character limits, and matching behavior.
@@ -46,6 +48,17 @@ Events are arranged chronologically — left-to-right on the timeline:
 - Use `follows: "#/domainEvents/PreviousEvent"` to chain subsequent events
 - Use `type: "decision"` for conditional/exclusive (either-or) branching, and `conditionLabel` on branches from a gateway to label the condition
 - Use `parallel: true` for concurrent (AND) branching — two or more events that follow the **same** event with no condition between them
+
+## Decisions
+
+- Add a decision only where exactly one of two or more alternative paths is taken depending on a condition, for example an approval that is granted or refused, or a payment that succeeds or fails. Most workflows need few or no decisions. Do not add one in front of steps that always happen.
+- A decision is not a domain event: it has no command and changes no state. The outcome is recorded by the first domain event on each path.
+- Name a decision as a short question in sentence case that ends with a question mark, max 30 characters (e.g. `Order approved?`, `Payment successful?`, `Delivery method?`). Its lane is the role that makes the decision.
+- Every decision is followed by at least two events or decisions, one per path.
+- Give each event that follows a decision a `conditionLabel`: the answer to the decision's question that leads to this path (e.g. `Yes`, `No`, `Approved`, `Rejected`, `Express`), max 30 characters, different for each path from the same decision.
+- A path may end the workflow (e.g. `Order Rejected`).
+- Give every event and decision a unique name. To loop back or rejoin an earlier step, connect to it with `add_connection` instead of repeating it.
+- Default to a single chain; let two events follow the same event only when they really happen at the same time.
 
 ## Chronology
 
@@ -65,9 +78,9 @@ start → Item Added to Cart → Order Placed → Payment Processed → Order Sh
 **Decision gateway (conditional / either-or):**
 
 ```
-Order Placed → Payment Outcome (gateway)
-  → Payment Confirmed (conditionLabel: "Success")
-  → Payment Failed (conditionLabel: "Failed")
+Order Placed → Payment successful? (decision)
+  → Payment Confirmed (conditionLabel: "Yes")
+  → Payment Failed (conditionLabel: "No")
 ```
 
 **Parallel branches (concurrent / no condition):**
