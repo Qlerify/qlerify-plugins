@@ -57,6 +57,8 @@ Events are arranged chronologically — left-to-right on the timeline:
 - Every decision is followed by at least two events or decisions, one per path.
 - Give each event that follows a decision a `conditionLabel`: the answer to the decision's question that leads to this path (e.g. `Yes`, `No`, `Approved`, `Rejected`, `Express`), max 30 characters, different for each path from the same decision.
 - A path may end the workflow (e.g. `Order Rejected`).
+- Give every event and decision a unique name. To loop back or rejoin an earlier step, connect to it with `add_connection` instead of repeating it.
+- Default to a single chain; let two events follow the same event only when they really happen at the same time.
 
 ## Chronology
 
